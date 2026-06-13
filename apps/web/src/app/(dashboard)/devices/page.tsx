@@ -1,0 +1,189 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { Radio, Wifi, WifiOff, Plus, RefreshCw, Loader2, X } from 'lucide-react'
+
+interface Device {
+  id: string; imei: string; model: string; firmware_ver: string | null
+  sim_iccid: string | null; phone_num: string | null; status: string; last_seen: string | null
+  vehicle: { economic_num: string; plates: string } | null
+}
+
+const STATUS_STYLES: Record<string, { color: string; bg: string; label: string }> = {
+  online:   { color: '#22C55E', bg: '#F0FDF4', label: 'En línea' },
+  offline:  { color: '#6B7280', bg: '#F9FAFB', label: 'Desconectado' },
+  no_signal:{ color: '#EAB308', bg: '#FEFCE8', label: 'Sin señal' },
+  unknown:  { color: '#9CA3AF', bg: '#F3F4F6', label: 'Desconocido' },
+}
+
+export default function DevicesPage() {
+  const [devices, setDevices] = useState<Device[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showModal, setShowModal] = useState(false)
+  const [search, setSearch]   = useState('')
+
+  async function loadDevices() {
+    const res  = await fetch('/api/devices')
+    const data = await res.json()
+    setDevices(data.data ?? [])
+    setLoading(false)
+  }
+
+  useEffect(() => { void loadDevices() }, [])
+
+  const filtered = devices.filter(d =>
+    d.imei.includes(search) || d.model.toLowerCase().includes(search.toLowerCase()) ||
+    (d.vehicle?.plates ?? '').toLowerCase().includes(search.toLowerCase())
+  )
+
+  const stats = {
+    total:   devices.length,
+    online:  devices.filter(d => d.status === 'online').length,
+    offline: devices.filter(d => d.status === 'offline' || d.status === 'no_signal').length,
+  }
+
+  return (
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Dispositivos GPS</h1>
+          <div className="flex gap-4 mt-2 text-sm text-gray-500">
+            <span>{stats.total} total</span>
+            <span className="text-green-600 font-medium">● {stats.online} en línea</span>
+            <span className="text-gray-400">○ {stats.offline} desconectados</span>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => void loadDevices()} className="p-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 text-gray-600">
+            <RefreshCw className="w-4 h-4" />
+          </button>
+          <button onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium">
+            <Plus className="w-4 h-4" /> Registrar dispositivo
+          </button>
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="mb-4">
+        <input value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="Buscar por IMEI, modelo o placas..."
+          className="w-full max-w-sm border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
+      ) : (
+        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 bg-gray-50">
+                {['Dispositivo', 'IMEI', 'SIM', 'Vehículo asignado', 'Estado', 'Última conexión'].map(h => (
+                  <th key={h} className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {filtered.length === 0 ? (
+                <tr><td colSpan={6} className="text-center py-16 text-gray-400 text-sm">No se encontraron dispositivos</td></tr>
+              ) : filtered.map(d => {
+                const cfg = STATUS_STYLES[d.status] ?? STATUS_STYLES['unknown']!
+                const lastSeen = d.last_seen ? (() => {
+                  const s = Math.floor((Date.now() - new Date(d.last_seen).getTime()) / 1000)
+                  if (s < 60) return `Hace ${s}s`
+                  if (s < 3600) return `Hace ${Math.floor(s / 60)}min`
+                  if (s < 86400) return `Hace ${Math.floor(s / 3600)}h`
+                  return new Date(d.last_seen).toLocaleDateString('es-MX')
+                })() : 'Nunca'
+
+                return (
+                  <tr key={d.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <Radio className="w-4 h-4 text-gray-400" />
+                        <div>
+                          <div className="font-semibold text-gray-900">{d.model}</div>
+                          {d.firmware_ver && <div className="text-xs text-gray-400">FW: {d.firmware_ver}</div>}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs text-gray-600">{d.imei}</td>
+                    <td className="px-4 py-3 text-xs text-gray-500">{d.phone_num ?? d.sim_iccid?.slice(-8) ?? '—'}</td>
+                    <td className="px-4 py-3">
+                      {d.vehicle
+                        ? <span className="text-sm font-medium text-blue-600">{d.vehicle.economic_num} ({d.vehicle.plates})</span>
+                        : <span className="text-xs text-gray-400">Sin asignar</span>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium border`}
+                        style={{ backgroundColor: cfg.bg, color: cfg.color, borderColor: cfg.color + '40' }}>
+                        {d.status === 'online' ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+                        {cfg.label}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gray-500">{lastSeen}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {showModal && <DeviceModal onClose={() => setShowModal(false)} onSave={() => { setShowModal(false); void loadDevices() }} />}
+    </div>
+  )
+}
+
+function DeviceModal({ onClose, onSave }: { onClose: () => void; onSave: () => void }) {
+  const [loading, setLoading] = useState(false)
+  const [error, setError]     = useState('')
+  const [form, setForm]       = useState({ imei: '', model: 'FMC920', sim_iccid: '', phone_num: '', firmware_ver: '' })
+  const set = (f: string, v: string) => setForm(p => ({ ...p, [f]: v }))
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault(); setLoading(true); setError('')
+    try {
+      const res = await fetch('/api/devices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Error')
+      onSave()
+    } catch (err) { setError(err instanceof Error ? err.message : 'Error') }
+    finally { setLoading(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="flex items-center justify-between p-6 border-b">
+          <h2 className="text-lg font-semibold">Registrar dispositivo GPS</h2>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400"><X className="w-5 h-5" /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {[
+            { label: 'IMEI (15 dígitos) *', field: 'imei', placeholder: '123456789012345', required: true, maxLength: 15 },
+            { label: 'Modelo *', field: 'model', placeholder: 'FMC920', required: true },
+            { label: 'ICCID de SIM', field: 'sim_iccid', placeholder: '8952140...', required: false },
+            { label: 'Número de teléfono SIM', field: 'phone_num', placeholder: '+52 55 ...', required: false },
+            { label: 'Versión de firmware', field: 'firmware_ver', placeholder: '03.27.07.Rev.07', required: false },
+          ].map(({ label, field, placeholder, required, maxLength }) => (
+            <div key={field}>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
+              <input value={(form as Record<string, string>)[field]} onChange={e => set(field, e.target.value)}
+                placeholder={placeholder} required={required} maxLength={maxLength}
+                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
+            </div>
+          ))}
+          {error && <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">{error}</div>}
+          <div className="flex gap-3">
+            <button type="button" onClick={onClose} className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-xl text-sm font-medium hover:bg-gray-50">Cancelar</button>
+            <button type="submit" disabled={loading}
+              className="flex-1 bg-blue-600 text-white py-3 rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-60 flex items-center justify-center gap-2">
+              {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Registrando...</> : 'Registrar'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}

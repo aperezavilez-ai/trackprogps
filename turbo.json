@@ -1,0 +1,34 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalEnv": [
+    "NODE_ENV",
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "DATABASE_URL",
+    "REDIS_URL",
+    "GPS_SERVER_PORT",
+    "GOOGLE_MAPS_API_KEY",
+    "RESEND_API_KEY",
+    "WHATSAPP_TOKEN",
+    "STRIPE_SECRET_KEY",
+    "ANTHROPIC_API_KEY"
+  ],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "dist/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "test": {
+      "dependsOn": ["^build"]
+    },
+    "lint": {},
+    "type-check": {
+      "dependsOn": ["^build"]
+    }
+  }
+}

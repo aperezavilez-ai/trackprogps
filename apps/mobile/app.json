@@ -1,0 +1,64 @@
+{
+  "expo": {
+    "name": "TrackPro GPS",
+    "slug": "trackpro-gps",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1E3A5F"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "mx.trackpro.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "TrackPro necesita acceder a tu ubicación para mostrar tu posición en el mapa.",
+        "NSLocationAlwaysUsageDescription": "TrackPro usa tu ubicación para rastrear la flota."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1E3A5F"
+      },
+      "package": "mx.trackpro.app",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "WAKE_LOCK"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#2563EB"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "TrackPro necesita acceder a tu ubicación para mostrar tu posición en el mapa."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "your-eas-project-id"
+      }
+    },
+    "owner": "trackpro"
+  }
+}

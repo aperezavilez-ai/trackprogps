@@ -1,0 +1,30 @@
+# railway.toml — GPS Server deployment config
+[build]
+builder     = "DOCKERFILE"
+dockerfilePath = "apps/gps-server/Dockerfile"
+buildCommand = "npm install && npm run build"
+
+[deploy]
+startCommand = "node dist/index.js"
+healthcheckPath    = "/health"
+healthcheckTimeout = 10
+
+# TCP port exposed to internet (for GPS devices)
+[[services]]
+name   = "gps-tcp"
+source = "."
+
+[[services.ports]]
+internal = 5000
+external = 5000
+protocol = "TCP"
+
+[[services.ports]]
+internal = 3001
+external = 3001
+protocol = "HTTP"
+
+[environments.production.variables]
+GPS_SERVER_PORT = "5000"
+HEALTH_PORT     = "3001"
+NODE_ENV        = "production"

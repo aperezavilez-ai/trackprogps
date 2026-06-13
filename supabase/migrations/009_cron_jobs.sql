@@ -1,0 +1,113 @@
+-- ============================================================
+-- 009_cron_jobs.sql
+-- Cron jobs via pg_cron (habilitar extensión primero en Supabase)
+-- Supabase: Dashboard → Database → Extensions → pg_cron
+-- ============================================================
+
+-- Habilitar extensión (requiere Supabase Pro o superior)
+-- CREATE EXTENSION IF NOT EXISTS pg_cron;
+
+-- -----------------------------------------------
+-- Job 1: Crear partición del mes siguiente (día 25 de cada mes)
+-- -----------------------------------------------
+-- SELECT cron.schedule(
+--   'create-next-month-partition',
+--   '0 2 25 * *',
+--   $$SELECT create_monthly_partition(CURRENT_DATE + interval '1 month')$$
+-- );
+
+-- -----------------------------------------------
+-- Job 2: Marcar dispositivos offline (cada 5 minutos)
+-- -----------------------------------------------
+-- SELECT cron.schedule(
+--   'mark-devices-offline',
+--   '*/5 * * * *',
+--   $$
+--   UPDATE gps_devices SET status = 'offline'
+--   WHERE last_seen < now() - interval '10 minutes'
+--     AND status = 'online'
+--   $$
+-- );
+
+-- -----------------------------------------------
+-- Job 3: Limpiar historial de posiciones > 1 año (domingo 3am)
+-- -----------------------------------------------
+-- SELECT cron.schedule(
+--   'cleanup-old-positions',
+--   '0 3 * * 0',
+--   $$
+--   DELETE FROM position_history
+--   WHERE recorded_at < now() - interval '1 year'
+--   $$
+-- );
+
+-- -----------------------------------------------
+-- Job 4: Alertas de vencimiento de licencias (diario 8am)
+-- -----------------------------------------------
+-- SELECT cron.schedule(
+--   'license-expiry-alerts',
+--   '0 8 * * *',
+--   $$
+--   INSERT INTO alerts (company_id, vehicle_id, type, severity, title, message, payload)
+--   SELECT
+--     d.company_id,
+--     v.id AS vehicle_id,
+--     'maintenance_due',
+--     CASE WHEN (d.license_exp - CURRENT_DATE) < 0 THEN 'critical'
+--          WHEN (d.license_exp - CURRENT_DATE) < 7 THEN 'high'
+--          ELSE 'medium' END,
+--     'Licencia próxima a vencer: ' || d.full_name,
+--     'La licencia ' || d.license_num || ' vence el ' || d.license_exp::text,
+--     jsonb_build_object('driver_id', d.id, 'license_exp', d.license_exp)
+--   FROM drivers d
+--   JOIN vehicles v ON v.driver_id = d.id
+--   WHERE d.license_exp BETWEEN CURRENT_DATE AND CURRENT_DATE + 30
+--     AND d.is_active = true
+--     AND d.deleted_at IS NULL
+--     AND NOT EXISTS (
+--       SELECT 1 FROM alerts a
+--       WHERE a.company_id = d.company_id
+--         AND a.type = 'maintenance_due'
+--         AND a.created_at > now() - interval '1 day'
+--         AND a.payload->>'driver_id' = d.id::text
+--     )
+--   $$
+-- );
+
+-- -----------------------------------------------
+-- Job 5: Alertas de mantenimiento vencido (diario 8:30am)
+-- -----------------------------------------------
+-- SELECT cron.schedule(
+--   'maintenance-due-alerts',
+--   '30 8 * * *',
+--   $$
+--   INSERT INTO alerts (company_id, vehicle_id, type, severity, title, message, payload)
+--   SELECT
+--     mr.company_id,
+--     mr.vehicle_id,
+--     'maintenance_due',
+--     'high',
+--     'Mantenimiento vencido: ' || v.economic_num,
+--     mr.description || ' — programado para ' || mr.next_service_date::text,
+--     jsonb_build_object('maintenance_id', mr.id, 'type', mr.type)
+--   FROM maintenance_records mr
+--   JOIN vehicles v ON v.id = mr.vehicle_id
+--   WHERE mr.next_service_date < CURRENT_DATE
+--     AND NOT EXISTS (
+--       SELECT 1 FROM alerts a
+--       WHERE a.company_id = mr.company_id
+--         AND a.type = 'maintenance_due'
+--         AND a.created_at > now() - interval '1 day'
+--         AND a.payload->>'maintenance_id' = mr.id::text
+--     )
+--   $$
+-- );
+
+-- -----------------------------------------------
+-- Verificar jobs registrados
+-- -----------------------------------------------
+-- SELECT * FROM cron.job;
+
+-- NOTA: Descomenta los bloques de arriba una vez que pg_cron esté habilitado
+-- en tu proyecto de Supabase Pro.
+SELECT 'Cron jobs script loaded. Uncomment jobs after enabling pg_cron.' AS info;
