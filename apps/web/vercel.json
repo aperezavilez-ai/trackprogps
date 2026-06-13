@@ -1,6 +1,6 @@
 {
   "buildCommand": "next build",
-  "installCommand": "cd ../.. && npm install",
+  "installCommand": "npm install",
   "framework": "nextjs",
   "headers": [
     {
