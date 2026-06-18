@@ -122,7 +122,18 @@ function LoginForm() {
       <div className="relative z-10 min-h-screen flex flex-col">
         {/* Header */}
         <header className="flex items-start justify-between px-5 md:px-10 pt-6 md:pt-8">
-          <span className="text-3xl md:text-4xl font-light tracking-[0.2em] text-white/95">GPS</span>
+          <Link href="/login" className="flex items-center gap-3 group">
+            <img
+              src="/icons/icon.svg"
+              alt=""
+              width={44}
+              height={44}
+              className="w-10 h-10 md:w-11 md:h-11 rounded-xl shadow-lg ring-1 ring-white/10"
+            />
+            <span className="text-2xl md:text-3xl font-bold tracking-tight text-white/95 group-hover:text-white transition">
+              TrackPro <span className="text-orange-400">GPS</span>
+            </span>
+          </Link>
           <div className="flex flex-col items-end gap-2">
             <Link
               href="/descargar"
