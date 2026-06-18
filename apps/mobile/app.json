@@ -15,10 +15,16 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "mx.trackpro.app",
+      "buildNumber": "1",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "TrackPro necesita acceder a tu ubicación para mostrar tu posición en el mapa.",
-        "NSLocationAlwaysUsageDescription": "TrackPro usa tu ubicación para rastrear la flota."
-      }
+        "NSLocationAlwaysUsageDescription": "TrackPro usa tu ubicación para rastrear la flota.",
+        "CFBundleDisplayName": "TrackPro GPS"
+      },
+      "associatedDomains": ["applinks:trackprogps.mx"]
     },
     "android": {
       "adaptiveIcon": {
@@ -26,6 +32,7 @@
         "backgroundColor": "#1E3A5F"
       },
       "package": "mx.trackpro.app",
+      "versionCode": 1,
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
@@ -56,9 +63,16 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "your-eas-project-id"
-      }
+        "projectId": "placeholder"
+      },
+      "router": {
+        "origin": false
+      },
+      "privacyPolicyUrl": "https://trackprogps.mx/legal/privacidad",
+      "termsUrl": "https://trackprogps.mx/legal/terminos",
+      "webAppUrl": "https://trackprogps.mx"
     },
+    "scheme": "trackprogps",
     "owner": "trackpro"
   }
 }

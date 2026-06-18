@@ -19,5 +19,48 @@ body {
 ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
 
+/* Leaflet map */
+.leaflet-container {
+  z-index: 0;
+  font-family: inherit;
+}
+
+/* Marcadores de vehículo — sin caja verde por defecto de Leaflet */
+.leaflet-div-icon.vehicle-marker-icon,
+.leaflet-div-icon.vehicle-cluster-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+.vehicle-marker-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Leaflet popup legacy — ocultar si queda alguno */
+.leaflet-popup-content-wrapper {
+  background: rgba(15, 23, 42, 0.85) !important;
+  backdrop-filter: blur(12px);
+  color: #fff !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.leaflet-popup-tip {
+  background: rgba(15, 23, 42, 0.85) !important;
+}
+
 /* Map container */
 .gm-style { border-radius: inherit; }
+
+/* Mobile: hide scrollbars on horizontal filter bars */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Safe area for notched phones + bottom tab bar */
+.safe-bottom-nav {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}

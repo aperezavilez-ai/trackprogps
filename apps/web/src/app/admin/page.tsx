@@ -52,13 +52,14 @@ export default async function AdminPage({
 
   const STATUS_COLORS: Record<string, string> = {
     active:    'bg-green-50 text-green-700 border-green-200',
+    demo:      'bg-amber-50 text-amber-800 border-amber-200',
     trial:     'bg-blue-50 text-blue-700 border-blue-200',
     suspended: 'bg-red-50 text-red-700 border-red-200',
     cancelled: 'bg-gray-50 text-gray-500 border-gray-200',
   }
 
   const STATUS_LABELS: Record<string, string> = {
-    active: 'Activa', trial: 'Prueba', suspended: 'Suspendida', cancelled: 'Cancelada',
+    active: 'Activa', demo: 'Demostración', trial: 'Prueba', suspended: 'Suspendida', cancelled: 'Cancelada',
   }
 
   return (
@@ -66,8 +67,8 @@ export default async function AdminPage({
       {/* Admin header */}
       <div className="bg-gray-900 text-white px-6 py-4 flex items-center justify-between">
         <div>
-          <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Super Admin</div>
-          <h1 className="text-lg font-bold">TrackPro — Panel de Control</h1>
+          <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Plataforma TrackPro</div>
+          <h1 className="text-lg font-bold">Empresas y suscripciones</h1>
         </div>
         <Link href="/dashboard" className="text-sm text-gray-400 hover:text-white">
           ← Volver al dashboard

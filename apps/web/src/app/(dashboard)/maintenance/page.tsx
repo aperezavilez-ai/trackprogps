@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Wrench, Plus, Calendar, Gauge, DollarSign, Loader2, X } from 'lucide-react'
+import { usePermissions } from '@/lib/context/permissions-context'
 
 interface MaintenanceRecord {
   id: string; vehicle_id: string; type: string; description: string
@@ -21,6 +22,7 @@ const MAINTENANCE_TYPES: Record<string, { label: string; icon: string }> = {
 }
 
 export default function MaintenancePage() {
+  const { canWriteFleet } = usePermissions()
   const [records, setRecords]   = useState<MaintenanceRecord[]>([])
   const [total, setTotal]       = useState(0)
   const [loading, setLoading]   = useState(true)
@@ -39,15 +41,22 @@ export default function MaintenancePage() {
 
   return (
     <div className="p-6">
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 text-sm text-blue-800">
+        <strong>¿Qué es Mantenimiento?</strong> Registra servicios de tu flota (aceite, frenos, llantas, verificación, seguro).
+        El sistema te avisa cuando un servicio está por vencer por fecha o kilometraje, y genera alertas automáticas.
+      </div>
+
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Mantenimiento</h1>
           <p className="text-sm text-gray-500 mt-1">{total} registros</p>
         </div>
+        {canWriteFleet && (
         <button onClick={() => setShowModal(true)}
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium">
           <Plus className="w-4 h-4" /> Registrar mantenimiento
         </button>
+        )}
       </div>
 
       {loading ? (
@@ -60,9 +69,11 @@ export default function MaintenancePage() {
             <div className="bg-white border border-gray-200 rounded-2xl p-12 text-center">
               <Wrench className="w-12 h-12 text-gray-300 mx-auto mb-3" />
               <p className="text-gray-500 text-sm">No hay registros de mantenimiento</p>
+              {canWriteFleet && (
               <button onClick={() => setShowModal(true)} className="mt-3 text-blue-600 text-sm hover:underline">
                 Registrar el primero
               </button>
+              )}
             </div>
           ) : records.map(r => {
             const mt = MAINTENANCE_TYPES[r.type] ?? MAINTENANCE_TYPES['other']!
@@ -125,7 +136,7 @@ export default function MaintenancePage() {
         </div>
       )}
 
-      {showModal && <MaintenanceModal onClose={() => setShowModal(false)} onSave={() => { setShowModal(false); void fetchRecords() }} />}
+      {showModal && canWriteFleet && <MaintenanceModal onClose={() => setShowModal(false)} onSave={() => { setShowModal(false); void fetchRecords() }} />}
     </div>
   )
 }

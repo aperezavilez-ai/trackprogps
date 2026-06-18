@@ -5,6 +5,8 @@ import {
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { supabase } from '../../lib/supabase'
+import { canAcknowledgeAlerts } from '../../lib/auth-helpers'
+import { useAuthStore } from '../../stores/auth-store'
 
 interface AlertItem {
   id: string; type: string; severity: string; title: string
@@ -21,6 +23,8 @@ const SEVERITY_CONFIG: Record<string, { color: string; bg: string; icon: string 
 }
 
 export default function AlertsScreen() {
+  const profile = useAuthStore(s => s.profile)
+  const canAck = profile ? canAcknowledgeAlerts(profile.role) : false
   const [alerts, setAlerts]     = useState<AlertItem[]>([])
   const [loading, setLoading]   = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -69,7 +73,12 @@ export default function AlertsScreen() {
   const onRefresh = async () => { setRefreshing(true); await loadAlerts(); setRefreshing(false) }
 
   async function acknowledge(alertId: string) {
-    await supabase.from('alerts').update({ acknowledged_at: new Date().toISOString() }).eq('id', alertId)
+    if (!canAck) return
+    const { data: { user } } = await supabase.auth.getUser()
+    await supabase.from('alerts').update({
+      acknowledged_by: user?.id,
+      acknowledged_at: new Date().toISOString(),
+    }).eq('id', alertId)
     setAlerts(prev => prev.map(a => a.id === alertId ? { ...a, acknowledged_at: new Date().toISOString() } : a))
   }
 
@@ -122,7 +131,7 @@ export default function AlertsScreen() {
             )}
           </View>
         </View>
-        {!isAck && (
+        {!isAck && canAck && (
           <TouchableOpacity style={styles.ackButton} onPress={() => confirmAck(item)}>
             <Ionicons name="checkmark-circle-outline" size={22} color="#22C55E" />
           </TouchableOpacity>

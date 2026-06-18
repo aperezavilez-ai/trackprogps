@@ -23,10 +23,50 @@ export async function POST(request: NextRequest) {
   const supabase = createSupabaseServiceClient()
 
   switch (event.type) {
+    case 'checkout.session.completed': {
+      const session = event.data.object as Stripe.Checkout.Session
+      const companyId = session.metadata?.company_id
+      const planId = session.metadata?.plan_id
+      const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id
+      const subscriptionId = typeof session.subscription === 'string'
+        ? session.subscription
+        : session.subscription?.id
+
+      if (companyId) {
+        const { data: companyRow } = await supabase
+          .from('companies')
+          .select('settings')
+          .eq('id', companyId)
+          .single()
+
+        const prevSettings = (companyRow?.settings ?? {}) as Record<string, unknown>
+        const { demo_tour: _removed, ...restSettings } = prevSettings
+
+        const subPatch: Record<string, string> = {}
+        if (customerId) subPatch.stripe_customer_id = customerId
+        if (subscriptionId) subPatch.stripe_subscription_id = subscriptionId
+        if (planId) subPatch.plan_id = planId
+        subPatch.status = 'active'
+
+        if (Object.keys(subPatch).length > 0) {
+          await supabase.from('subscriptions').update(subPatch).eq('company_id', companyId)
+        }
+
+        const companyPatch: Record<string, unknown> = {
+          status: 'active',
+          settings: restSettings,
+        }
+        if (planId) companyPatch.plan_id = planId
+        await supabase.from('companies').update(companyPatch).eq('id', companyId)
+      }
+      break
+    }
+
     case 'customer.subscription.created':
     case 'customer.subscription.updated': {
       const subscription = event.data.object as Stripe.Subscription
       const customerId = subscription.customer as string
+      const planId = subscription.metadata?.plan_id
 
       // Find company by stripe customer id
       const { data: sub } = await supabase
@@ -38,16 +78,23 @@ export async function POST(request: NextRequest) {
       if (sub) {
         const status = mapStripeStatus(subscription.status)
 
+        const subUpdate: Record<string, unknown> = {
+          status,
+          current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+          current_period_end:   new Date(subscription.current_period_end * 1000).toISOString(),
+          cancel_at_period_end: subscription.cancel_at_period_end,
+          stripe_subscription_id: subscription.id,
+        }
+        if (planId) subUpdate.plan_id = planId
+
         await supabase
           .from('subscriptions')
-          .update({
-            status,
-            current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-            current_period_end:   new Date(subscription.current_period_end * 1000).toISOString(),
-            cancel_at_period_end: subscription.cancel_at_period_end,
-            stripe_subscription_id: subscription.id,
-          })
+          .update(subUpdate)
           .eq('company_id', sub.company_id)
+
+        if (planId) {
+          await supabase.from('companies').update({ plan_id: planId }).eq('id', sub.company_id)
+        }
 
         // Suspend or reactivate company
         if (status === 'past_due' || status === 'cancelled') {

@@ -1,5 +1,31 @@
-import { Tabs } from 'expo-router'
+import { Tabs, router } from 'expo-router'
+import { TouchableOpacity, Alert } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
+import { supabase } from '../../lib/supabase'
+import { useAuthStore } from '../../stores/auth-store'
+
+function HeaderLogout() {
+  const clear = useAuthStore(s => s.clear)
+
+  async function logout() {
+    Alert.alert('Cerrar sesión', '¿Salir de TrackPro?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Salir', style: 'destructive', onPress: async () => {
+          await supabase.auth.signOut()
+          clear()
+          router.replace('/login')
+        },
+      },
+    ])
+  }
+
+  return (
+    <TouchableOpacity onPress={logout} style={{ marginRight: 12 }}>
+      <Ionicons name="log-out-outline" size={22} color="#fff" />
+    </TouchableOpacity>
+  )
+}
 
 export default function TabsLayout() {
   return (
@@ -17,6 +43,7 @@ export default function TabsLayout() {
         headerStyle:       { backgroundColor: '#1E3A5F' },
         headerTintColor:   '#fff',
         headerTitleStyle:  { fontWeight: '600' },
+        headerRight:       () => <HeaderLogout />,
       }}
     >
       <Tabs.Screen

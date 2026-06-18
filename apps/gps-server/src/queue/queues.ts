@@ -2,22 +2,27 @@
 // GPS Queue - BullMQ queue definitions and types
 // ============================================================
 
-import { Queue, Worker, type Job } from 'bullmq'
-import IORedis from 'ioredis'
+import { Queue } from 'bullmq'
 import type { TeltonikaRecord } from '@gps-saas/types'
 
 // ------------------------------------------------------------
-// Redis connection
+// Redis connection (BullMQ-compatible options object)
 // ------------------------------------------------------------
-export function createRedisConnection(): IORedis {
+export interface RedisConnection {
+  url: string
+  maxRetriesPerRequest: null
+  enableReadyCheck: false
+}
+
+export function createRedisConnection(): RedisConnection {
   const url = process.env['REDIS_URL']
   if (!url) throw new Error('REDIS_URL environment variable is required')
 
-  return new IORedis(url, {
-    maxRetriesPerRequest: null, // required for BullMQ
+  return {
+    url,
+    maxRetriesPerRequest: null,
     enableReadyCheck: false,
-    lazyConnect: true,
-  })
+  }
 }
 
 // ------------------------------------------------------------
@@ -62,14 +67,14 @@ export const QUEUE_NAMES = {
 // ------------------------------------------------------------
 // Queue factory
 // ------------------------------------------------------------
-export function createQueues(connection: IORedis) {
+export function createQueues(connection: RedisConnection) {
   const gpsQueue = new Queue<GpsPositionJob>(QUEUE_NAMES.GPS_POSITIONS, {
     connection,
     defaultJobOptions: {
       attempts: 3,
       backoff: { type: 'exponential', delay: 1000 },
-      removeOnComplete: { count: 1000 },
-      removeOnFail: { count: 500 },
+      removeOnComplete: { count: 5000 },
+      removeOnFail: { count: 2000 },
     },
   })
 
@@ -78,8 +83,8 @@ export function createQueues(connection: IORedis) {
     defaultJobOptions: {
       attempts: 2,
       backoff: { type: 'fixed', delay: 500 },
-      removeOnComplete: { count: 5000 },
-      removeOnFail: { count: 1000 },
+      removeOnComplete: { count: 10000 },
+      removeOnFail: { count: 3000 },
     },
   })
 

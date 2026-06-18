@@ -1,141 +1,277 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
-import { Eye, EyeOff, MapPin, Loader2 } from 'lucide-react'
+import { AuthLegalFooter } from '@/components/layout/auth-legal-footer'
+import { Eye, EyeOff, Loader2, User, Lock, QrCode } from 'lucide-react'
 
-export default function LoginPage() {
-  const router = useRouter()
-  const supabase = createSupabaseBrowserClient()
+const REMEMBER_KEY = 'trackpro_remember_email'
+const DOWNLOAD_URL = 'https://trackprogps.mx/descargar'
 
-  const [email, setEmail]       = useState('')
+function LoginForm() {
+  const searchParams = useSearchParams()
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [showPwd, setShowPwd]   = useState(false)
-  const [loading, setLoading]   = useState(false)
-  const [error, setError]       = useState('')
+  const [remember, setRemember] = useState(false)
+
+  useEffect(() => {
+    const saved = localStorage.getItem(REMEMBER_KEY)
+    if (saved) {
+      setEmail(saved)
+      setRemember(true)
+    }
+  }, [])
+  const [showPwd, setShowPwd] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState(searchParams.get('confirmed') === '1')
+  const [error, setError] = useState(
+    searchParams.get('error') === 'inactive'
+      ? 'Tu cuenta está desactivada. Contacta al administrador.'
+      : searchParams.get('error') === 'unconfirmed'
+        ? 'Confirma tu correo antes de ingresar.'
+        : searchParams.get('error') === 'auth'
+          ? 'Enlace inválido o expirado. Solicita uno nuevo.'
+          : '',
+  )
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError('')
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const supabase = createSupabaseBrowserClient()
+    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
 
-    if (error) {
-      setError(error.message === 'Invalid login credentials'
-        ? 'Correo o contraseña incorrectos'
-        : error.message
+    if (authError) {
+      setError(
+        authError.message === 'Invalid login credentials'
+          ? 'Correo o contraseña incorrectos'
+          : authError.message,
       )
       setLoading(false)
       return
     }
 
-    router.push('/dashboard')
-    router.refresh()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data: profile } = await supabase.from('users').select('is_active').eq('id', user.id).single()
+      if (profile?.is_active === false) {
+        await supabase.auth.signOut()
+        setError('Tu cuenta está desactivada. Contacta al administrador.')
+        setLoading(false)
+        return
+      }
+      if (!user.email_confirmed_at) {
+        await supabase.auth.signOut()
+        setError('Confirma tu correo antes de ingresar. Revisa tu bandeja de entrada.')
+        setLoading(false)
+        return
+      }
+    }
+
+    if (remember) localStorage.setItem(REMEMBER_KEY, email)
+    else localStorage.removeItem(REMEMBER_KEY)
+
+    const { data: profile } = await supabase
+      .from('users')
+      .select('company:companies(status, settings)')
+      .eq('id', user!.id)
+      .single()
+
+    const company = profile?.company as { status: string; settings: Record<string, unknown> | null } | null
+    const isDemo =
+      company?.status === 'demo' ||
+      company?.settings?.['demo_tour'] === true
+
+    if (isDemo) {
+      window.location.href = '/dashboard?demo_tour=1'
+      return
+    }
+
+    try {
+      const pendingRes = await fetch('/api/billing/pending-checkout')
+      if (pendingRes.ok) {
+        const pendingJson = await pendingRes.json()
+        if (pendingJson.data?.plan_id) {
+          window.location.href = '/billing?checkout=1&tab=suscripcion'
+          return
+        }
+      }
+    } catch {
+      // ignore — fall through to dashboard
+    }
+
+    window.location.href = '/dashboard'
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-950 via-blue-900 to-blue-800 flex items-center justify-center p-4">
-      {/* Background pattern */}
-      <div className="absolute inset-0 opacity-10"
+    <div className="min-h-screen relative overflow-hidden text-white">
+      {/* Fondo tipo Protrack — carretera / puente */}
+      <div
+        className="absolute inset-0 bg-cover bg-center scale-105"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+          backgroundImage:
+            'url("https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=2000&auto=format&fit=crop")',
         }}
       />
+      <div className="absolute inset-0 bg-gradient-to-r from-slate-950/75 via-slate-900/55 to-slate-950/85" />
+      <div className="absolute inset-0 bg-black/25" />
 
-      <div className="w-full max-w-md relative">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
-              <MapPin className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-2xl font-bold text-white tracking-tight">TrackPro</span>
-          </div>
-          <p className="text-blue-200 text-sm">Monitoreo vehicular en tiempo real</p>
-        </div>
-
-        {/* Card */}
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <h1 className="text-xl font-semibold text-gray-900 mb-1">Iniciar sesión</h1>
-          <p className="text-sm text-gray-500 mb-6">Ingresa tus credenciales para continuar</p>
-
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Correo electrónico
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="tu@empresa.com"
-                required
-                autoComplete="email"
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+      <div className="relative z-10 min-h-screen flex flex-col">
+        {/* Header */}
+        <header className="flex items-start justify-between px-5 md:px-10 pt-6 md:pt-8">
+          <span className="text-3xl md:text-4xl font-light tracking-[0.2em] text-white/95">GPS</span>
+          <div className="flex flex-col items-end gap-2">
+            <Link
+              href="/descargar"
+              className="text-sm font-medium text-white/90 hover:text-orange-300 tracking-wide"
+            >
+              Descargar
+            </Link>
+            <p className="text-[10px] text-white/45 text-right max-w-[120px] leading-tight">
+              iPhone: escanea con Cámara → Safari
+            </p>
+            <Link href="/descargar" title="Escanear para instalar la app">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=96x96&data=${encodeURIComponent(DOWNLOAD_URL)}`}
+                alt="QR — instalar TrackPro GPS"
+                className="w-[88px] h-[88px] md:w-[96px] md:h-[96px] rounded-lg border border-white/30 bg-white p-1"
               />
+            </Link>
+          </div>
+        </header>
+
+        {/* Contenido — panel derecho */}
+        <div className="flex-1 flex items-center justify-end px-4 md:px-10 lg:px-16 py-8">
+          <div className="w-full max-w-[340px] rounded-lg bg-slate-900/88 border border-white/10 backdrop-blur-md shadow-2xl overflow-hidden">
+            {/* Cabecera panel */}
+            <div className="relative px-6 pt-8 pb-4 flex flex-col items-center border-b border-white/10">
+              <button
+                type="button"
+                onClick={() => { window.location.href = '/descargar' }}
+                className="absolute top-3 right-3 p-1.5 text-white/50 hover:text-white/80"
+                title="Descargar app"
+                aria-label="Descargar"
+              >
+                <QrCode className="w-5 h-5" />
+              </button>
+              <div className="w-16 h-16 rounded-full bg-white/10 border border-white/20 flex items-center justify-center mb-1">
+                <User className="w-8 h-8 text-white/80" />
+              </div>
             </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-sm font-medium text-gray-700">Contraseña</label>
-                <Link href="/forgot-password" className="text-xs text-blue-600 hover:text-blue-700">
-                  ¿Olvidaste tu contraseña?
-                </Link>
-              </div>
+            <form onSubmit={handleLogin} className="px-6 py-5 space-y-3" autoComplete="off">
               <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-orange-400" />
+                <input
+                  type="email"
+                  name="trackpro-email"
+                  id="trackpro-login-email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="correo@trackprogps.mx"
+                  required
+                  autoComplete="off"
+                  data-1p-ignore
+                  data-lpignore="true"
+                  className="w-full bg-slate-800/90 border border-white/10 rounded-md pl-10 pr-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-orange-400"
+                />
+              </div>
+
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-orange-400" />
                 <input
                   type={showPwd ? 'text' : 'password'}
+                  name="trackpro-password"
+                  id="trackpro-login-password"
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Contraseña"
                   required
-                  autoComplete="current-password"
-                  className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition pr-12"
+                  autoComplete="new-password"
+                  data-1p-ignore
+                  data-lpignore="true"
+                  className="w-full bg-slate-800/90 border border-white/10 rounded-md pl-10 pr-10 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-orange-400"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPwd(!showPwd)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70"
                 >
                   {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-            </div>
 
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
-                {error}
+              <div className="flex items-center justify-between text-xs pt-1">
+                <label className="flex items-center gap-2 text-white/70 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={remember}
+                    onChange={(e) => setRemember(e.target.checked)}
+                    className="rounded border-white/30 bg-transparent text-orange-500 focus:ring-orange-400"
+                  />
+                  Recordarme
+                </label>
+                <Link href="/forgot-password" className="text-white/70 hover:text-orange-300 transition">
+                  ¿Olvidó su contraseña?
+                </Link>
               </div>
-            )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-medium py-3 rounded-xl text-sm transition flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Ingresando...</>
-              ) : 'Ingresar a la plataforma'}
-            </button>
-          </form>
+              {success && (
+                <div className="bg-green-500/15 border border-green-400/30 rounded-md px-3 py-2 text-xs text-green-200">
+                  Correo confirmado. Ya puedes iniciar sesión.
+                </div>
+              )}
 
-          <div className="mt-6 pt-6 border-t border-gray-100 text-center">
-            <p className="text-sm text-gray-500">
-              ¿No tienes cuenta?{' '}
-              <Link href="/register" className="text-blue-600 font-medium hover:text-blue-700">
-                Solicita acceso
-              </Link>
-            </p>
+              {error && (
+                <div className="bg-red-500/15 border border-red-400/30 rounded-md px-3 py-2 text-xs text-red-200">
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full mt-2 bg-orange-500 hover:bg-orange-400 disabled:opacity-60 text-white font-medium py-3 rounded-md text-sm transition flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Ingresando...</>
+                ) : 'Inicio de sesión'}
+              </button>
+            </form>
+
+            <div className="px-6 pb-5 text-center">
+              <p className="text-xs text-white/50">
+                ¿No tienes cuenta?{' '}
+                <Link href="/register" className="text-orange-300 hover:text-orange-200">
+                  Solicita acceso
+                </Link>
+              </p>
+            </div>
           </div>
         </div>
 
-        <p className="text-center text-xs text-blue-300 mt-6">
-          © 2025 TrackPro GPS. Todos los derechos reservados.
-        </p>
+        {/* Footer */}
+        <div className="px-5 md:px-10 pb-5">
+          <AuthLegalFooter variant="dark" />
+        </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 text-white animate-spin" />
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   )
 }

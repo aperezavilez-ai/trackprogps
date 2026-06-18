@@ -1,6 +1,6 @@
 # TrackPro GPS — API Reference
 
-Base URL: `https://app.trackpro.mx/api`
+Base URL: `https://trackprogps.mx/api`
 
 Todas las rutas requieren autenticación via cookie de sesión Supabase (login previo)
 o un API Key en el header `X-API-Key` (plan Empresarial).

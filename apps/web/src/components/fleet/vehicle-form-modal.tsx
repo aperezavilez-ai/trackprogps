@@ -3,6 +3,12 @@
 import { useState, useEffect } from 'react'
 import { X, Loader2 } from 'lucide-react'
 
+interface VehicleGroup {
+  id: string
+  name: string
+  color: string
+}
+
 interface Vehicle {
   id?: string
   economic_num?: string
@@ -13,9 +19,12 @@ interface Vehicle {
   type?: string
   color?: string | null
   max_speed?: number
+  owner_name?: string | null
+  group_id?: string | null
   notes?: string | null
   device?: { id: string } | null
   driver?: { id: string } | null
+  group?: VehicleGroup | null
 }
 
 interface Props {
@@ -39,6 +48,8 @@ export function VehicleFormModal({ vehicle, onClose, onSave }: Props) {
   const isEdit = !!vehicle?.id
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [groups, setGroups] = useState<VehicleGroup[]>([])
+  const [accountType, setAccountType] = useState<string>('business')
 
   const [form, setForm] = useState({
     economic_num: vehicle?.economic_num ?? '',
@@ -46,15 +57,44 @@ export function VehicleFormModal({ vehicle, onClose, onSave }: Props) {
     brand:        vehicle?.brand ?? '',
     model:        vehicle?.model ?? '',
     year:         vehicle?.year ?? new Date().getFullYear(),
-    type:         vehicle?.type ?? 'other',
+    type:         vehicle?.type ?? 'sedan',
     color:        vehicle?.color ?? '',
     max_speed:    vehicle?.max_speed ?? 120,
+    owner_name:   vehicle?.owner_name ?? '',
+    group_id:     vehicle?.group_id ?? vehicle?.group?.id ?? '',
     notes:        vehicle?.notes ?? '',
   })
+
+  useEffect(() => {
+    fetch('/api/vehicle-groups')
+      .then(r => r.json())
+      .then(json => {
+        setGroups(json.data ?? [])
+        setAccountType(json.account_type ?? 'business')
+        if (!isEdit && json.data?.length && !form.group_id) {
+          const def = json.data.find((g: VehicleGroup & { is_default?: boolean }) => g.is_default) ?? json.data[0]
+          if (def) setForm(prev => ({ ...prev, group_id: def.id }))
+        }
+      })
+      .catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function set(field: string, value: string | number) {
     setForm(prev => ({ ...prev, [field]: value }))
   }
+
+  const economicLabel = accountType === 'business'
+    ? 'Número económico *'
+    : 'Nombre / alias del vehículo *'
+  const economicPlaceholder = accountType === 'personal'
+    ? 'Mi auto'
+    : accountType === 'family'
+      ? 'Auto familiar'
+      : 'ECO-001'
+  const economicHelp = accountType === 'business'
+    ? 'Identificador interno de la unidad en tu flota (ej. ECO-001, UNIDAD-12).'
+    : 'Nombre corto para identificar este vehículo en el mapa y las alertas.'
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -66,7 +106,13 @@ export function VehicleFormModal({ vehicle, onClose, onSave }: Props) {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, year: Number(form.year), max_speed: Number(form.max_speed) }),
+        body: JSON.stringify({
+          ...form,
+          year: Number(form.year),
+          max_speed: Number(form.max_speed),
+          group_id: form.group_id || null,
+          owner_name: form.owner_name || null,
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Error al guardar')
@@ -81,7 +127,6 @@ export function VehicleFormModal({ vehicle, onClose, onSave }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <h2 className="text-lg font-semibold text-gray-900">{isEdit ? 'Editar vehículo' : 'Nuevo vehículo'}</h2>
           <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
@@ -90,13 +135,13 @@ export function VehicleFormModal({ vehicle, onClose, onSave }: Props) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          {/* Row 1 */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Número económico *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">{economicLabel}</label>
               <input required value={form.economic_num} onChange={e => set('economic_num', e.target.value)}
-                placeholder="ECO-001"
+                placeholder={economicPlaceholder}
                 className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <p className="mt-1 text-xs text-gray-500">{economicHelp}</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Placas *</label>
@@ -106,18 +151,36 @@ export function VehicleFormModal({ vehicle, onClose, onSave }: Props) {
             </div>
           </div>
 
-          {/* Row 2 */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Titular</label>
+              <input value={form.owner_name} onChange={e => set('owner_name', e.target.value)}
+                placeholder="Nombre titular"
+                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Grupo / Flotilla</label>
+              <select value={form.group_id} onChange={e => set('group_id', e.target.value)}
+                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="" disabled>Particular, Grupo o Flotilla</option>
+                {groups.map(g => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Marca *</label>
               <input required value={form.brand} onChange={e => set('brand', e.target.value)}
-                placeholder="Kenworth"
+                placeholder="Toyota"
                 className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Modelo *</label>
               <input required value={form.model} onChange={e => set('model', e.target.value)}
-                placeholder="T680"
+                placeholder="Hilux"
                 className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
@@ -128,7 +191,6 @@ export function VehicleFormModal({ vehicle, onClose, onSave }: Props) {
             </div>
           </div>
 
-          {/* Row 3 */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Tipo de vehículo</label>
@@ -145,7 +207,6 @@ export function VehicleFormModal({ vehicle, onClose, onSave }: Props) {
             </div>
           </div>
 
-          {/* Row 4 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
               Velocidad máxima (km/h) — Límite para alertas
@@ -160,7 +221,6 @@ export function VehicleFormModal({ vehicle, onClose, onSave }: Props) {
             </div>
           </div>
 
-          {/* Notes */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Notas</label>
             <textarea value={form.notes} onChange={e => set('notes', e.target.value)}

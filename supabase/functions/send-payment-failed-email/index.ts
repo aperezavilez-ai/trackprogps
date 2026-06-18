@@ -32,7 +32,7 @@ serve(async (req: Request) => {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from:    'facturacion@trackpro.mx',
+      from:    Deno.env.get('RESEND_FROM_BILLING') ?? 'facturacion@trackprogps.mx',
       to:      [company.email],
       subject: '⚠️ Problema con tu pago — TrackPro GPS',
       html: `
@@ -51,7 +51,7 @@ serve(async (req: Request) => {
               </a>
             </div>
             <p style="color:#6B7280;font-size:13px">
-              Si tienes alguna pregunta, escríbenos a soporte@trackpro.mx
+              Si tienes alguna pregunta, escríbenos a alertas@trackprogps.mx
             </p>
           </div>
         </div>

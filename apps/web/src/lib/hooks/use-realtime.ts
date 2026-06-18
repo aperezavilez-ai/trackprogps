@@ -5,15 +5,37 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { useMapStore } from '@/lib/stores/app-store'
 import type { VehiclePosition } from '@gps-saas/types'
 
+const IS_DEMO = process.env['NEXT_PUBLIC_DEMO_MODE'] === 'true'
+
+/** Batch realtime updates — 1 render per second max at 500 devices */
+const BATCH_INTERVAL_MS = 1000
+
 export function useRealtimeVehicles(companyId: string) {
   const supabase = createSupabaseBrowserClient()
-  const updateVehicle = useMapStore((s) => s.updateVehicle)
+  const updateVehiclesBatch = useMapStore((s) => s.updateVehiclesBatch)
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  const pendingRef = useRef(new Map<string, {
+    lat: number
+    lng: number
+    speed: number
+    heading: number
+    ignition: boolean
+    lastUpdate: string
+  }>())
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
-    if (!companyId) return
+    if (!companyId || IS_DEMO) return
 
-    // Subscribe to vehicle_positions changes filtered by company
+    const flush = () => {
+      const batch = pendingRef.current
+      if (batch.size === 0) return
+      pendingRef.current = new Map()
+      updateVehiclesBatch(batch)
+    }
+
+    timerRef.current = setInterval(flush, BATCH_INTERVAL_MS)
+
     const channel = supabase
       .channel(`vehicle_positions:${companyId}`)
       .on(
@@ -28,7 +50,7 @@ export function useRealtimeVehicles(companyId: string) {
           const pos = payload.new as VehiclePosition
           if (!pos.vehicle_id) return
 
-          updateVehicle(pos.vehicle_id, {
+          pendingRef.current.set(pos.vehicle_id, {
             lat:        pos.lat,
             lng:        pos.lng,
             speed:      pos.speed,
@@ -43,11 +65,13 @@ export function useRealtimeVehicles(companyId: string) {
     channelRef.current = channel
 
     return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+      flush()
       if (channelRef.current) {
         void supabase.removeChannel(channelRef.current)
       }
     }
-  }, [companyId, supabase, updateVehicle])
+  }, [companyId, supabase, updateVehiclesBatch])
 }
 
 export function useRealtimeAlerts(companyId: string, onAlert?: (alert: unknown) => void) {
@@ -55,7 +79,7 @@ export function useRealtimeAlerts(companyId: string, onAlert?: (alert: unknown) 
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
   useEffect(() => {
-    if (!companyId) return
+    if (!companyId || IS_DEMO) return
 
     const channel = supabase
       .channel(`alerts:${companyId}`)

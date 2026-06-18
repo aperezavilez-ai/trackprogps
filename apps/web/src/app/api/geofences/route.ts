@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { canWriteFleet } from '@/lib/auth/permissions'
 import { z } from 'zod'
 
 const GeofenceSchema = z.object({
@@ -47,8 +48,11 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).single()
+  const { data: profile } = await supabase.from('users').select('company_id, role').eq('id', user.id).single()
   if (!profile) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!canWriteFleet(profile.role)) {
+    return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+  }
 
   const body = await request.json()
   const parsed = GeofenceSchema.safeParse(body)
@@ -66,6 +70,7 @@ export async function POST(request: NextRequest) {
     p_alert_exit:    parsed.data.alert_on_exit,
     p_alert_dwell:   parsed.data.alert_on_dwell,
     p_created_by:    user.id,
+    p_vehicle_ids:   parsed.data.vehicle_ids ?? null,
   })
 
   if (error) {

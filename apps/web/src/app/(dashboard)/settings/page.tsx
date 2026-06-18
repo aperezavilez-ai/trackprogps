@@ -25,7 +25,7 @@ export default async function SettingsPage() {
         <h1 className="text-2xl font-semibold text-gray-900">Configuración</h1>
         <p className="text-sm text-gray-500 mt-1">Administra tu empresa, usuarios y preferencias</p>
       </div>
-      <SettingsClient profile={profile} teamMembers={teamMembers ?? []} />
+      <SettingsClient profile={profile} currentUserId={user.id} teamMembers={teamMembers ?? []} />
     </div>
   )
 }

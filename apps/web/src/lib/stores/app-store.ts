@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { User, Company, Plan } from '@gps-saas/types'
+import { MEXICO_GEO_CENTER } from '@/lib/map/map-viewport'
 
 interface AppState {
   user: User | null
@@ -44,6 +45,7 @@ export const useAppStore = create<AppState>()(
 interface MapState {
   vehicles: Map<string, {
     vehicleId: string
+    deviceId?: string | null
     lat: number
     lng: number
     speed: number
@@ -52,25 +54,43 @@ interface MapState {
     lastUpdate: string
     economicNum: string
     plates: string
+    vehicleType: string
+    groupId: string | null
+    groupName: string | null
+    ownerName: string | null
+    driverName: string | null
   }>
+  vehicleGroups: Array<{ id: string; name: string; color: string }>
   selectedVehicleId: string | null
   mapCenter: { lat: number; lng: number }
   mapZoom: number
   filter: 'all' | 'online' | 'offline' | 'moving' | 'stopped'
+  groupFilter: string | 'all'
+  mapStyle: 'hybrid' | 'satellite' | 'streets'
+
+  setVehicleGroups: (groups: MapState['vehicleGroups']) => void
 
   updateVehicle: (vehicleId: string, data: Partial<MapState['vehicles'] extends Map<string, infer V> ? V : never>) => void
+  updateVehiclesBatch: (updates: Map<string, Partial<MapState['vehicles'] extends Map<string, infer V> ? V : never>>) => void
   setSelectedVehicle: (id: string | null) => void
   setMapCenter: (center: { lat: number; lng: number }) => void
   setMapZoom: (zoom: number) => void
   setFilter: (filter: MapState['filter']) => void
+  setGroupFilter: (groupId: string | 'all') => void
+  setMapStyle: (style: MapState['mapStyle']) => void
 }
 
 export const useMapStore = create<MapState>()((set, get) => ({
   vehicles: new Map(),
   selectedVehicleId: null,
-  mapCenter: { lat: 19.4326, lng: -99.1332 }, // CDMX default
-  mapZoom: 12,
+  mapCenter: MEXICO_GEO_CENTER,
+  mapZoom: 6,
   filter: 'all',
+  groupFilter: 'all',
+  mapStyle: 'hybrid',
+  vehicleGroups: [],
+
+  setVehicleGroups: (vehicleGroups) => set({ vehicleGroups }),
 
   updateVehicle: (vehicleId, data) => {
     set((state) => {
@@ -81,8 +101,22 @@ export const useMapStore = create<MapState>()((set, get) => ({
     })
   },
 
+  updateVehiclesBatch: (updates) => {
+    if (updates.size === 0) return
+    set((state) => {
+      const newMap = new Map(state.vehicles)
+      for (const [vehicleId, data] of updates) {
+        const existing = newMap.get(vehicleId) ?? {}
+        newMap.set(vehicleId, { ...existing, vehicleId, ...data } as typeof existing)
+      }
+      return { vehicles: newMap }
+    })
+  },
+
   setSelectedVehicle: (id) => set({ selectedVehicleId: id }),
   setMapCenter: (center) => set({ mapCenter: center }),
   setMapZoom: (zoom) => set({ mapZoom: zoom }),
   setFilter: (filter) => set({ filter }),
+  setGroupFilter: (groupFilter) => set({ groupFilter }),
+  setMapStyle: (mapStyle) => set({ mapStyle }),
 }))

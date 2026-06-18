@@ -3,6 +3,8 @@ import { View, Text, ScrollView, RefreshControl, StyleSheet, TouchableOpacity } 
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { supabase } from '../../lib/supabase'
+import { canViewReports } from '../../lib/auth-helpers'
+import { useAuthStore } from '../../stores/auth-store'
 
 interface Stats {
   total: number; moving: number; stopped: number; offline: number; alerts: number
@@ -14,6 +16,8 @@ interface Alert {
 }
 
 export default function DashboardScreen() {
+  const profile = useAuthStore(s => s.profile)
+  const showReports = profile ? canViewReports(profile.role) : true
   const [stats, setStats]       = useState<Stats>({ total: 0, moving: 0, stopped: 0, offline: 0, alerts: 0 })
   const [recentAlerts, setRecentAlerts] = useState<Alert[]>([])
   const [refreshing, setRefreshing] = useState(false)
@@ -94,7 +98,7 @@ export default function DashboardScreen() {
             { label: 'Ver mapa',   icon: 'map',           route: '/(tabs)/map' },
             { label: 'Alertas',    icon: 'notifications',  route: '/(tabs)/alerts' },
             { label: 'Mi flota',   icon: 'car-sport',     route: '/(tabs)/vehicles' },
-            { label: 'Reportes',   icon: 'bar-chart',      route: '/reports' },
+            ...(showReports ? [{ label: 'Reportes', icon: 'bar-chart', route: '/reports' }] : []),
           ].map(a => (
             <TouchableOpacity key={a.label} style={styles.actionButton} onPress={() => router.push(a.route as never)}>
               <View style={styles.actionIcon}>

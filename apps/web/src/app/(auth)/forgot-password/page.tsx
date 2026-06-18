@@ -18,7 +18,7 @@ export default function ForgotPasswordPage() {
     setError('')
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent('/reset-password')}`,
     })
 
     setLoading(false)
@@ -73,7 +73,7 @@ export default function ForgotPasswordPage() {
                     type="email"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
-                    placeholder="tu@empresa.com"
+                    placeholder="correo@trackprogps.mx"
                     required
                     className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />

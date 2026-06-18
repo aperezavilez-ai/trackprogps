@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { assertNotDemoTour } from '@/lib/api/demo-guard'
 import { z } from 'zod'
 
 const CreateVehicleSchema = z.object({
@@ -14,6 +15,8 @@ const CreateVehicleSchema = z.object({
   max_speed:    z.number().int().min(60).max(300).default(120),
   device_id:    z.string().uuid().nullable().optional(),
   driver_id:    z.string().uuid().nullable().optional(),
+  group_id:     z.string().uuid().nullable().optional(),
+  owner_name:   z.string().max(150).nullable().optional(),
   notes:        z.string().max(1000).nullable().optional(),
 })
 
@@ -36,6 +39,7 @@ export async function GET(request: NextRequest) {
       *,
       device:gps_devices(id, imei, model, status, last_seen),
       driver:drivers(id, full_name, phone),
+      group:vehicle_groups(id, name, color),
       position:vehicle_positions(lat, lng, speed, heading, ignition, recorded_at)
     `, { count: 'exact' })
     .is('deleted_at', null)
@@ -69,6 +73,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const supabase = createSupabaseServerClient()
+  const demoBlock = await assertNotDemoTour(supabase)
+  if (demoBlock) return demoBlock
+
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -119,12 +126,21 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  let payload = { ...parsed.data, company_id: profile.company_id }
+
+  if (!payload.group_id && profile.company_id) {
+    const { data: defaultGroup } = await supabase
+      .from('vehicle_groups')
+      .select('id')
+      .eq('company_id', profile.company_id)
+      .eq('is_default', true)
+      .maybeSingle()
+    if (defaultGroup) payload.group_id = defaultGroup.id
+  }
+
   const { data, error } = await supabase
     .from('vehicles')
-    .insert({
-      ...parsed.data,
-      company_id: profile.company_id,
-    })
+    .insert(payload)
     .select()
     .single()
 

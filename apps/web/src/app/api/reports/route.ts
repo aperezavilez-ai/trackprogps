@@ -1,5 +1,47 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { isSuperAdmin } from '@/lib/auth/scope'
+import { reportResponse } from '@/lib/reports/export-report'
+
+async function resolveVehicleIds(
+  supabase: ReturnType<typeof createSupabaseServerClient>,
+  opts: {
+    profileCompanyId: string | null
+    filterCompanyId: string | null
+    driverId: string | null
+    vehicleId: string | null
+    superAdmin: boolean
+  }
+): Promise<{ vehicleIds: string[] | null; error?: string }> {
+  const { profileCompanyId, filterCompanyId, driverId, vehicleId, superAdmin } = opts
+
+  if (vehicleId) {
+    let check = supabase.from('vehicles').select('id, company_id').eq('id', vehicleId).is('deleted_at', null).single()
+    const { data: v, error } = await check
+    if (error || !v) return { vehicleIds: [], error: 'Vehículo no encontrado' }
+    if (!superAdmin && profileCompanyId && v.company_id !== profileCompanyId) {
+      return { vehicleIds: [], error: 'Sin acceso a este vehículo' }
+    }
+    if (filterCompanyId && v.company_id !== filterCompanyId) return { vehicleIds: [] }
+    return { vehicleIds: [vehicleId] }
+  }
+
+  let vehiclesQuery = supabase.from('vehicles').select('id').is('deleted_at', null)
+
+  if (!superAdmin && profileCompanyId) {
+    vehiclesQuery = vehiclesQuery.eq('company_id', profileCompanyId)
+  } else if (filterCompanyId) {
+    vehiclesQuery = vehiclesQuery.eq('company_id', filterCompanyId)
+  }
+
+  if (driverId) vehiclesQuery = vehiclesQuery.eq('driver_id', driverId)
+
+  const { data: vehicles, error } = await vehiclesQuery
+  if (error) return { vehicleIds: null, error: error.message }
+
+  const ids = (vehicles ?? []).map(v => v.id)
+  return { vehicleIds: ids }
+}
 
 export async function GET(request: NextRequest) {
   const supabase = createSupabaseServerClient()
@@ -7,75 +49,111 @@ export async function GET(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { searchParams } = new URL(request.url)
-  const type     = searchParams.get('type') ?? 'kilometrage'
-  const dateFrom = searchParams.get('date_from')
-  const dateTo   = searchParams.get('date_to')
-  const format   = searchParams.get('format') ?? 'csv'
+  const type         = searchParams.get('type') ?? 'kilometrage'
+  const dateFrom     = searchParams.get('date_from')
+  const dateTo       = searchParams.get('date_to')
+  const format       = searchParams.get('format') ?? 'csv'
+  const filterCompany = searchParams.get('company_id')
+  const driverId     = searchParams.get('driver_id')
+  const vehicleId    = searchParams.get('vehicle_id')
 
   if (!dateFrom || !dateTo) return NextResponse.json({ error: 'date_from and date_to are required' }, { status: 422 })
 
-  const { data: profile } = await supabase.from('users').select('company_id').eq('id', user.id).single()
+  const { data: profile } = await supabase.from('users').select('company_id, role').eq('id', user.id).single()
   if (!profile) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  const superAdmin = isSuperAdmin(profile)
+  const companyId  = superAdmin ? (filterCompany || null) : profile.company_id
+
+  const { vehicleIds, error: scopeError } = await resolveVehicleIds(supabase, {
+    profileCompanyId: profile.company_id,
+    filterCompanyId: filterCompany,
+    driverId,
+    vehicleId,
+    superAdmin,
+  })
+  if (scopeError) return NextResponse.json({ error: scopeError }, { status: 403 })
+  const suffix = driverId ? '-cliente' : vehicleId ? '-vehiculo' : filterCompany ? '-empresa' : ''
+
+  if (vehicleIds && vehicleIds.length === 0) {
+    if (format === 'json') return NextResponse.json({ data: [], headers: [], count: 0 })
+    const emptyHeaders = ['Sin datos']
+    return reportResponse(format, type, dateFrom, dateTo, suffix, emptyHeaders, [['Sin datos para los filtros seleccionados']])
+  }
 
   let csvRows: string[][] = []
   let headers: string[]  = []
 
   switch (type) {
     case 'kilometrage': {
-      const { data: vehicles } = await supabase
+      let vehiclesQuery = supabase
         .from('vehicles')
-        .select('id, economic_num, plates, brand, model, driver:drivers(full_name)')
-        .eq('company_id', profile.company_id)
+        .select('id, economic_num, plates, brand, model, driver:drivers(full_name), company:companies(name)')
         .is('deleted_at', null)
+      if (companyId) vehiclesQuery = vehiclesQuery.eq('company_id', companyId)
+      if (driverId) vehiclesQuery = vehiclesQuery.eq('driver_id', driverId)
+      if (vehicleId) vehiclesQuery = vehiclesQuery.eq('id', vehicleId)
+      const { data: vehicles } = await vehiclesQuery
 
-      headers = ['Económico', 'Placas', 'Vehículo', 'Conductor', 'Km recorridos', 'Velocidad máx', 'Velocidad prom']
+      headers = ['Empresa', 'Cliente', 'Económico', 'Placas', 'Vehículo', 'Km recorridos', 'Velocidad máx', 'Velocidad prom']
 
-      for (const v of vehicles ?? []) {
-        const { data: positions } = await supabase
-          .from('position_history')
-          .select('speed, odometer, recorded_at')
-          .eq('vehicle_id', v.id)
-          .gte('recorded_at', new Date(dateFrom).toISOString())
-          .lte('recorded_at', new Date(dateTo + 'T23:59:59').toISOString())
-          .order('recorded_at')
+      const vehicleList = vehicles ?? []
+      const ids = vehicleList.map(v => v.id)
 
-        if (!positions?.length) continue
+      if (ids.length > 0) {
+        const { data: stats } = await supabase.rpc('get_km_stats_for_vehicles', {
+          p_vehicle_ids: ids,
+          p_from: new Date(dateFrom).toISOString(),
+          p_to: new Date(dateTo + 'T23:59:59').toISOString(),
+        })
 
-        const first = positions[0]!
-        const last  = positions[positions.length - 1]!
-        const kmDelta = Math.max(0, (last.odometer ?? 0) - (first.odometer ?? 0))
-        const speeds  = positions.map(p => p.speed).filter(s => s > 0)
-        const maxSpd  = speeds.length ? Math.max(...speeds) : 0
-        const avgSpd  = speeds.length ? speeds.reduce((a, b) => a + b, 0) / speeds.length : 0
-        const driver  = (v.driver as { full_name: string } | null)?.full_name ?? 'Sin asignar'
+        const statsMap = new Map(
+          (stats ?? []).map((s: { vehicle_id: string; km_total: number; max_speed: number; avg_speed: number }) => [s.vehicle_id, s]),
+        )
 
-        csvRows.push([
-          v.economic_num, v.plates,
-          `${v.brand} ${v.model}`,
-          driver,
-          kmDelta.toFixed(1),
-          maxSpd.toFixed(0),
-          avgSpd.toFixed(0),
-        ])
+        for (const v of vehicleList) {
+          const s = statsMap.get(v.id)
+          if (!s || s.km_total === 0 && s.max_speed === 0) continue
+
+          const driver  = (v.driver as { full_name: string } | null)?.full_name ?? 'Sin asignar'
+          const company = (v.company as { name: string } | null)?.name ?? ''
+
+          csvRows.push([
+            company, driver,
+            v.economic_num, v.plates,
+            `${v.brand} ${v.model}`,
+            Number(s.km_total).toFixed(1),
+            Number(s.max_speed).toFixed(0),
+            Number(s.avg_speed).toFixed(0),
+          ])
+        }
       }
       break
     }
 
     case 'speed': {
-      const { data: alerts } = await supabase
+      let alertsQuery = supabase
         .from('alerts')
-        .select('created_at, vehicle:vehicles(economic_num, plates), speed, lat, lng, message')
-        .eq('company_id', profile.company_id)
+        .select('created_at, vehicle:vehicles(economic_num, plates, driver:drivers(full_name), company:companies(name)), speed, lat, lng, message')
         .eq('type', 'speed_excess')
         .gte('created_at', new Date(dateFrom).toISOString())
         .lte('created_at', new Date(dateTo + 'T23:59:59').toISOString())
         .order('created_at', { ascending: false })
+      if (companyId) alertsQuery = alertsQuery.eq('company_id', companyId)
+      if (vehicleIds) alertsQuery = alertsQuery.in('vehicle_id', vehicleIds)
+      const { data: alerts } = await alertsQuery
 
-      headers = ['Fecha y hora', 'Económico', 'Placas', 'Velocidad (km/h)', 'Latitud', 'Longitud', 'Descripción']
+      headers = ['Fecha y hora', 'Empresa', 'Cliente', 'Económico', 'Placas', 'Velocidad (km/h)', 'Latitud', 'Longitud', 'Descripción']
       for (const a of alerts ?? []) {
-        const v = a.vehicle as { economic_num: string; plates: string } | null
+        const v = a.vehicle as {
+          economic_num: string; plates: string
+          driver: { full_name: string } | null
+          company: { name: string } | null
+        } | null
         csvRows.push([
           new Date(a.created_at).toLocaleString('es-MX'),
+          v?.company?.name ?? '',
+          v?.driver?.full_name ?? 'Sin asignar',
           v?.economic_num ?? '', v?.plates ?? '',
           String(a.speed ?? ''),
           String(a.lat ?? ''), String(a.lng ?? ''),
@@ -86,19 +164,27 @@ export async function GET(request: NextRequest) {
     }
 
     case 'alerts': {
-      const { data: alerts } = await supabase
+      let alertsQuery = supabase
         .from('alerts')
-        .select('created_at, type, severity, title, message, vehicle:vehicles(economic_num, plates), acknowledged_at')
-        .eq('company_id', profile.company_id)
+        .select('created_at, type, severity, title, message, vehicle:vehicles(economic_num, plates, driver:drivers(full_name), company:companies(name)), acknowledged_at')
         .gte('created_at', new Date(dateFrom).toISOString())
         .lte('created_at', new Date(dateTo + 'T23:59:59').toISOString())
         .order('created_at', { ascending: false })
+      if (companyId) alertsQuery = alertsQuery.eq('company_id', companyId)
+      if (vehicleIds) alertsQuery = alertsQuery.in('vehicle_id', vehicleIds)
+      const { data: alerts } = await alertsQuery
 
-      headers = ['Fecha', 'Tipo', 'Severidad', 'Económico', 'Placas', 'Descripción', 'Reconocida']
+      headers = ['Fecha', 'Empresa', 'Cliente', 'Tipo', 'Severidad', 'Económico', 'Placas', 'Descripción', 'Reconocida']
       for (const a of alerts ?? []) {
-        const v = a.vehicle as { economic_num: string; plates: string } | null
+        const v = a.vehicle as {
+          economic_num: string; plates: string
+          driver: { full_name: string } | null
+          company: { name: string } | null
+        } | null
         csvRows.push([
           new Date(a.created_at).toLocaleString('es-MX'),
+          v?.company?.name ?? '',
+          v?.driver?.full_name ?? 'Sin asignar',
           a.type, a.severity,
           v?.economic_num ?? '', v?.plates ?? '',
           a.message,
@@ -108,24 +194,93 @@ export async function GET(request: NextRequest) {
       break
     }
 
+    case 'trips': {
+      let tripsQuery = supabase
+        .from('trips')
+        .select(`
+          started_at, ended_at, start_lat, start_lng, end_lat, end_lng,
+          distance_km, duration_min, avg_speed, max_speed, is_complete,
+          vehicle:vehicles(economic_num, plates, driver:drivers(full_name), company:companies(name))
+        `)
+        .gte('started_at', new Date(dateFrom).toISOString())
+        .lte('started_at', new Date(dateTo + 'T23:59:59').toISOString())
+        .order('started_at', { ascending: false })
+      if (companyId) tripsQuery = tripsQuery.eq('company_id', companyId)
+      if (vehicleIds) tripsQuery = tripsQuery.in('vehicle_id', vehicleIds)
+      const { data: trips } = await tripsQuery
+
+      headers = ['Inicio', 'Fin', 'Empresa', 'Cliente', 'Económico', 'Placas', 'Distancia (km)', 'Duración (min)', 'Vel. prom', 'Vel. máx', 'Completo']
+      for (const t of trips ?? []) {
+        const v = t.vehicle as {
+          economic_num: string; plates: string
+          driver: { full_name: string } | null
+          company: { name: string } | null
+        } | null
+        csvRows.push([
+          new Date(t.started_at).toLocaleString('es-MX'),
+          t.ended_at ? new Date(t.ended_at).toLocaleString('es-MX') : 'En curso',
+          v?.company?.name ?? '',
+          v?.driver?.full_name ?? 'Sin asignar',
+          v?.economic_num ?? '', v?.plates ?? '',
+          Number(t.distance_km).toFixed(1),
+          String(t.duration_min),
+          t.avg_speed != null ? Number(t.avg_speed).toFixed(0) : '',
+          t.max_speed != null ? Number(t.max_speed).toFixed(0) : '',
+          t.is_complete ? 'Sí' : 'No',
+        ])
+      }
+      break
+    }
+
+    case 'idle': {
+      let vehiclesQuery = supabase
+        .from('vehicles')
+        .select('id, economic_num, plates, brand, model, driver:drivers(full_name), company:companies(name)')
+        .is('deleted_at', null)
+      if (companyId) vehiclesQuery = vehiclesQuery.eq('company_id', companyId)
+      if (driverId) vehiclesQuery = vehiclesQuery.eq('driver_id', driverId)
+      if (vehicleId) vehiclesQuery = vehiclesQuery.eq('id', vehicleId)
+      else if (vehicleIds) vehiclesQuery = vehiclesQuery.in('id', vehicleIds)
+      const { data: vehicleList } = await vehiclesQuery
+
+      headers = ['Empresa', 'Cliente', 'Económico', 'Placas', 'Vehículo', 'Minutos ralentí (est.)', 'Muestras']
+      const ids = (vehicleList ?? []).map(v => v.id)
+
+      if (ids.length > 0) {
+        const { data: stats } = await supabase.rpc('get_idle_stats_for_vehicles', {
+          p_vehicle_ids: ids,
+          p_from: new Date(dateFrom).toISOString(),
+          p_to: new Date(dateTo + 'T23:59:59').toISOString(),
+        })
+
+        const statsMap = new Map(
+          (stats ?? []).map((s: { vehicle_id: string; idle_minutes: number; idle_samples: number }) => [s.vehicle_id, s]),
+        )
+
+        for (const v of vehicleList ?? []) {
+          const s = statsMap.get(v.id)
+          if (!s) continue
+          const driver  = (v.driver as { full_name: string } | null)?.full_name ?? 'Sin asignar'
+          const company = (v.company as { name: string } | null)?.name ?? ''
+          csvRows.push([
+            company, driver,
+            v.economic_num, v.plates,
+            `${v.brand} ${v.model}`,
+            Number(s.idle_minutes).toFixed(1),
+            String(s.idle_samples),
+          ])
+        }
+      }
+      break
+    }
+
     default:
       return NextResponse.json({ error: 'Invalid report type' }, { status: 422 })
   }
 
-  if (format === 'csv') {
-    const csv = [
-      headers.join(','),
-      ...csvRows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-    ].join('\n')
-
-    const bom = '\uFEFF' // UTF-8 BOM for Excel
-    return new NextResponse(bom + csv, {
-      headers: {
-        'Content-Type':        'text/csv; charset=utf-8',
-        'Content-Disposition': `attachment; filename="reporte-${type}-${dateFrom}.csv"`,
-      },
-    })
+  if (format === 'json') {
+    return NextResponse.json({ data: csvRows, headers, count: csvRows.length })
   }
 
-  return NextResponse.json({ data: csvRows, headers, count: csvRows.length })
+  return reportResponse(format, type, dateFrom, dateTo, suffix, headers, csvRows)
 }

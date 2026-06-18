@@ -169,7 +169,7 @@ Para producción se recomienda Upstash (serverless Redis) o Railway Redis.
 - [x] Módulo 13: Dashboard ejecutivo
 - [x] Módulo 14: Facturación (Stripe + Conekta)
 - [x] Módulo 15: IA Operativa (Claude API)
-- [ ] Módulo 12: App Móvil (React Native - siguiente fase)
+- [ ] Módulo 12: App Móvil nativa (Expo — **preparada**, publicación en tiendas pospuesta; canal móvil actual: **PWA**)
 
 ## Escalabilidad
 

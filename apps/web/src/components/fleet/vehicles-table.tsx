@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Search, Filter, MoreVertical, Wifi, WifiOff, Zap, ZapOff, Pencil, Trash2, MapPin } from 'lucide-react'
 import { VehicleFormModal } from './vehicle-form-modal'
+import { usePermissions } from '@/lib/context/permissions-context'
 
 interface Vehicle {
   id: string
@@ -16,6 +17,8 @@ interface Vehicle {
   color: string | null
   status: string
   max_speed: number
+  owner_name?: string | null
+  group?: { id: string; name: string; color: string } | null
   device: { id: string; imei: string; model: string; status: string; last_seen: string | null } | null
   driver: { id: string; full_name: string; phone: string | null } | null
   position: { lat: number; lng: number; speed: number; ignition: boolean; recorded_at: string } | null
@@ -23,11 +26,15 @@ interface Vehicle {
 
 interface Props {
   vehicles: Vehicle[]
+  groups?: { id: string; name: string; color: string }[]
   count: number
   page: number
   perPage: number
   search: string
   status: string
+  group?: string
+  showModal?: boolean
+  onCloseModal?: () => void
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -42,8 +49,9 @@ const STATUS_LABELS: Record<string, string> = {
   maintenance: 'Mantenimiento',
 }
 
-export function VehiclesTable({ vehicles, count, page, perPage, search, status }: Props) {
+export function VehiclesTable({ vehicles, groups = [], count, page, perPage, search, status, group = '', showModal: externalShow, onCloseModal }: Props) {
   const router = useRouter()
+  const { canWriteFleet } = usePermissions()
   const [searchValue, setSearchValue] = useState(search)
   const [showModal, setShowModal] = useState(false)
   const [editVehicle, setEditVehicle] = useState<Vehicle | null>(null)
@@ -56,6 +64,7 @@ export function VehiclesTable({ vehicles, count, page, perPage, search, status }
     const params = new URLSearchParams()
     if (s) params.set('search', s)
     if (status) params.set('status', status)
+    if (group) params.set('group', group)
     params.set('page', '1')
     startTransition(() => router.push(`/vehicles?${params}`))
   }
@@ -64,6 +73,7 @@ export function VehiclesTable({ vehicles, count, page, perPage, search, status }
     const params = new URLSearchParams()
     if (search) params.set('search', search)
     if (status) params.set('status', status)
+    if (group) params.set('group', group)
     params.set('page', String(p))
     router.push(`/vehicles?${params}`)
   }
@@ -90,10 +100,26 @@ export function VehiclesTable({ vehicles, count, page, perPage, search, status }
           />
         </div>
         <select
-          value={status}
+          value={group}
           onChange={e => {
             const params = new URLSearchParams()
             if (search) params.set('search', search)
+            if (status) params.set('status', status)
+            if (e.target.value) params.set('group', e.target.value)
+            router.push(`/vehicles?${params}`)
+          }}
+          className="border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">Todos los grupos</option>
+          {groups.map(g => (
+            <option key={g.id} value={g.id}>{g.name}</option>
+          ))}
+        </select>
+        <select
+          onChange={e => {
+            const params = new URLSearchParams()
+            if (search) params.set('search', search)
+            if (group) params.set('group', group)
             if (e.target.value) params.set('status', e.target.value)
             router.push(`/vehicles?${params}`)
           }}
@@ -112,6 +138,7 @@ export function VehiclesTable({ vehicles, count, page, perPage, search, status }
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50">
               <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Vehículo</th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Grupo / Titular</th>
               <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">GPS</th>
               <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Chofer</th>
               <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
@@ -122,16 +149,18 @@ export function VehiclesTable({ vehicles, count, page, perPage, search, status }
           <tbody className="divide-y divide-gray-50">
             {vehicles.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-center py-16 text-gray-400">
+                <td colSpan={7} className="text-center py-16 text-gray-400">
                   <div className="flex flex-col items-center gap-2">
                     <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
                       🚛
                     </div>
                     <span className="text-sm">No se encontraron vehículos</span>
-                    <button onClick={() => setShowModal(true)}
-                      className="text-blue-600 text-sm hover:underline mt-1">
-                      Agregar el primero
-                    </button>
+                    {canWriteFleet && (
+                      <button onClick={() => setShowModal(true)}
+                        className="text-blue-600 text-sm hover:underline mt-1">
+                        Agregar el primero
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -148,6 +177,18 @@ export function VehiclesTable({ vehicles, count, page, perPage, search, status }
                       <div className="text-xs text-gray-500">{v.brand} {v.model} {v.year} · {v.plates}</div>
                     </div>
                   </div>
+                </td>
+                <td className="px-4 py-3">
+                  {v.group && (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border"
+                      style={{ borderColor: v.group.color, color: v.group.color, backgroundColor: `${v.group.color}15` }}>
+                      {v.group.name}
+                    </span>
+                  )}
+                  {v.owner_name && (
+                    <div className="text-xs text-gray-500 mt-1">{v.owner_name}</div>
+                  )}
+                  {!v.group && !v.owner_name && <span className="text-xs text-gray-400">—</span>}
                 </td>
                 {/* GPS */}
                 <td className="px-4 py-3">
@@ -194,6 +235,7 @@ export function VehiclesTable({ vehicles, count, page, perPage, search, status }
                 </td>
                 {/* Actions */}
                 <td className="px-4 py-3 text-right">
+                  {canWriteFleet ? (
                   <div className="relative inline-block">
                     <button
                       onClick={() => setMenuOpenId(menuOpenId === v.id ? null : v.id)}
@@ -228,6 +270,16 @@ export function VehiclesTable({ vehicles, count, page, perPage, search, status }
                       </>
                     )}
                   </div>
+                  ) : v.position ? (
+                    <a
+                      href={`https://maps.google.com/?q=${v.position.lat},${v.position.lng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                    >
+                      <MapPin className="w-3.5 h-3.5" /> Mapa
+                    </a>
+                  ) : null}
                 </td>
               </tr>
             ))}
@@ -255,11 +307,20 @@ export function VehiclesTable({ vehicles, count, page, perPage, search, status }
       )}
 
       {/* Add/Edit Modal */}
-      {showModal && (
+      {canWriteFleet && (showModal || externalShow) && (
         <VehicleFormModal
           vehicle={editVehicle}
-          onClose={() => { setShowModal(false); setEditVehicle(null) }}
-          onSave={() => { setShowModal(false); setEditVehicle(null); router.refresh() }}
+          onClose={() => {
+            setShowModal(false)
+            setEditVehicle(null)
+            onCloseModal?.()
+          }}
+          onSave={() => {
+            setShowModal(false)
+            setEditVehicle(null)
+            onCloseModal?.()
+            router.refresh()
+          }}
         />
       )}
     </div>

@@ -58,37 +58,47 @@ serve(async (req: Request) => {
   // EMAIL via Resend
   // -------------------------------------------------------
   if (channels.includes('email')) {
-    const toEmail = (company.settings as { notification_email?: string })?.notification_email ?? company.email
+    const settings = (company.settings ?? {}) as {
+      notification_email?: string
+      notification_email_secondary?: string
+    }
+    const toEmails = uniqueValidEmails([
+      settings.notification_email,
+      settings.notification_email_secondary,
+      company.email,
+    ])
 
-    const emailRes = await fetch('https://api.resend.com/emails', {
-      method:  'POST',
-      headers: {
-        'Authorization': `Bearer ${Deno.env.get('RESEND_API_KEY')}`,
-        'Content-Type':  'application/json',
-      },
-      body: JSON.stringify({
-        from:    'alertas@trackpro.mx',
-        to:      [toEmail],
-        subject: `🚨 ${alert.title} — ${vehicle?.economic_num ?? 'Vehículo'} (${vehicle?.plates ?? ''})`,
-        html: `
-          <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
-            <div style="background:#EF4444;color:#fff;padding:16px;border-radius:8px 8px 0 0">
-              <h2 style="margin:0">⚠️ ${alert.title}</h2>
+    if (toEmails.length) {
+      const emailRes = await fetch('https://api.resend.com/emails', {
+        method:  'POST',
+        headers: {
+          'Authorization': `Bearer ${Deno.env.get('RESEND_API_KEY')}`,
+          'Content-Type':  'application/json',
+        },
+        body: JSON.stringify({
+          from:    Deno.env.get('RESEND_FROM_EMAIL') ?? 'alertas@trackprogps.mx',
+          to:      toEmails,
+          subject: `🚨 ${alert.title} — ${vehicle?.economic_num ?? 'Vehículo'} (${vehicle?.plates ?? ''})`,
+          html: `
+            <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
+              <div style="background:#EF4444;color:#fff;padding:16px;border-radius:8px 8px 0 0">
+                <h2 style="margin:0">⚠️ ${alert.title}</h2>
+              </div>
+              <div style="border:1px solid #E5E7EB;border-top:none;padding:20px;border-radius:0 0 8px 8px">
+                <p><strong>Mensaje:</strong> ${alert.message}</p>
+                <p><strong>Vehículo:</strong> ${vehicle?.economic_num} — ${vehicle?.plates} (${vehicle?.brand} ${vehicle?.model})</p>
+                <p><strong>Conductor:</strong> ${vehicle?.driver?.full_name ?? 'Sin asignar'}</p>
+                ${alert.speed ? `<p><strong>Velocidad:</strong> ${alert.speed} km/h</p>` : ''}
+                ${alert.lat ? `<p><strong>Ubicación:</strong> <a href="https://maps.google.com/?q=${alert.lat},${alert.lng}">Ver en mapa</a></p>` : ''}
+                <p><strong>Fecha:</strong> ${new Date(alert.created_at).toLocaleString('es-MX')}</p>
+              </div>
             </div>
-            <div style="border:1px solid #E5E7EB;border-top:none;padding:20px;border-radius:0 0 8px 8px">
-              <p><strong>Mensaje:</strong> ${alert.message}</p>
-              <p><strong>Vehículo:</strong> ${vehicle?.economic_num} — ${vehicle?.plates} (${vehicle?.brand} ${vehicle?.model})</p>
-              <p><strong>Conductor:</strong> ${vehicle?.driver?.full_name ?? 'Sin asignar'}</p>
-              ${alert.speed ? `<p><strong>Velocidad:</strong> ${alert.speed} km/h</p>` : ''}
-              ${alert.lat ? `<p><strong>Ubicación:</strong> <a href="https://maps.google.com/?q=${alert.lat},${alert.lng}">Ver en mapa</a></p>` : ''}
-              <p><strong>Fecha:</strong> ${new Date(alert.created_at).toLocaleString('es-MX')}</p>
-            </div>
-          </div>
-        `,
-      }),
-    })
+          `,
+        }),
+      })
 
-    channelResults['email'] = emailRes.ok
+      channelResults['email'] = emailRes.ok
+    }
   }
 
   // -------------------------------------------------------
@@ -132,38 +142,52 @@ serve(async (req: Request) => {
   }
 
   // -------------------------------------------------------
-  // PUSH via Firebase FCM
+  // PUSH — Expo Push API + FCM legacy
   // -------------------------------------------------------
   if (channels.includes('push')) {
-    // Fetch FCM tokens for company users
     const { data: tokens } = await supabase
       .from('push_tokens')
-      .select('token')
+      .select('token, platform')
       .eq('company_id', company_id)
       .eq('is_active', true)
 
     if (tokens?.length) {
-      const fcmRes = await fetch('https://fcm.googleapis.com/batch', {
-        method:  'POST',
-        headers: {
-          'Authorization': `Bearer ${Deno.env.get('FCM_SERVER_KEY')}`,
-          'Content-Type':  'application/json',
-        },
-        body: JSON.stringify({
-          registration_ids: tokens.map(t => t.token),
-          notification: {
-            title: alert.title,
-            body:  alert.message,
-          },
-          data: {
-            alert_id:   alert_id,
-            vehicle_id: vehicle_id,
-            type:       alert.type,
-          },
-        }),
-      })
+      const expoTokens = tokens.filter(t => t.platform === 'expo').map(t => t.token)
+      const fcmTokens  = tokens.filter(t => t.platform !== 'expo').map(t => t.token)
 
-      channelResults['push'] = fcmRes.ok
+      if (expoTokens.length) {
+        const expoRes = await fetch('https://exp.host/--/api/v2/push/send', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(
+            expoTokens.map(token => ({
+              to:    token,
+              title: alert.title,
+              body:  alert.message,
+              data:  { alert_id, vehicle_id, type: alert.type },
+              sound: 'default',
+              priority: 'high',
+            }))
+          ),
+        })
+        channelResults['push'] = expoRes.ok
+      }
+
+      if (fcmTokens.length && Deno.env.get('FCM_SERVER_KEY')) {
+        const fcmRes = await fetch('https://fcm.googleapis.com/fcm/send', {
+          method:  'POST',
+          headers: {
+            'Authorization': `key=${Deno.env.get('FCM_SERVER_KEY')}`,
+            'Content-Type':  'application/json',
+          },
+          body: JSON.stringify({
+            registration_ids: fcmTokens,
+            notification: { title: alert.title, body: alert.message },
+            data: { alert_id, vehicle_id, type: alert.type },
+          }),
+        })
+        channelResults['push'] = channelResults['push'] || fcmRes.ok
+      }
     }
   }
 
@@ -179,3 +203,16 @@ serve(async (req: Request) => {
     headers: { 'Content-Type': 'application/json' },
   })
 })
+
+function uniqueValidEmails(values: Array<string | null | undefined>): string[] {
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const raw of values) {
+    const email = (raw ?? '').trim().toLowerCase()
+    if (!email || seen.has(email)) continue
+    if (!/^[\x00-\x7F]+$/.test(email) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) continue
+    seen.add(email)
+    out.push(email)
+  }
+  return out
+}

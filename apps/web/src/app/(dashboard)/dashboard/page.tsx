@@ -1,14 +1,17 @@
 import { Suspense } from 'react'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
-import { DashboardStats } from '@/components/dashboard/dashboard-stats'
 import { AlertsFeed } from '@/components/alerts/alerts-feed'
 import { RealtimeMap } from '@/components/map/realtime-map'
 import { MapFilters } from '@/components/map/map-filters'
 import { MaintenanceWidget } from '@/components/dashboard/maintenance-widget'
+import { DashboardStats } from '@/components/dashboard/dashboard-stats'
+import Link from 'next/link'
+import { Map } from 'lucide-react'
 import { AlertsChart } from '@/components/dashboard/alerts-chart'
 import { FleetKmWidget } from '@/components/dashboard/fleet-km-widget'
 import { ToastContainer } from '@/components/ui/toast'
-import { AIAssistantButton } from '@/components/ai/ai-assistant-button'
+import { DEMO_MODE, DEMO_STATS, DEMO_VEHICLES, DEMO_ALERTS, isDemoTourActive } from '@/lib/demo-data'
+import { emptyDashboardStats } from '@/lib/auth/company-scope'
 import type { DashboardStats as DashboardStatsType, LiveVehicle } from '@gps-saas/types'
 
 export const dynamic = 'force-dynamic'
@@ -17,23 +20,25 @@ export const revalidate = 0
 async function getDashboardData(companyId: string) {
   const supabase = createSupabaseServerClient()
 
-  const [positionsResult, alertsResult] = await Promise.all([
-    supabase
-      .from('vehicle_positions')
-      .select(`
-        vehicle_id, company_id, lat, lng, speed, heading,
-        ignition, odometer, recorded_at,
-        vehicle:vehicles(economic_num, plates, brand, model, driver:drivers(full_name))
-      `)
-      .eq('company_id', companyId),
-    supabase
-      .from('alerts')
-      .select('*')
-      .eq('company_id', companyId)
-      .is('acknowledged_at', null)
-      .order('created_at', { ascending: false })
-      .limit(20),
-  ])
+  let positionsQuery = supabase
+    .from('vehicle_positions')
+    .select(`
+      vehicle_id, company_id, lat, lng, speed, heading,
+      ignition, odometer, recorded_at,
+      vehicle:vehicles(economic_num, plates, brand, model, type, owner_name, group_id, device_id, driver:drivers(full_name), group:vehicle_groups(id, name, color))
+    `)
+
+  let alertsQuery = supabase
+    .from('alerts')
+    .select('*')
+    .is('acknowledged_at', null)
+    .order('created_at', { ascending: false })
+    .limit(20)
+
+  positionsQuery = positionsQuery.eq('company_id', companyId)
+  alertsQuery = alertsQuery.eq('company_id', companyId)
+
+  const [positionsResult, alertsResult] = await Promise.all([positionsQuery, alertsQuery])
 
   const positions = positionsResult.data ?? []
   const alerts    = alertsResult.data ?? []
@@ -47,7 +52,12 @@ async function getDashboardData(companyId: string) {
     const isOffline  = now - lastUpdate > OFFLINE_THRESHOLD_MS
     const v = p.vehicle as {
       economic_num: string; plates: string; brand: string; model: string
+      type: string
+      owner_name: string | null
+      group_id: string | null
+      device_id: string | null
       driver: { full_name: string } | null
+      group: { id: string; name: string; color: string } | null
     } | null
 
     if (isOffline) noSignal++
@@ -58,10 +68,15 @@ async function getDashboardData(companyId: string) {
     return {
       vehicle_id:   p.vehicle_id,
       company_id:   p.company_id,
+      device_id:    v?.device_id ?? null,
       economic_num: v?.economic_num ?? '',
       plates:       v?.plates ?? '',
       brand:        v?.brand ?? '',
       model:        v?.model ?? '',
+      vehicle_type: (v?.type ?? 'other') as LiveVehicle['vehicle_type'],
+      group_id:     v?.group_id ?? null,
+      group_name:   v?.group?.name ?? null,
+      owner_name:   v?.owner_name ?? null,
       driver_name:  v?.driver?.full_name ?? null,
       device_status: isOffline ? 'no_signal' : p.ignition ? 'online' : 'offline',
       lat:          p.lat,  lng:      p.lng,
@@ -88,53 +103,101 @@ async function getDashboardData(companyId: string) {
 }
 
 export default async function DashboardPage() {
-  const supabase = createSupabaseServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
+  let stats: DashboardStatsType
+  let liveVehicles: LiveVehicle[]
+  let alerts: ReturnType<typeof DEMO_ALERTS>[number][]
+  let companyId: string | null
 
-  const { data: profile } = await supabase
-    .from('users').select('company_id').eq('id', user.id).single()
-  if (!profile?.company_id) return null
+  if (DEMO_MODE) {
+    stats = DEMO_STATS
+    liveVehicles = DEMO_VEHICLES
+    alerts = DEMO_ALERTS
+    companyId = 'demo-company-id'
+  } else {
+    const supabase = createSupabaseServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return null
 
-  const { stats, liveVehicles, alerts } = await getDashboardData(profile.company_id)
+    const { data: profile } = await supabase
+      .from('users')
+      .select('company_id, role, company:companies(status, settings)')
+      .eq('id', user.id)
+      .single()
+    if (!profile) return null
+
+    companyId = profile.company_id
+    const company = profile.company as { status: string; settings: Record<string, unknown> | null } | null
+    const platformOnly = profile.role === 'super_admin' && !profile.company_id
+
+    if (platformOnly) {
+      stats = emptyDashboardStats()
+      liveVehicles = []
+      alerts = []
+    } else if (isDemoTourActive(company)) {
+      stats = DEMO_STATS
+      liveVehicles = DEMO_VEHICLES
+      alerts = DEMO_ALERTS
+    } else if (companyId) {
+      const result = await getDashboardData(companyId)
+      stats = result.stats
+      liveVehicles = result.liveVehicles
+      alerts = result.alerts
+    } else {
+      stats = emptyDashboardStats()
+      liveVehicles = []
+      alerts = []
+    }
+  }
 
   return (
-    <div className="flex flex-col h-full gap-4 p-4 overflow-auto">
-      {/* Stats row */}
-      <DashboardStats stats={stats} />
+    <div className="flex flex-col h-full gap-3 sm:gap-4 p-2 sm:p-4 overflow-auto">
+      {/* Móvil: Inicio sin mapa — stats, alertas y widgets */}
+      <div className="lg:hidden flex flex-col gap-3">
+        <DashboardStats stats={stats} />
+        <Link
+          href="/map"
+          className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-3 px-4 text-sm font-medium shadow-md transition"
+        >
+          <Map className="w-4 h-4" />
+          Abrir mapa en pantalla completa
+        </Link>
+        <div className="min-h-[320px] max-h-[45vh]">
+          <AlertsFeed initialAlerts={alerts as never} companyId={companyId ?? ''} />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <AlertsChart companyId={companyId ?? ''} />
+          <FleetKmWidget />
+          <div className="sm:col-span-2">
+            <MaintenanceWidget />
+          </div>
+        </div>
+      </div>
 
-      {/* Main content grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        {/* Map (3/4) */}
-        <div className="lg:col-span-3 bg-gray-100 rounded-2xl overflow-hidden relative" style={{ minHeight: 420 }}>
-          <MapFilters />
+      {/* Escritorio: mapa + panel lateral */}
+      <div className="hidden lg:grid lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="order-1 lg:col-span-3 bg-gray-100 rounded-2xl overflow-hidden relative min-h-[520px]">
+          <MapFilters activeAlerts={stats.active_alerts} productivity={stats.productivity_today} />
           <Suspense fallback={
             <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
               Cargando mapa...
             </div>
           }>
-            <RealtimeMap companyId={profile.company_id} initialVehicles={liveVehicles} />
+            <RealtimeMap companyId={companyId ?? ''} initialVehicles={liveVehicles} />
           </Suspense>
         </div>
 
-        {/* Side panel (1/4) */}
-        <div className="lg:col-span-1 flex flex-col gap-4">
-          <AlertsFeed initialAlerts={alerts} companyId={profile.company_id} />
+        <div className="order-2 lg:col-span-1 flex flex-col gap-4 max-h-none shrink-0">
+          <AlertsFeed initialAlerts={alerts as never} companyId={companyId ?? ''} />
         </div>
       </div>
 
-      {/* Bottom widgets row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <AlertsChart companyId={profile.company_id} />
+      <div className="hidden lg:grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+        <AlertsChart companyId={companyId ?? ''} />
         <FleetKmWidget />
         <MaintenanceWidget />
       </div>
 
-      {/* Realtime toast container */}
-      <ToastContainer companyId={profile.company_id} />
-
-      {/* AI Assistant floating button */}
-      <AIAssistantButton />
+      {companyId && <ToastContainer companyId={companyId} />}
     </div>
   )
 }

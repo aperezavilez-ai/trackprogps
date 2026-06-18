@@ -22,25 +22,25 @@ export default async function SuspendedPage() {
             <AlertTriangle className="w-8 h-8 text-red-600" />
           </div>
 
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Cuenta suspendida</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Acceso limitado</h1>
           {company && (
             <p className="text-gray-500 text-sm mb-1">{company.name}</p>
           )}
           <p className="text-gray-500 text-sm mb-6">
-            Tu cuenta ha sido suspendida por falta de pago. Para reactivar el servicio, actualiza tu método de pago.
+            Tu prueba gratuita terminó o la cuenta está suspendida. Contrata un plan para reactivar mapa, alertas e historial.
           </p>
 
           <div className="space-y-3">
-            <Link href="/billing"
+            <Link href="/billing?trial_expired=1&tab=suscripcion"
               className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-medium text-sm">
               <CreditCard className="w-4 h-4" />
-              Actualizar método de pago
+              Elegir plan y pagar
             </Link>
 
             <p className="text-sm text-gray-400">
               ¿Tienes preguntas? Escríbenos a{' '}
-              <a href="mailto:soporte@trackpro.mx" className="text-blue-600 hover:underline">
-                soporte@trackpro.mx
+              <a href="mailto:alertas@trackprogps.mx" className="text-blue-600 hover:underline">
+                alertas@trackprogps.mx
               </a>
             </p>
 

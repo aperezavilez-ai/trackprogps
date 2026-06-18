@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { canWriteFleet } from '@/lib/auth/permissions'
 import { z } from 'zod'
 
 const DriverSchema = z.object({
@@ -44,6 +45,9 @@ export async function POST(request: NextRequest) {
 
   const { data: profile } = await supabase.from('users').select('company_id, role').eq('id', user.id).single()
   if (!profile) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!canWriteFleet(profile.role)) {
+    return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+  }
 
   const body = await request.json()
   const parsed = DriverSchema.safeParse(body)

@@ -8,25 +8,38 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "turbo run dev",
+    "dev": "node scripts/dev.mjs",
     "build": "turbo run build",
     "test": "turbo run test",
     "lint": "turbo run lint",
     "type-check": "turbo run type-check",
     "db:migrate": "supabase db push",
     "db:reset": "supabase db reset",
-    "db:seed": "tsx scripts/seed.ts"
+    "db:seed": "tsx scripts/seed.ts",
+    "deploy:gps": "node scripts/deploy-gps-server.mjs",
+    "build:mobile:android": "npm run build:android --workspace=@gps-saas/mobile",
+    "deploy:web": "vercel --prod --yes",
+    "test:gps": "node scripts/test-gps-live.mjs",
+    "test:email": "node scripts/test-alert-notification.mjs",
+    "check:resend": "node scripts/check-resend-domain.mjs",
+    "setup:resend": "node scripts/setup-resend-domain.mjs",
+    "backfill:emails": "node scripts/backfill-notification-emails.mjs",
+    "deploy:edge": "node scripts/deploy-edge-functions.mjs"
   },
   "devDependencies": {
-    "turbo": "^2.0.0",
-    "typescript": "^5.4.0",
     "@types/node": "^20.0.0",
-    "tsx": "^4.0.0",
+    "eslint": "^8.57.0",
+    "pg": "^8.21.0",
     "prettier": "^3.2.0",
-    "eslint": "^8.57.0"
+    "tsx": "^4.0.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.4.0"
   },
   "engines": {
     "node": ">=20.0.0",
     "npm": ">=10.0.0"
+  },
+  "overrides": {
+    "ioredis": "^5.4.0"
   }
 }

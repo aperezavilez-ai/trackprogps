@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { TeltonikaDecoder } from '../src/codecs/teltonika.js'
+import { TeltonikaDecoder } from './teltonika.js'
 
 // ============================================================
 // Test suite for Teltonika Codec 8 decoder
@@ -84,11 +84,37 @@ describe('TeltonikaDecoder', () => {
       expect(TeltonikaDecoder.parseDataPacket(buf)).toBeNull()
     })
 
-    it('parses a known Codec 8 example from Teltonika docs', () => {
-      // Official Teltonika example packet (hex):
-      // 000000000000003608010000016B40D8EA30010000000000000000000000000000000103021503010101425E0F01F10000601A014E0000000000000000010000C7CF
-      const hex = '000000000000003608010000016B40D8EA30010000000000000000000000000000000103021503010101425E0F01F10000601A014E0000000000000000010000C7CF'
-      const buf = Buffer.from(hex, 'hex')
+    it('parses a valid Codec 8 packet with correct CRC', () => {
+      const latRaw = 546_990_336
+      const lngRaw = 252_618_832
+      const record = Buffer.alloc(30)
+      let o = 0
+      record.writeBigUInt64BE(BigInt(146_524_933_600_000), o); o += 8
+      record.writeUInt8(1, o); o += 1
+      record.writeInt32BE(lngRaw, o); o += 4
+      record.writeInt32BE(latRaw, o); o += 4
+      record.writeInt16BE(148, o); o += 2
+      record.writeUInt16BE(0, o); o += 2
+      record.writeUInt8(18, o); o += 1
+      record.writeUInt16BE(0, o); o += 2
+      record.writeUInt8(0, o); o += 1
+      record.writeUInt8(0, o); o += 1
+      for (let i = 0; i < 4; i++) { record.writeUInt8(0, o); o += 1 }
+
+      const dataLen = 33
+      const data = Buffer.alloc(dataLen)
+      let d = 0
+      data.writeUInt8(0x08, d); d += 1
+      data.writeUInt8(1, d); d += 1
+      record.copy(data, d); d += 30
+      data.writeUInt8(1, d)
+
+      const buf = Buffer.alloc(8 + dataLen + 4)
+      buf.writeUInt32BE(0, 0)
+      buf.writeUInt32BE(dataLen, 4)
+      data.copy(buf, 8)
+      buf.writeUInt32BE(TeltonikaDecoder.crc16(data), 8 + dataLen)
+
       const result = TeltonikaDecoder.parseDataPacket(buf)
       expect(result).not.toBeNull()
       if (result) {
@@ -96,8 +122,8 @@ describe('TeltonikaDecoder', () => {
         expect(result.records).toHaveLength(1)
         const rec = result.records[0]!
         expect(rec.priority).toBe(1)
-        expect(rec.lat).toBeCloseTo(0, 0)  // 0,0 in docs example
-        expect(rec.lng).toBeCloseTo(0, 0)
+        expect(rec.lat).toBeCloseTo(54.6990336, 4)
+        expect(rec.lng).toBeCloseTo(25.2618832, 4)
         expect(rec.speed).toBe(0)
       }
     })

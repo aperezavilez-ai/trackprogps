@@ -14,6 +14,8 @@ const UpdateVehicleSchema = z.object({
   status:       z.enum(['active','inactive','maintenance']).optional(),
   device_id:    z.string().uuid().nullable().optional(),
   driver_id:    z.string().uuid().nullable().optional(),
+  group_id:     z.string().uuid().nullable().optional(),
+  owner_name:   z.string().max(150).nullable().optional(),
   notes:        z.string().max(1000).nullable().optional(),
 })
 

@@ -19,7 +19,15 @@ export async function GET(
 
   const { data, error } = await supabase
     .from('gps_devices')
-    .select('*, vehicle:vehicles(id, economic_num, plates)')
+    .select(`
+      *,
+      company:companies(id, name),
+      vehicle:vehicles(
+        id, economic_num, plates, brand, model, status, max_speed,
+        driver:drivers(id, full_name, phone, email),
+        position:vehicle_positions(lat, lng, speed, heading, ignition, odometer, gsm_signal, battery_lvl, satellites, recorded_at)
+      )
+    `)
     .eq('id', params.id)
     .single()
 

@@ -4,6 +4,7 @@ import { z } from 'zod'
 
 const NotifSchema = z.object({
   notification_email: z.string().email().nullable().optional(),
+  notification_email_secondary: z.string().email().nullable().optional(),
   notification_phone: z.string().max(20).nullable().optional(),
   whatsapp_phone:     z.string().max(20).nullable().optional(),
 })

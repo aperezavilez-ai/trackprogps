@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { AlertTriangle, Gauge, MapPin, Zap, CheckCircle, Filter } from 'lucide-react'
 import { useRealtimeAlerts } from '@/lib/hooks/use-realtime'
+import { usePermissions } from '@/lib/context/permissions-context'
 import type { Alert } from '@gps-saas/types'
 
 const SEVERITY_CONFIG = {
@@ -32,6 +33,7 @@ interface AlertWithVehicle extends Alert {
 }
 
 export default function AlertsPage() {
+  const { canAcknowledgeAlerts } = usePermissions()
   const [alerts, setAlerts]         = useState<AlertWithVehicle[]>([])
   const [total, setTotal]           = useState(0)
   const [loading, setLoading]       = useState(true)
@@ -80,7 +82,7 @@ export default function AlertsPage() {
           <h1 className="text-2xl font-semibold text-gray-900">Alertas</h1>
           <p className="text-sm text-gray-500 mt-1">{total} alertas {filter.unackOnly ? 'sin reconocer' : 'totales'}</p>
         </div>
-        {selected.size > 0 && (
+        {canAcknowledgeAlerts && selected.size > 0 && (
           <button onClick={acknowledgeSelected}
             className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium">
             <CheckCircle className="w-4 h-4" /> Reconocer seleccionadas ({selected.size})
@@ -119,7 +121,7 @@ export default function AlertsPage() {
           </div>
         ) : (
           <div className="divide-y divide-gray-50">
-            {/* Select all */}
+            {canAcknowledgeAlerts && (
             <div className="px-4 py-2 bg-gray-50 flex items-center gap-3">
               <input type="checkbox"
                 checked={selected.size === alerts.length}
@@ -127,6 +129,7 @@ export default function AlertsPage() {
                 className="rounded" />
               <span className="text-xs text-gray-500">Seleccionar todas</span>
             </div>
+            )}
 
             {alerts.map(alert => {
               const cfg = SEVERITY_CONFIG[alert.severity] ?? SEVERITY_CONFIG.low
@@ -134,8 +137,10 @@ export default function AlertsPage() {
               const isAck = !!alert.acknowledged_at
               return (
                 <div key={alert.id} className={`flex items-start gap-4 px-4 py-4 transition ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'} ${isAck ? 'opacity-60' : ''}`}>
+                  {canAcknowledgeAlerts && (
                   <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(alert.id)}
                     className="rounded mt-1" />
+                  )}
                   <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${cfg.dot}`} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">

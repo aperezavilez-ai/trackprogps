@@ -1,40 +1,44 @@
-# fly.toml — GPS Server on Fly.io (alternative to Railway)
+# Deploy from repo root:
+#   fly deploy --config apps/gps-server/fly.toml .
 app = "trackpro-gps-server"
-primary_region = "mia"  # Miami - closest to Mexico
+primary_region = "dfw"
 
 [build]
-  dockerfile = "apps/gps-server/Dockerfile"
+  dockerfile = "Dockerfile"
 
 [env]
   GPS_SERVER_PORT = "5000"
+  GPS_SERVER_HOST = "0.0.0.0"
   HEALTH_PORT     = "3001"
   NODE_ENV        = "production"
 
 [http_service]
-  internal_port = 3001
-  force_https   = true
-  auto_stop_machines = false
-  auto_start_machines = true
+  internal_port        = 3001
+  force_https          = true
+  auto_stop_machines   = false
+  auto_start_machines  = true
+  min_machines_running = 1
 
   [[http_service.checks]]
     path     = "/health"
     interval = "30s"
     timeout  = "5s"
 
-# TCP service for GPS devices
 [[services]]
-  protocol   = "tcp"
-  internal_port = 5000
+  protocol          = "tcp"
+  internal_port     = 5000
+  auto_stop_machines  = false
+  auto_start_machines = true
+  min_machines_running = 1
 
   [[services.ports]]
     port = 5000
 
-  [[services.checks]]
-    type     = "tcp"
+  [[services.tcp_checks]]
     interval = "30s"
     timeout  = "5s"
 
 [[vm]]
   cpu_kind  = "shared"
-  cpus      = 1
-  memory_mb = 512
+  cpus      = 2
+  memory_mb = 2048

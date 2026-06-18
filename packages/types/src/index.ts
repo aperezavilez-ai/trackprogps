@@ -12,10 +12,13 @@ export type UserRole =
   | 'supervisor'
   | 'operador'
   | 'cliente_consulta'
+  | 'miembro_familiar'
 
-export type CompanyStatus = 'active' | 'suspended' | 'trial' | 'cancelled'
+export type CompanyStatus = 'active' | 'suspended' | 'trial' | 'cancelled' | 'demo'
 
 export type PlanType = 'basico' | 'profesional' | 'empresarial'
+
+export type AccountType = 'personal' | 'family' | 'business'
 
 export type VehicleStatus = 'active' | 'inactive' | 'maintenance'
 
@@ -75,6 +78,7 @@ export interface Company {
   logo_url: string | null
   plan_id: string
   status: CompanyStatus
+  account_type: AccountType
   trial_ends_at: string | null
   created_at: string
   updated_at: string
@@ -128,11 +132,24 @@ export interface User {
 // VEHICLE
 // ------------------------------------------------------------
 
+export interface VehicleGroup {
+  id: string
+  company_id: string
+  name: string
+  color: string
+  sort_order: number
+  is_default: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface Vehicle {
   id: string
   company_id: string
   device_id: string | null
   driver_id: string | null
+  group_id: string | null
+  owner_name: string | null
   economic_num: string
   plates: string
   brand: string
@@ -142,7 +159,9 @@ export interface Vehicle {
   type: VehicleType
   color: string | null
   status: VehicleStatus
+  max_speed: number
   odometer_offset: number
+  notes: string | null
   created_at: string
   updated_at: string
   deleted_at: string | null
@@ -151,6 +170,7 @@ export interface Vehicle {
 export interface VehicleWithRelations extends Vehicle {
   device: GpsDevice | null
   driver: Driver | null
+  group: VehicleGroup | null
   current_position: VehiclePosition | null
 }
 
@@ -223,10 +243,15 @@ export interface PositionHistory extends VehiclePosition {
 export interface LiveVehicle {
   vehicle_id: string
   company_id: string
+  device_id?: string | null
   economic_num: string
   plates: string
   brand: string
   model: string
+  vehicle_type: VehicleType
+  group_id: string | null
+  group_name: string | null
+  owner_name: string | null
   driver_name: string | null
   device_status: DeviceStatus
   lat: number

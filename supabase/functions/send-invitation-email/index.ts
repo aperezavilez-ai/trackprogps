@@ -26,7 +26,7 @@ serve(async (req: Request) => {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from:    'noreply@trackpro.mx',
+      from:    Deno.env.get('RESEND_FROM_NOREPLY') ?? 'noreply@trackprogps.mx',
       to:      [email],
       subject: `Te han invitado a TrackPro GPS — ${company_name}`,
       html: `

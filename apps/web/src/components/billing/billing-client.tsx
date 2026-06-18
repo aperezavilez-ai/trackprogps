@@ -1,7 +1,11 @@
 'use client'
 
-import { useState } from 'react'
-import { CheckCircle, Loader2, CreditCard, Calendar, AlertTriangle } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
+import {
+  CheckCircle, Loader2, CreditCard, Calendar, AlertTriangle,
+  FileText, Wallet, Users, Radio, Truck, Search,
+} from 'lucide-react'
 
 interface Plan {
   id: string; name: string; type: string
@@ -18,37 +22,126 @@ interface Subscription {
   plan: Plan | null
 }
 
+interface ClientSummary {
+  id: string
+  full_name: string
+  phone: string | null
+  email: string | null
+  is_active: boolean
+  vehicles_count: number
+  active_vehicles: number
+  gps_devices: number
+  vehicles: {
+    id: string; economic_num: string; plates: string; status: string
+    device: { id: string; imei: string; status: string } | null
+  }[]
+}
+
+interface CompanyOption { id: string; name: string }
+
 interface Props {
   subscription: Subscription | null
   plans: Plan[]
-  company: { name: string; email: string; status: string } | null
+  company: { id?: string; name: string; email: string; status: string } | null
+  defaultTab?: 'facturas' | 'pagos' | 'suscripcion'
+  isPlatformAdmin?: boolean
+  billingSettings?: Record<string, string> | null
+  pendingCheckout?: { plan_id: string; billing_period: 'monthly' | 'yearly' } | null
+  autoCheckout?: boolean
 }
 
+const TABS = [
+  { id: 'facturas' as const,     label: 'Facturas CFDI', icon: FileText },
+  { id: 'pagos' as const,       label: 'Pagos',         icon: Wallet },
+  { id: 'suscripcion' as const, label: 'Suscripción',   icon: CreditCard },
+]
+
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
-  active:   { label: 'Activa',          color: 'bg-green-50 text-green-700 border-green-200' },
+  active:   { label: 'Activa',            color: 'bg-green-50 text-green-700 border-green-200' },
   trialing: { label: 'Período de prueba', color: 'bg-blue-50 text-blue-700 border-blue-200' },
-  past_due: { label: 'Pago pendiente',  color: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
-  cancelled:{ label: 'Cancelada',       color: 'bg-red-50 text-red-700 border-red-200' },
+  past_due: { label: 'Pago pendiente',    color: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+  cancelled:{ label: 'Cancelada',         color: 'bg-red-50 text-red-700 border-red-200' },
 }
 
 const FEATURE_LABELS: Record<string, string> = {
-  realtime_map:         'Mapa en tiempo real',
-  alerts:               'Sistema de alertas',
-  geofences:            'Geocercas',
-  reports:              'Reportes avanzados',
-  maintenance:          'Control de mantenimiento',
-  mobile_app:           'App móvil',
-  ai_assistant:         'Asistente IA',
-  api_access:           'Acceso API',
-  white_label:          'White label',
+  realtime_map:  'Mapa en tiempo real',
+  alerts:        'Sistema de alertas',
+  geofences:     'Geocercas',
+  reports:       'Reportes avanzados',
+  maintenance:   'Control de mantenimiento',
+  mobile_app:    'App móvil',
+  ai_assistant:  'Asistente IA',
+  api_access:    'Acceso API',
+  white_label:   'White label',
 }
 
-export function BillingClient({ subscription, plans, company }: Props) {
+export function BillingClient({
+  subscription: initialSubscription,
+  plans: initialPlans,
+  company: initialCompany,
+  defaultTab = 'facturas',
+  isPlatformAdmin,
+  billingSettings: initialBillingSettings,
+  pendingCheckout = null,
+  autoCheckout = false,
+}: Props) {
+  const [tab, setTab]                 = useState(defaultTab)
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
-  const [billing, setBilling]         = useState<'monthly' | 'yearly'>('monthly')
+  const [billing, setBilling]         = useState<'monthly' | 'yearly'>(pendingCheckout?.billing_period ?? 'monthly')
+  const [loading, setLoading]         = useState(isPlatformAdmin ?? false)
+
+  const [companies, setCompanies]         = useState<CompanyOption[]>([])
+  const [companyId, setCompanyId]       = useState(initialCompany?.id ?? '')
+  const [driverId, setDriverId]         = useState('')
+
+  const [subscription, setSubscription] = useState(initialSubscription)
+  const [plans, setPlans]               = useState(initialPlans)
+  const [company, setCompany]           = useState(initialCompany)
+  const [billingSettings, setBillingSettings] = useState(initialBillingSettings)
+  const [clients, setClients]           = useState<ClientSummary[]>([])
+
+  const loadOverview = useCallback(async (cId: string, dId?: string) => {
+    if (!cId) return
+    setLoading(true)
+    try {
+      const params = new URLSearchParams({ company_id: cId })
+      if (dId) params.set('driver_id', dId)
+      const res = await fetch(`/api/billing/overview?${params}`)
+      const data = await res.json()
+      if (!res.ok) return
+      setSubscription(data.subscription)
+      setPlans(data.plans ?? [])
+      setCompany(data.company)
+      setBillingSettings(data.billing_settings)
+      setClients(data.clients ?? [])
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (isPlatformAdmin) {
+      fetch('/api/billing/overview')
+        .then(r => r.json())
+        .then(data => {
+          setCompanies(data.companies ?? [])
+          setLoading(false)
+        })
+    } else if (initialCompany?.id) {
+      void loadOverview(initialCompany.id)
+    }
+  }, [isPlatformAdmin, initialCompany?.id, loadOverview])
+
+  useEffect(() => {
+    if (companyId) void loadOverview(companyId, driverId || undefined)
+  }, [companyId, driverId, loadOverview])
 
   const currentPlan  = subscription?.plan
   const statusConfig = STATUS_MAP[subscription?.status ?? 'trialing'] ?? STATUS_MAP['trialing']!
+
+  const filteredClients = driverId
+    ? clients.filter(c => c.id === driverId)
+    : clients
 
   async function handleUpgrade(planId: string) {
     setLoadingPlan(planId)
@@ -59,9 +152,23 @@ export function BillingClient({ subscription, plans, company }: Props) {
         body: JSON.stringify({ plan_id: planId, billing_period: billing }),
       })
       const data = await res.json()
-      if (data.checkout_url) window.location.href = data.checkout_url
+      if (data.checkout_url) {
+        window.location.href = data.checkout_url
+        return
+      }
+      if (data.error) alert(data.error)
     } finally { setLoadingPlan(null) }
   }
+
+  useEffect(() => {
+    if (!autoCheckout || !pendingCheckout?.plan_id || isPlatformAdmin) return
+    if (loadingPlan) return
+    const t = setTimeout(() => {
+      void handleUpgrade(pendingCheckout.plan_id)
+    }, 600)
+    return () => clearTimeout(t)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoCheckout, pendingCheckout?.plan_id, isPlatformAdmin])
 
   async function handlePortal() {
     const res  = await fetch('/api/billing/portal', { method: 'POST' })
@@ -69,123 +176,299 @@ export function BillingClient({ subscription, plans, company }: Props) {
     if (data.portal_url) window.location.href = data.portal_url
   }
 
+  function onCompanyChange(id: string) {
+    setCompanyId(id)
+    setDriverId('')
+  }
+
   return (
     <div className="space-y-6 max-w-5xl">
-      {/* Current subscription */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <h2 className="text-lg font-semibold text-gray-900">
-                Plan {currentPlan?.name ?? 'Básico'}
-              </h2>
-              <span className={`text-xs px-2.5 py-1 rounded-full border font-medium ${statusConfig.color}`}>
-                {statusConfig.label}
-              </span>
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl overflow-x-auto">
+        {TABS.map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)}
+            className={`flex items-center gap-2 flex-1 py-2.5 px-4 rounded-lg text-sm font-medium whitespace-nowrap transition ${tab === t.id ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
+            <t.icon className="w-4 h-4" />{t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Selector por empresa / cliente */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <Search className="w-4 h-4 text-gray-500" />
+          <h2 className="text-sm font-semibold text-gray-900">Consultar por usuario</h2>
+        </div>
+        <p className="text-xs text-gray-500 mb-4">
+          Selecciona empresa y cliente para verificar facturación, pagos y dispositivos GPS asignados.
+        </p>
+
+        <div className={`grid gap-3 ${isPlatformAdmin ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+          {isPlatformAdmin && (
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Empresa</label>
+              <select value={companyId} onChange={e => onCompanyChange(e.target.value)}
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Selecciona una empresa...</option>
+                {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
             </div>
-            {subscription?.current_period_end && (
-              <p className="text-sm text-gray-500 flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5" />
-                {subscription.status === 'trialing' ? 'Prueba hasta:' : 'Próxima renovación:'}
-                {' '}{new Date(subscription.current_period_end).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}
-              </p>
-            )}
-          </div>
-          {subscription?.stripe_subscription_id && (
-            <button onClick={handlePortal}
-              className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-50">
-              <CreditCard className="w-4 h-4" /> Gestionar pago
-            </button>
           )}
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Cliente</label>
+            <select value={driverId} onChange={e => setDriverId(e.target.value)}
+              disabled={!companyId && isPlatformAdmin}
+              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50">
+              <option value="">Todos los clientes</option>
+              {clients.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
+            </select>
+          </div>
         </div>
 
-        {subscription?.status === 'past_due' && (
-          <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 flex items-center gap-2 text-sm text-yellow-800">
-            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-            Hay un problema con tu método de pago. Actualízalo para mantener el acceso.
-          </div>
+        {company && (
+          <p className="mt-3 text-xs text-blue-600 font-medium">
+            Consultando: {company.name}{driverId ? ` → ${clients.find(c => c.id === driverId)?.full_name}` : ''}
+          </p>
         )}
       </div>
 
-      {/* Billing toggle */}
-      <div className="flex items-center gap-4">
-        <span className="text-sm font-medium text-gray-900">Planes disponibles</span>
-        <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
-          {(['monthly', 'yearly'] as const).map(b => (
-            <button key={b} onClick={() => setBilling(b)}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${billing === b ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
-              {b === 'monthly' ? 'Mensual' : 'Anual (-20%)'}
-            </button>
-          ))}
+      {isPlatformAdmin && !companyId && (
+        <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 text-sm text-indigo-800">
+          Selecciona una empresa para ver su facturación, pagos y verificar clientes.
+          Gestiona suscripciones en <Link href="/admin" className="underline font-medium">Empresas y suscripciones</Link>.
         </div>
-      </div>
+      )}
 
-      {/* Plans grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {plans.map(plan => {
-          const isCurrent   = plan.id === currentPlan?.id
-          const price       = billing === 'monthly' ? plan.price_monthly : plan.price_yearly / 12
-          const isLoading   = loadingPlan === plan.id
-          const isEnterprise = plan.type === 'empresarial'
+      {loading && (
+        <div className="flex items-center justify-center py-12 text-gray-400 text-sm gap-2">
+          <Loader2 className="w-4 h-4 animate-spin" /> Cargando datos...
+        </div>
+      )}
 
-          return (
-            <div key={plan.id} className={`relative bg-white border rounded-2xl p-6 flex flex-col
-              ${isCurrent ? 'border-blue-400 ring-2 ring-blue-100' : isEnterprise ? 'border-purple-200' : 'border-gray-200'}`}>
-              {isCurrent && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-xs px-3 py-1 rounded-full font-medium">
-                  Plan actual
-                </div>
+      {!loading && (companyId || !isPlatformAdmin) && (
+        <>
+          {tab === 'facturas' && (
+            <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-4">
+              <h2 className="text-lg font-semibold text-gray-900">Facturas CFDI</h2>
+              {company && (
+                <p className="text-sm text-gray-500">Empresa: <strong>{company.name}</strong> · {company.email}</p>
               )}
-              {isEnterprise && !isCurrent && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-purple-600 text-white text-xs px-3 py-1 rounded-full font-medium">
-                  Recomendado
+              {billingSettings?.razon_social ? (
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div><span className="text-gray-500">Razón social:</span> <strong>{billingSettings.razon_social}</strong></div>
+                  <div><span className="text-gray-500">RFC:</span> <strong>{billingSettings.rfc}</strong></div>
+                  <div><span className="text-gray-500">Régimen fiscal:</span> {billingSettings.regimen_fiscal}</div>
+                  <div><span className="text-gray-500">C.P.:</span> {billingSettings.codigo_postal}</div>
+                  <div><span className="text-gray-500">PAC:</span> {billingSettings.pac_provider || 'No configurado'}</div>
+                  <div><span className="text-gray-500">Serie:</span> {billingSettings.serie_factura || 'A'}</div>
                 </div>
+              ) : (
+                <p className="text-gray-500 text-sm">
+                  Sin datos CFDI configurados. Configura en{' '}
+                  <Link href="/settings" className="text-blue-600 hover:underline">Configuración → Facturación CFDI</Link>.
+                </p>
               )}
-
-              <div className="mb-4">
-                <div className="text-lg font-bold text-gray-900">{plan.name}</div>
-                <div className="flex items-baseline gap-1 mt-2">
-                  <span className="text-3xl font-bold text-gray-900">${price.toLocaleString('es-MX', { maximumFractionDigits: 0 })}</span>
-                  <span className="text-sm text-gray-500">MXN/mes</span>
-                </div>
-                {billing === 'yearly' && (
-                  <div className="text-xs text-green-600 mt-1">Ahorra ${(plan.price_monthly * 12 - plan.price_yearly).toLocaleString()} al año</div>
-                )}
-                <div className="text-sm text-gray-500 mt-2">
-                  Hasta {plan.max_vehicles} vehículos · {plan.max_users} usuarios
-                </div>
+              <div className="border border-dashed border-gray-200 rounded-xl p-8 text-center text-gray-400 text-sm">
+                No hay facturas emitidas aún. Al timbrar, aquí aparecerán PDF, XML, UUID y código QR.
               </div>
+            </div>
+          )}
 
-              <div className="flex-1 space-y-2 mb-6">
-                {Object.entries(FEATURE_LABELS).map(([key, label]) => {
-                  const val = plan.features[key]
-                  const included = val === true || (typeof val === 'number' && val > 0)
-                  return (
-                    <div key={key} className={`flex items-center gap-2 text-sm ${included ? 'text-gray-700' : 'text-gray-300'}`}>
-                      <CheckCircle className={`w-4 h-4 flex-shrink-0 ${included ? 'text-green-500' : 'text-gray-200'}`} />
-                      {label}
-                      {typeof val === 'number' && val > 0 && key === 'route_history_days' && (
-                        <span className="text-xs text-gray-400">({val} días)</span>
+          {tab === 'pagos' && (
+            <div className="space-y-4">
+              <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-4">
+                <h2 className="text-lg font-semibold text-gray-900">Historial de pagos</h2>
+                {subscription?.stripe_subscription_id ? (
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl text-sm">
+                    <div>
+                      <div className="font-medium text-gray-900">Suscripción {currentPlan?.name}</div>
+                      <div className="text-gray-500">Stripe · {subscription.status}</div>
+                      {subscription.current_period_end && (
+                        <div className="text-gray-400 text-xs mt-1">
+                          Próximo cobro: {new Date(subscription.current_period_end).toLocaleDateString('es-MX')}
+                        </div>
                       )}
                     </div>
-                  )
-                })}
+                    <button onClick={handlePortal} className="text-blue-600 text-sm font-medium hover:underline">
+                      Ver en Stripe →
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm">
+                    No hay pagos Stripe registrados para {company?.name ?? 'esta empresa'}.
+                  </p>
+                )}
               </div>
 
-              <button
-                onClick={() => !isCurrent && handleUpgrade(plan.id)}
-                disabled={isCurrent || isLoading}
-                className={`w-full py-3 rounded-xl text-sm font-medium transition flex items-center justify-center gap-2
-                  ${isCurrent ? 'bg-gray-100 text-gray-400 cursor-default' :
-                    isEnterprise ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
-              >
-                {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Procesando...</> :
-                 isCurrent ? 'Plan activo' : 'Seleccionar plan'}
-              </button>
+              {/* Verificación por cliente */}
+              <div className="bg-white border border-gray-200 rounded-2xl p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Users className="w-5 h-5 text-gray-500" />
+                  <h2 className="text-lg font-semibold text-gray-900">Verificación por cliente</h2>
+                </div>
+                <p className="text-sm text-gray-500 mb-4">
+                  Revisa qué clientes tienen GPS activo, vehículos asignados y estado del servicio.
+                </p>
+
+                {filteredClients.length === 0 ? (
+                  <p className="text-gray-400 text-sm text-center py-8">No hay clientes registrados en esta empresa.</p>
+                ) : (
+                  <div className="divide-y divide-gray-100">
+                    {filteredClients.map(client => (
+                      <div key={client.id} className="py-4 first:pt-0 last:pb-0">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <Link href={`/drivers/${client.id}`} className="font-medium text-gray-900 hover:text-blue-600">
+                                {client.full_name}
+                              </Link>
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${client.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                                {client.is_active ? 'Activo' : 'Inactivo'}
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-3 mt-1.5 text-xs text-gray-500">
+                              {client.phone && <span>{client.phone}</span>}
+                              {client.email && <span>{client.email}</span>}
+                            </div>
+                          </div>
+                          <div className="flex gap-4 text-center flex-shrink-0">
+                            <div>
+                              <div className="text-lg font-bold text-gray-900">{client.gps_devices}</div>
+                              <div className="text-xs text-gray-400 flex items-center gap-1"><Radio className="w-3 h-3" />GPS</div>
+                            </div>
+                            <div>
+                              <div className="text-lg font-bold text-gray-900">{client.active_vehicles}</div>
+                              <div className="text-xs text-gray-400 flex items-center gap-1"><Truck className="w-3 h-3" />Activos</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {client.vehicles.length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {client.vehicles.map(v => (
+                              <span key={v.id} className="text-xs bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1 text-gray-600">
+                                {v.economic_num} ({v.plates})
+                                {v.device
+                                  ? <span className="text-green-600 ml-1">· GPS {v.device.status}</span>
+                                  : <span className="text-orange-500 ml-1">· Sin GPS</span>}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          )
-        })}
-      </div>
+          )}
+
+          {tab === 'suscripcion' && (
+            <>
+              <div className="bg-white border border-gray-200 rounded-2xl p-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center gap-3 mb-1">
+                      <h2 className="text-lg font-semibold text-gray-900">Plan {currentPlan?.name ?? 'Básico'}</h2>
+                      <span className={`text-xs px-2.5 py-1 rounded-full border font-medium ${statusConfig.color}`}>
+                        {statusConfig.label}
+                      </span>
+                    </div>
+                    {company && <p className="text-sm text-gray-500 mb-1">{company.name}</p>}
+                    {subscription?.current_period_end && (
+                      <p className="text-sm text-gray-500 flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5" />
+                        {subscription.status === 'trialing' ? 'Prueba hasta:' : 'Próxima renovación:'}
+                        {' '}{new Date(subscription.current_period_end).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </p>
+                    )}
+                  </div>
+                  {subscription?.stripe_subscription_id && (
+                    <button onClick={handlePortal}
+                      className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-50">
+                      <CreditCard className="w-4 h-4" /> Gestionar pago
+                    </button>
+                  )}
+                </div>
+
+                {subscription?.status === 'past_due' && (
+                  <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 flex items-center gap-2 text-sm text-yellow-800">
+                    <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                    Hay un problema con el método de pago. Actualízalo para mantener el acceso.
+                  </div>
+                )}
+              </div>
+
+              {!isPlatformAdmin && (
+                <>
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm font-medium text-gray-900">Planes disponibles</span>
+                    <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+                      {(['monthly', 'yearly'] as const).map(b => (
+                        <button key={b} onClick={() => setBilling(b)}
+                          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${billing === b ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
+                          {b === 'monthly' ? 'Mensual' : 'Anual (-20%)'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {plans.map(plan => {
+                      const isCurrent    = plan.id === currentPlan?.id
+                      const price        = billing === 'monthly' ? plan.price_monthly : plan.price_yearly / 12
+                      const isLoading    = loadingPlan === plan.id
+                      const isEnterprise = plan.type === 'empresarial'
+
+                      return (
+                        <div key={plan.id} className={`relative bg-white border rounded-2xl p-6 flex flex-col
+                          ${isCurrent ? 'border-blue-400 ring-2 ring-blue-100' : isEnterprise ? 'border-purple-200' : 'border-gray-200'}`}>
+                          {isCurrent && (
+                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-xs px-3 py-1 rounded-full font-medium">
+                              Plan actual
+                            </div>
+                          )}
+                          <div className="mb-4">
+                            <div className="text-lg font-bold text-gray-900">{plan.name}</div>
+                            <div className="flex items-baseline gap-1 mt-2">
+                              <span className="text-3xl font-bold text-gray-900">${price.toLocaleString('es-MX', { maximumFractionDigits: 0 })}</span>
+                              <span className="text-sm text-gray-500">MXN/mes</span>
+                            </div>
+                            <div className="text-sm text-gray-500 mt-2">
+                              Hasta {plan.max_vehicles} vehículos · {plan.max_users} usuarios
+                            </div>
+                          </div>
+                          <div className="flex-1 space-y-2 mb-6">
+                            {Object.entries(FEATURE_LABELS).map(([key, label]) => {
+                              const val = plan.features[key]
+                              const included = val === true || (typeof val === 'number' && val > 0)
+                              return (
+                                <div key={key} className={`flex items-center gap-2 text-sm ${included ? 'text-gray-700' : 'text-gray-300'}`}>
+                                  <CheckCircle className={`w-4 h-4 flex-shrink-0 ${included ? 'text-green-500' : 'text-gray-200'}`} />
+                                  {label}
+                                </div>
+                              )
+                            })}
+                          </div>
+                          <button
+                            onClick={() => !isCurrent && handleUpgrade(plan.id)}
+                            disabled={isCurrent || isLoading}
+                            className={`w-full py-3 rounded-xl text-sm font-medium transition flex items-center justify-center gap-2
+                              ${isCurrent ? 'bg-gray-100 text-gray-400 cursor-default' :
+                                isEnterprise ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
+                          >
+                            {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Procesando...</> :
+                             isCurrent ? 'Plan activo' : 'Seleccionar plan'}
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </>
+      )}
     </div>
   )
 }

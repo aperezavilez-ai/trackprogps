@@ -1,13 +1,14 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { RouteHistoryMap } from '@/components/map/route-history-map'
+import { scopeByCompany } from '@/lib/auth/scope'
 
 export const dynamic = 'force-dynamic'
 
 export default async function HistoryPage({
   searchParams,
 }: {
-  searchParams: { vehicle_id?: string }
+  searchParams: { vehicle_id?: string; lat?: string; lng?: string }
 }) {
   const supabase = createSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -15,41 +16,59 @@ export default async function HistoryPage({
 
   const { data: profile } = await supabase
     .from('users')
-    .select('company_id')
+    .select('company_id, role')
     .eq('id', user.id)
     .single()
 
-  if (!profile?.company_id) redirect('/login')
+  if (!profile) redirect('/login')
 
-  // Fetch vehicles for the selector
-  const { data: vehicles } = await supabase
+  let vehiclesQuery = supabase
     .from('vehicles')
-    .select('id, economic_num, plates, brand, model')
-    .eq('company_id', profile.company_id)
+    .select('id, economic_num, plates, brand, model, company_id')
     .is('deleted_at', null)
     .order('economic_num')
 
+  vehiclesQuery = scopeByCompany(vehiclesQuery, profile.company_id)
+
+  const { data: vehicles } = await vehiclesQuery
+
   const selectedVehicle = vehicles?.find(v => v.id === searchParams.vehicle_id)
   const apiKey = process.env['NEXT_PUBLIC_GOOGLE_MAPS_API_KEY'] ?? ''
+  const latParam = searchParams.lat ? Number(searchParams.lat) : null
+  const lngParam = searchParams.lng ? Number(searchParams.lng) : null
+  const queryCenter = (latParam != null && lngParam != null && Number.isFinite(latParam) && Number.isFinite(lngParam))
+    ? { lat: latParam, lng: lngParam }
+    : null
+
+  const { data: livePos } = selectedVehicle
+    ? await supabase
+      .from('vehicle_positions')
+      .select('lat, lng')
+      .eq('vehicle_id', selectedVehicle.id)
+      .maybeSingle()
+    : { data: null }
+
+  const initialCenter = queryCenter ?? (livePos ? { lat: livePos.lat, lng: livePos.lng } : undefined)
 
   return (
-    <div className="p-6 h-full flex flex-col">
-      <div className="flex items-center justify-between mb-6 flex-shrink-0">
+    <div className="p-3 sm:p-6 h-full flex flex-col">
+      <div className="flex items-center justify-between mb-3 sm:mb-6 flex-shrink-0">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Historial de rutas</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Historial de rutas</h1>
+          <p className="text-xs sm:text-sm text-gray-500 mt-1 hidden sm:block">
             Consulta y reproduce el recorrido de cualquier vehículo
+            {!profile.company_id && ' — vista de plataforma (todas las empresas)'}
           </p>
         </div>
       </div>
 
-      {/* Vehicle selector */}
-      <div className="flex gap-3 mb-4 flex-shrink-0">
-        <form method="GET" className="flex gap-3 flex-wrap items-center">
+      {/* Vehicle selector — sticky en móvil */}
+      <div className="sticky top-0 z-20 bg-gray-50 py-2 -mx-3 px-3 sm:static sm:mx-0 sm:px-0 sm:py-0 flex gap-2 sm:gap-3 mb-3 sm:mb-4 flex-shrink-0 border-b sm:border-0 border-gray-200">
+        <form method="GET" className="flex gap-2 sm:gap-3 flex-1 flex-wrap items-center">
           <select
             name="vehicle_id"
             defaultValue={searchParams.vehicle_id ?? ''}
-            className="border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-52"
+            className="border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 min-w-0 sm:min-w-52"
           >
             <option value="">Seleccionar vehículo</option>
             {(vehicles ?? []).map(v => (
@@ -60,20 +79,21 @@ export default async function HistoryPage({
           </select>
           <button
             type="submit"
-            className="bg-blue-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700"
+            className="bg-blue-600 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700 whitespace-nowrap"
           >
-            Seleccionar
+            Buscar
           </button>
         </form>
       </div>
 
       {/* Route history map */}
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-[calc(100dvh-14rem)] sm:min-h-0">
         {selectedVehicle ? (
           <RouteHistoryMap
             vehicleId={selectedVehicle.id}
             vehicleName={`${selectedVehicle.economic_num} (${selectedVehicle.plates})`}
             apiKey={apiKey}
+            initialCenter={initialCenter}
           />
         ) : (
           <div className="h-full bg-white border border-gray-200 rounded-2xl flex items-center justify-center">

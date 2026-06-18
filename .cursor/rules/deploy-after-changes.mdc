@@ -1,0 +1,32 @@
+---
+description: Desplegar a producción después de cada cambio en código o configuración
+alwaysApply: true
+---
+
+# Deploy obligatorio tras cambios
+
+Cuando termines un cambio o ajuste en este proyecto, **siempre despliega** antes de dar por cerrada la tarea.
+
+## Qué desplegar según el cambio
+
+| Área modificada | Comando |
+|-----------------|---------|
+| `apps/gps-server/**` | `npm run deploy:gps -- --deploy-only` |
+| `apps/web/**` | `vercel --prod --yes` desde `apps/web` |
+| `packages/types/**` | Rebuild + deploy de **gps-server** y **web** |
+| `supabase/migrations/**` | Aplicar migración en Supabase, luego deploy si hay código dependiente |
+| Scripts de deploy / `fly.toml` / `vercel.json` | Deploy del servicio afectado |
+
+## Flujo mínimo
+
+1. Verificar que el build local pasa si aplica (`npm run build` en el workspace tocado).
+2. Ejecutar el deploy correspondiente (no pedir al usuario que lo haga).
+3. Confirmar salud del servicio:
+   - GPS: `flyctl status -a trackpro-gps-server` y logs sin crash
+   - Web: deployment `Ready` en Vercel
+4. Reportar URL y estado final al usuario.
+
+## Excepciones
+
+- Solo documentación o comentarios sin impacto en runtime: no requiere deploy.
+- Si el deploy falla, arreglar y volver a desplegar antes de cerrar.

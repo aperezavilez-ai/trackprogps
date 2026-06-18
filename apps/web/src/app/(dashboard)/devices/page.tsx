@@ -1,7 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Radio, Wifi, WifiOff, Plus, RefreshCw, Loader2, X } from 'lucide-react'
+import { usePermissions } from '@/lib/context/permissions-context'
+import { DEVICE_MODEL_GROUPS, DEFAULT_DEVICE_MODEL } from '@/lib/device-models'
 
 interface Device {
   id: string; imei: string; model: string; firmware_ver: string | null
@@ -17,6 +20,7 @@ const STATUS_STYLES: Record<string, { color: string; bg: string; label: string }
 }
 
 export default function DevicesPage() {
+  const { canWriteFleet } = usePermissions()
   const [devices, setDevices] = useState<Device[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -47,6 +51,9 @@ export default function DevicesPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Dispositivos GPS</h1>
+          <p className="text-xs text-gray-400 mt-1">
+            Teltonika (soporte completo), Queclink, Concox y más — protocolo TCP
+          </p>
           <div className="flex gap-4 mt-2 text-sm text-gray-500">
             <span>{stats.total} total</span>
             <span className="text-green-600 font-medium">● {stats.online} en línea</span>
@@ -57,10 +64,12 @@ export default function DevicesPage() {
           <button onClick={() => void loadDevices()} className="p-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 text-gray-600">
             <RefreshCw className="w-4 h-4" />
           </button>
+          {canWriteFleet && (
           <button onClick={() => setShowModal(true)}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium">
             <Plus className="w-4 h-4" /> Registrar dispositivo
           </button>
+          )}
         </div>
       </div>
 
@@ -99,13 +108,13 @@ export default function DevicesPage() {
                 return (
                   <tr key={d.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <Radio className="w-4 h-4 text-gray-400" />
+                      <Link href={`/devices/${d.id}`} className="flex items-center gap-2 group">
+                        <Radio className="w-4 h-4 text-gray-400 group-hover:text-blue-600" />
                         <div>
-                          <div className="font-semibold text-gray-900">{d.model}</div>
+                          <div className="font-semibold text-gray-900 group-hover:text-blue-600">{d.model}</div>
                           {d.firmware_ver && <div className="text-xs text-gray-400">FW: {d.firmware_ver}</div>}
                         </div>
-                      </div>
+                      </Link>
                     </td>
                     <td className="px-4 py-3 font-mono text-xs text-gray-600">{d.imei}</td>
                     <td className="px-4 py-3 text-xs text-gray-500">{d.phone_num ?? d.sim_iccid?.slice(-8) ?? '—'}</td>
@@ -130,7 +139,7 @@ export default function DevicesPage() {
         </div>
       )}
 
-      {showModal && <DeviceModal onClose={() => setShowModal(false)} onSave={() => { setShowModal(false); void loadDevices() }} />}
+      {showModal && canWriteFleet && <DeviceModal onClose={() => setShowModal(false)} onSave={() => { setShowModal(false); void loadDevices() }} />}
     </div>
   )
 }
@@ -138,13 +147,21 @@ export default function DevicesPage() {
 function DeviceModal({ onClose, onSave }: { onClose: () => void; onSave: () => void }) {
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
-  const [form, setForm]       = useState({ imei: '', model: 'FMC920', sim_iccid: '', phone_num: '', firmware_ver: '' })
+  const [form, setForm]       = useState({ imei: '', model: DEFAULT_DEVICE_MODEL, sim_iccid: '', phone_num: '', firmware_ver: '', model_custom: '' })
   const set = (f: string, v: string) => setForm(p => ({ ...p, [f]: v }))
+  const isCustomModel = form.model === 'Otro'
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault(); setLoading(true); setError('')
     try {
-      const res = await fetch('/api/devices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+      const payload = {
+        imei: form.imei,
+        model: isCustomModel ? (form.model_custom.trim() || 'Otro') : form.model,
+        sim_iccid: form.sim_iccid,
+        phone_num: form.phone_num,
+        firmware_ver: form.firmware_ver,
+      }
+      const res = await fetch('/api/devices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Error')
       onSave()
@@ -161,11 +178,10 @@ function DeviceModal({ onClose, onSave }: { onClose: () => void; onSave: () => v
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {[
-            { label: 'IMEI (15 dígitos) *', field: 'imei', placeholder: '123456789012345', required: true, maxLength: 15 },
-            { label: 'Modelo *', field: 'model', placeholder: 'FMC920', required: true },
-            { label: 'ICCID de SIM', field: 'sim_iccid', placeholder: '8952140...', required: false },
-            { label: 'Número de teléfono SIM', field: 'phone_num', placeholder: '+52 55 ...', required: false },
-            { label: 'Versión de firmware', field: 'firmware_ver', placeholder: '03.27.07.Rev.07', required: false },
+            { label: 'IMEI (15 dígitos) *', field: 'imei', type: 'text', placeholder: '123456789012345', required: true, maxLength: 15 },
+            { label: 'ICCID de SIM', field: 'sim_iccid', type: 'text', placeholder: '8952140...', required: false },
+            { label: 'Número de teléfono SIM', field: 'phone_num', type: 'text', placeholder: '+52 55 ...', required: false },
+            { label: 'Versión de firmware', field: 'firmware_ver', type: 'text', placeholder: '03.27.07.Rev.07', required: false },
           ].map(({ label, field, placeholder, required, maxLength }) => (
             <div key={field}>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
@@ -174,6 +190,31 @@ function DeviceModal({ onClose, onSave }: { onClose: () => void; onSave: () => v
                 className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
             </div>
           ))}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Modelo *</label>
+            <select value={form.model} onChange={e => set('model', e.target.value)} required
+              className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              {DEVICE_MODEL_GROUPS.map(group => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.models.map(m => (
+                    <option key={`${group.label}-${m}`} value={m}>{m}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            {isCustomModel && (
+              <input
+                value={form.model_custom}
+                onChange={e => set('model_custom', e.target.value)}
+                placeholder="Escribe el modelo exacto"
+                required
+                className="mt-2 w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            )}
+            <p className="mt-1.5 text-xs text-gray-400">
+              Teltonika FMB/FMC/FMM tienen soporte completo (posición, comandos, micrófono). Otros marcas: consulta compatibilidad.
+            </p>
+          </div>
           {error && <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">{error}</div>}
           <div className="flex gap-3">
             <button type="button" onClick={onClose} className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-xl text-sm font-medium hover:bg-gray-50">Cancelar</button>
