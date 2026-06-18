@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   MapPin, LayoutDashboard, Truck, Users, Radio,
   AlertTriangle, MapIcon, BarChart2, Wrench,
-  Settings, CreditCard, Clock, Wallet, Shield,
+  Settings, CreditCard, Clock, Shield,
 } from 'lucide-react'
 
 export interface NavItem {
@@ -26,7 +26,6 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/maintenance', label: 'Mantenimiento', icon: Wrench, section: 'ops' },
   { href: '/reports', label: 'Reportes', icon: BarChart2, section: 'ops' },
   { href: '/billing', label: 'Facturación', icon: CreditCard, section: 'account' },
-  { href: '/billing?tab=pagos', label: 'Pagos', icon: Wallet, section: 'account' },
   { href: '/settings', label: 'Configuración', icon: Settings, section: 'account' },
   { href: '/admin/users', label: 'Administrador', icon: Shield, section: 'account', adminOnly: true },
 ]
