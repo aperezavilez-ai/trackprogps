@@ -109,16 +109,13 @@ function LoginForm() {
 
   return (
     <div className="min-h-screen relative overflow-hidden text-white">
-      {/* Fondo tipo Protrack — carretera / puente */}
+      {/* Fondo — autopista con flota GPS */}
       <div
         className="absolute inset-0 bg-cover bg-center scale-105"
-        style={{
-          backgroundImage:
-            'url("https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=2000&auto=format&fit=crop")',
-        }}
+        style={{ backgroundImage: 'url("/images/login-hero.png")' }}
       />
-      <div className="absolute inset-0 bg-gradient-to-r from-slate-950/75 via-slate-900/55 to-slate-950/85" />
-      <div className="absolute inset-0 bg-black/25" />
+      <div className="absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-900/50 to-slate-950/70" />
+      <div className="absolute inset-0 bg-black/20" />
 
       <div className="relative z-10 min-h-screen flex flex-col">
         {/* Header */}
