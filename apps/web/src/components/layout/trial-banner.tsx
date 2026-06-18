@@ -45,7 +45,7 @@ export function TrialBanner({ role, ...input }: Props) {
 
   if (input.trialEndsAt && daysLeft !== null && daysLeft > 3) {
     return (
-      <div className="hidden lg:flex items-center gap-3 px-4 py-2 text-xs bg-blue-50/80 border-b border-blue-100 text-blue-800">
+      <div className="hidden lg:flex items-center gap-3 px-4 py-2 text-xs bg-orange-50/80 border-b border-orange-100 text-orange-800">
         <Clock className="w-3.5 h-3.5 flex-shrink-0" />
         <span className="flex-1">Prueba gratuita — {daysLeft} días restantes</span>
         <Link href="/billing?tab=suscripcion" className="font-medium hover:underline">Planes</Link>

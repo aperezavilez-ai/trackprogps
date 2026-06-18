@@ -141,7 +141,7 @@ export default function ReportsPage() {
             <div className="space-y-2">
               {REPORT_TYPES.map(r => (
                 <button key={r.id} onClick={() => setSelected(r.id)}
-                  className={`w-full flex items-start gap-3 p-3 rounded-xl text-left transition border ${selected === r.id ? 'border-blue-300 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                  className={`w-full flex items-start gap-3 p-3 rounded-xl text-left transition border ${selected === r.id ? 'border-orange-300 bg-orange-50' : 'border-gray-200 hover:border-gray-300'}`}>
                   <span className="text-lg">{r.icon}</span>
                   <div>
                     <div className="text-sm font-medium text-gray-900">{r.label}</div>
@@ -172,7 +172,7 @@ export default function ReportsPage() {
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">Empresa</label>
                     <select value={companyId} onChange={e => onCompanyChange(e.target.value)}
-                      className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
                       <option value="">Todas las empresas</option>
                       {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
@@ -181,7 +181,7 @@ export default function ReportsPage() {
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">Cliente</label>
                   <select value={driverId} onChange={e => onDriverChange(e.target.value)}
-                    className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
                     <option value="">Todos los clientes</option>
                     {filteredDrivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                   </select>
@@ -189,7 +189,7 @@ export default function ReportsPage() {
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">Vehículo</label>
                   <select value={vehicleId} onChange={e => setVehicleId(e.target.value)}
-                    className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
                     <option value="">Todos los vehículos</option>
                     {filteredVehicles.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
                   </select>
@@ -198,7 +198,7 @@ export default function ReportsPage() {
             )}
 
             {(companyId || driverId || vehicleId) && (
-              <p className="mt-3 text-xs text-blue-600 font-medium">
+              <p className="mt-3 text-xs text-orange-500 font-medium">
                 Reporte para: {scopeLabel}
               </p>
             )}
@@ -218,12 +218,12 @@ export default function ReportsPage() {
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Desde</label>
                 <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
               </div>
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Hasta</label>
                 <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
               </div>
             </div>
           </div>
@@ -233,7 +233,7 @@ export default function ReportsPage() {
             <div className="flex gap-3">
               {(['csv', 'pdf'] as const).map(f => (
                 <button key={f} onClick={() => setFormat(f)}
-                  className={`flex-1 py-3 rounded-xl text-sm font-medium border transition ${format === f ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-600 hover:border-gray-400'}`}>
+                  className={`flex-1 py-3 rounded-xl text-sm font-medium border transition ${format === f ? 'border-orange-500 bg-orange-50 text-orange-600' : 'border-gray-300 text-gray-600 hover:border-gray-400'}`}>
                   {f === 'csv' ? '📊 CSV (Excel)' : '📄 PDF'}
                 </button>
               ))}
@@ -243,7 +243,7 @@ export default function ReportsPage() {
           <button
             onClick={generateReport}
             disabled={!selected || !dateFrom || !dateTo || loading}
-            className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-3.5 rounded-xl transition"
+            className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-medium py-3.5 rounded-xl transition"
           >
             {loading
               ? <><Loader2 className="w-4 h-4 animate-spin" /> Generando reporte...</>

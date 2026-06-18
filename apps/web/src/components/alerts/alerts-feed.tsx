@@ -24,7 +24,7 @@ const SEVERITY_STYLES: Record<string, string> = {
   critical: 'bg-red-50 border-red-200 text-red-700',
   high:     'bg-orange-50 border-orange-200 text-orange-700',
   medium:   'bg-yellow-50 border-yellow-200 text-yellow-700',
-  low:      'bg-blue-50 border-blue-200 text-blue-700',
+  low:      'bg-orange-50 border-orange-200 text-orange-600',
 }
 
 export function AlertsFeed({ initialAlerts, companyId }: AlertsFeedProps) {

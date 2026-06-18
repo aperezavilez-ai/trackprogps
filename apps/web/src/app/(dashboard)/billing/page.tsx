@@ -74,7 +74,7 @@ export default async function BillingPage({
           </p>
         )}
         {autoCheckout && pendingCheckout?.plan_id && (
-          <p className="mt-2 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+          <p className="mt-2 text-sm text-orange-600 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
             Redirigiendo al checkout seguro de Stripe para activar tu plan…
           </p>
         )}

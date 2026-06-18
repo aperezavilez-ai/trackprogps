@@ -58,7 +58,7 @@ const TABS = [
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   active:   { label: 'Activa',            color: 'bg-green-50 text-green-700 border-green-200' },
-  trialing: { label: 'Período de prueba', color: 'bg-blue-50 text-blue-700 border-blue-200' },
+  trialing: { label: 'Período de prueba', color: 'bg-orange-50 text-orange-600 border-orange-200' },
   past_due: { label: 'Pago pendiente',    color: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
   cancelled:{ label: 'Cancelada',         color: 'bg-red-50 text-red-700 border-red-200' },
 }
@@ -207,7 +207,7 @@ export function BillingClient({
             <div>
               <label className="block text-xs text-gray-500 mb-1">Empresa</label>
               <select value={companyId} onChange={e => onCompanyChange(e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
                 <option value="">Selecciona una empresa...</option>
                 {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
@@ -217,7 +217,7 @@ export function BillingClient({
             <label className="block text-xs text-gray-500 mb-1">Cliente</label>
             <select value={driverId} onChange={e => setDriverId(e.target.value)}
               disabled={!companyId && isPlatformAdmin}
-              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50">
+              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-50">
               <option value="">Todos los clientes</option>
               {clients.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
             </select>
@@ -225,14 +225,14 @@ export function BillingClient({
         </div>
 
         {company && (
-          <p className="mt-3 text-xs text-blue-600 font-medium">
+          <p className="mt-3 text-xs text-orange-500 font-medium">
             Consultando: {company.name}{driverId ? ` → ${clients.find(c => c.id === driverId)?.full_name}` : ''}
           </p>
         )}
       </div>
 
       {isPlatformAdmin && !companyId && (
-        <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 text-sm text-indigo-800">
+        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-sm text-orange-800">
           Selecciona una empresa para ver su facturación, pagos y verificar clientes.
           Gestiona suscripciones en <Link href="/admin" className="underline font-medium">Empresas y suscripciones</Link>.
         </div>
@@ -264,7 +264,7 @@ export function BillingClient({
               ) : (
                 <p className="text-gray-500 text-sm">
                   Sin datos CFDI configurados. Configura en{' '}
-                  <Link href="/settings" className="text-blue-600 hover:underline">Configuración → Facturación CFDI</Link>.
+                  <Link href="/settings" className="text-orange-500 hover:underline">Configuración → Facturación CFDI</Link>.
                 </p>
               )}
               <div className="border border-dashed border-gray-200 rounded-xl p-8 text-center text-gray-400 text-sm">
@@ -288,7 +288,7 @@ export function BillingClient({
                         </div>
                       )}
                     </div>
-                    <button onClick={handlePortal} className="text-blue-600 text-sm font-medium hover:underline">
+                    <button onClick={handlePortal} className="text-orange-500 text-sm font-medium hover:underline">
                       Ver en Stripe →
                     </button>
                   </div>
@@ -318,7 +318,7 @@ export function BillingClient({
                         <div className="flex items-start justify-between gap-4">
                           <div>
                             <div className="flex items-center gap-2">
-                              <Link href={`/drivers/${client.id}`} className="font-medium text-gray-900 hover:text-blue-600">
+                              <Link href={`/drivers/${client.id}`} className="font-medium text-gray-900 hover:text-orange-500">
                                 {client.full_name}
                               </Link>
                               <span className={`text-xs px-2 py-0.5 rounded-full ${client.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
@@ -421,9 +421,9 @@ export function BillingClient({
 
                       return (
                         <div key={plan.id} className={`relative bg-white border rounded-2xl p-6 flex flex-col
-                          ${isCurrent ? 'border-blue-400 ring-2 ring-blue-100' : isEnterprise ? 'border-purple-200' : 'border-gray-200'}`}>
+                          ${isCurrent ? 'border-orange-400 ring-2 ring-orange-100' : isEnterprise ? 'border-purple-200' : 'border-gray-200'}`}>
                           {isCurrent && (
-                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-xs px-3 py-1 rounded-full font-medium">
+                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-orange-500 text-white text-xs px-3 py-1 rounded-full font-medium">
                               Plan actual
                             </div>
                           )}
@@ -454,7 +454,7 @@ export function BillingClient({
                             disabled={isCurrent || isLoading}
                             className={`w-full py-3 rounded-xl text-sm font-medium transition flex items-center justify-center gap-2
                               ${isCurrent ? 'bg-gray-100 text-gray-400 cursor-default' :
-                                isEnterprise ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
+                                isEnterprise ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-orange-500 hover:bg-orange-600 text-white'}`}
                           >
                             {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Procesando...</> :
                              isCurrent ? 'Plan activo' : 'Seleccionar plan'}

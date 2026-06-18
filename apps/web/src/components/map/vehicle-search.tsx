@@ -37,7 +37,7 @@ export function VehicleSearch() {
           onFocus={() => setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 200)}
           placeholder="Buscar vehículo..."
-          className="w-full pl-9 pr-8 py-2.5 text-sm bg-white border border-gray-200 rounded-xl shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full pl-9 pr-8 py-2.5 text-sm bg-white border border-gray-200 rounded-xl shadow-md focus:outline-none focus:ring-2 focus:ring-orange-500"
         />
         {query && (
           <button

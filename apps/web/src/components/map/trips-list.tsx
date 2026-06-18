@@ -45,7 +45,7 @@ export function TripsList({ vehicleId, trips, onSelectTrip, selectedTripId }: Tr
             onClick={() => onSelectTrip(trip)}
             className={`w-full text-left p-3 rounded-xl border transition ${
               isSelected
-                ? 'border-blue-400 bg-blue-50 ring-1 ring-blue-200'
+                ? 'border-orange-400 bg-orange-50 ring-1 ring-orange-200'
                 : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
             }`}
           >
@@ -71,7 +71,7 @@ export function TripsList({ vehicleId, trips, onSelectTrip, selectedTripId }: Tr
 
             <div className="flex gap-3 mt-2 text-xs">
               <span className="flex items-center gap-1 text-gray-600 font-medium">
-                <MapPin className="w-3 h-3 text-blue-500" />
+                <MapPin className="w-3 h-3 text-orange-500" />
                 {trip.distance_km.toFixed(1)} km
               </span>
               <span className="flex items-center gap-1 text-gray-500">

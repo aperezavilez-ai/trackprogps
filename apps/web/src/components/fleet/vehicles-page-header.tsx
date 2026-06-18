@@ -21,7 +21,7 @@ export function VehiclesPageHeader({ count, onAdd }: Props) {
         <button
           type="button"
           onClick={onAdd}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition"
+          className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition"
         >
           <Plus className="w-4 h-4" />
           Agregar vehículo

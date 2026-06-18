@@ -123,13 +123,13 @@ function CompanySettings({ profile, onSave }: { profile: Profile | null; onSave:
           <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}{required && ' *'}</label>
           <input type={type} value={(form as Record<string, string>)[field]} onChange={e => set(field, e.target.value)}
             required={required}
-            className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
         </div>
       ))}
       <div className="flex justify-end">
         <button type="submit" disabled={loading}
           className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-medium transition
-            ${saved ? 'bg-green-600 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'} disabled:opacity-60`}>
+            ${saved ? 'bg-green-600 text-white' : 'bg-orange-500 hover:bg-orange-600 text-white'} disabled:opacity-60`}>
           {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Guardando...</> : saved ? '✓ Guardado' : <><Save className="w-4 h-4" /> Guardar cambios</>}
         </button>
       </div>
@@ -186,7 +186,7 @@ function NotificationSettings({ profile }: { profile: Profile | null }) {
           <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
           <input type={type} value={(form as Record<string, string>)[field]} onChange={e => set(field, e.target.value)}
             placeholder={placeholder}
-            className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
         </div>
       ))}
       {testMsg && <p className={`text-sm ${testMsg.startsWith('✓') ? 'text-green-600' : 'text-red-600'}`}>{testMsg}</p>}
@@ -200,7 +200,7 @@ function NotificationSettings({ profile }: { profile: Profile | null }) {
           {testLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Enviando...</> : 'Probar email'}
         </button>
         <button type="submit" disabled={loading}
-          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-medium ${saved ? 'bg-green-600' : 'bg-blue-600 hover:bg-blue-700'} text-white disabled:opacity-60`}>
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-medium ${saved ? 'bg-green-600' : 'bg-orange-500 hover:bg-orange-600'} text-white disabled:opacity-60`}>
           {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Guardando...</> : saved ? '✓ Guardado' : <><Save className="w-4 h-4" /> Guardar</>}
         </button>
       </div>
@@ -259,12 +259,12 @@ function BillingCfdiSettings({ profile, onSave }: { profile: Profile | null; onS
         <div key={field}>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
           <input value={form[field as keyof typeof form]} onChange={e => set(field, e.target.value)}
-            className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
         </div>
       ))}
       <div className="flex justify-end">
         <button type="submit" disabled={loading}
-          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-medium ${saved ? 'bg-green-600' : 'bg-blue-600 hover:bg-blue-700'} text-white disabled:opacity-60`}>
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-medium ${saved ? 'bg-green-600' : 'bg-orange-500 hover:bg-orange-600'} text-white disabled:opacity-60`}>
           {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Guardando...</> : saved ? '✓ Guardado' : <><Save className="w-4 h-4" /> Guardar</>}
         </button>
       </div>

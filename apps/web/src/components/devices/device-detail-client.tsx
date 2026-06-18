@@ -179,8 +179,8 @@ export function DeviceDetailClient({ deviceId, canCommand, mapsApiKey = '' }: Pr
       <div className="bg-white border border-gray-200 rounded-2xl p-4 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-start gap-3 sm:gap-4 min-w-0">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Radio className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-50 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Radio className="w-5 h-5 sm:w-6 sm:h-6 text-orange-500" />
             </div>
             <div className="min-w-0">
               <h1 className="text-lg sm:text-xl font-semibold text-gray-900 truncate">{device.model}</h1>
@@ -254,7 +254,7 @@ export function DeviceDetailClient({ deviceId, canCommand, mapsApiKey = '' }: Pr
               <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-gray-900">Recorrido del día</h2>
                 <Link href={historyHref!}
-                  className="text-xs text-blue-600 hover:underline flex items-center gap-1">
+                  className="text-xs text-orange-500 hover:underline flex items-center gap-1">
                   <History className="w-3.5 h-3.5" /> Historial completo
                 </Link>
               </div>
@@ -280,7 +280,7 @@ export function DeviceDetailClient({ deviceId, canCommand, mapsApiKey = '' }: Pr
               <div className="flex items-center gap-2 text-sm">
                 <Truck className="w-4 h-4 text-gray-400" />
                 <Link href={historyHref!}
-                  className="text-blue-600 hover:underline font-medium">
+                  className="text-orange-500 hover:underline font-medium">
                   {vehicle.economic_num} ({vehicle.plates})
                 </Link>
               </div>
@@ -288,7 +288,7 @@ export function DeviceDetailClient({ deviceId, canCommand, mapsApiKey = '' }: Pr
               {vehicle.driver && (
                 <div className="flex items-center gap-2 text-sm pt-2 border-t border-gray-100">
                   <User className="w-4 h-4 text-gray-400" />
-                  <Link href={`/drivers/${vehicle.driver.id}`} className="text-blue-600 hover:underline">
+                  <Link href={`/drivers/${vehicle.driver.id}`} className="text-orange-500 hover:underline">
                     {vehicle.driver.full_name}
                   </Link>
                 </div>
@@ -296,12 +296,12 @@ export function DeviceDetailClient({ deviceId, canCommand, mapsApiKey = '' }: Pr
               <div className="flex flex-wrap gap-2 pt-2">
                 {historyHref && (
                 <Link href={historyHref}
-                  className="flex items-center gap-1 text-xs text-gray-600 hover:text-blue-600 border border-gray-200 rounded-lg px-2.5 py-1.5">
+                  className="flex items-center gap-1 text-xs text-gray-600 hover:text-orange-500 border border-gray-200 rounded-lg px-2.5 py-1.5">
                   <History className="w-3.5 h-3.5" /> Historial
                 </Link>
                 )}
                 <Link href={`/alerts?vehicle_id=${vehicle.id}`}
-                  className="flex items-center gap-1 text-xs text-gray-600 hover:text-blue-600 border border-gray-200 rounded-lg px-2.5 py-1.5">
+                  className="flex items-center gap-1 text-xs text-gray-600 hover:text-orange-500 border border-gray-200 rounded-lg px-2.5 py-1.5">
                   <Bell className="w-3.5 h-3.5" /> Alertas
                 </Link>
               </div>
@@ -366,7 +366,7 @@ export function DeviceDetailClient({ deviceId, canCommand, mapsApiKey = '' }: Pr
                 <button
                   disabled={!!cmdLoading || device.status !== 'online'}
                   onClick={() => sendCommand('get_position', '¿Solicitar ubicación actual al GPS?')}
-                  className="w-full flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 disabled:opacity-40 transition"
+                  className="w-full flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 disabled:opacity-40 transition"
                 >
                   {cmdLoading === 'get_position' ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                   Solicitar ubicación

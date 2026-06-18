@@ -96,7 +96,7 @@ export function VehiclesTable({ vehicles, groups = [], count, page, perPage, sea
             onChange={e => setSearchValue(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && applySearch(searchValue)}
             placeholder="Buscar por económico, placas, marca..."
-            className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
           />
         </div>
         <select
@@ -108,7 +108,7 @@ export function VehiclesTable({ vehicles, groups = [], count, page, perPage, sea
             if (e.target.value) params.set('group', e.target.value)
             router.push(`/vehicles?${params}`)
           }}
-          className="border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
         >
           <option value="">Todos los grupos</option>
           {groups.map(g => (
@@ -123,7 +123,7 @@ export function VehiclesTable({ vehicles, groups = [], count, page, perPage, sea
             if (e.target.value) params.set('status', e.target.value)
             router.push(`/vehicles?${params}`)
           }}
-          className="border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
         >
           <option value="">Todos los estados</option>
           <option value="active">Activos</option>
@@ -157,7 +157,7 @@ export function VehiclesTable({ vehicles, groups = [], count, page, perPage, sea
                     <span className="text-sm">No se encontraron vehículos</span>
                     {canWriteFleet && (
                       <button onClick={() => setShowModal(true)}
-                        className="text-blue-600 text-sm hover:underline mt-1">
+                        className="text-orange-500 text-sm hover:underline mt-1">
                         Agregar el primero
                       </button>
                     )}
@@ -169,7 +169,7 @@ export function VehiclesTable({ vehicles, groups = [], count, page, perPage, sea
                 {/* Vehículo */}
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center text-lg">
+                    <div className="w-9 h-9 bg-orange-50 rounded-lg flex items-center justify-center text-lg">
                       {v.type === 'truck' ? '🚛' : v.type === 'van' ? '🚐' : v.type === 'motorcycle' ? '🏍️' : '🚗'}
                     </div>
                     <div>
@@ -275,7 +275,7 @@ export function VehiclesTable({ vehicles, groups = [], count, page, perPage, sea
                       href={`https://maps.google.com/?q=${v.position.lat},${v.position.lng}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                      className="inline-flex items-center gap-1 text-xs text-orange-500 hover:underline"
                     >
                       <MapPin className="w-3.5 h-3.5" /> Mapa
                     </a>

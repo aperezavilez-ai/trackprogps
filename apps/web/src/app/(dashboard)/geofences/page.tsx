@@ -30,7 +30,7 @@ const API_KEY = process.env['NEXT_PUBLIC_GOOGLE_MAPS_API_KEY'] ?? ''
 const DEFAULT_DRAFT: GeofenceCreateDraft = {
   name: '',
   type: 'circular',
-  color: '#3B82F6',
+  color: '#F97316',
   radius_m: 500,
   alert_on_enter: true,
   alert_on_exit: true,
@@ -295,7 +295,7 @@ export default function GeofencesPage() {
                   <button
                     type="button"
                     onClick={startCreate}
-                    className="lg:ml-auto flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-md transition"
+                    className="lg:ml-auto flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-md transition"
                   >
                     <Plus className="w-4 h-4" />
                     Nueva geocerca
@@ -312,7 +312,7 @@ export default function GeofencesPage() {
                   <span className="font-semibold text-gray-900">Geocercas</span>
                   <span className="text-sm text-gray-500 ml-2">({geofences.length})</span>
                 </div>
-                <span className="text-xs text-blue-600 font-medium">{listOpen ? 'Ocultar' : 'Ver lista'}</span>
+                <span className="text-xs text-orange-500 font-medium">{listOpen ? 'Ocultar' : 'Ver lista'}</span>
               </button>
 
               <div className={`lg:flex flex-col overflow-y-auto space-y-2 ${listOpen ? 'flex max-h-[40vh]' : 'hidden lg:flex'}`}>
@@ -326,7 +326,7 @@ export default function GeofencesPage() {
                       <button
                         type="button"
                         onClick={startCreate}
-                        className="text-sm text-blue-600 font-medium hover:underline"
+                        className="text-sm text-orange-500 font-medium hover:underline"
                       >
                         Dibujar la primera en el mapa
                       </button>
@@ -335,7 +335,7 @@ export default function GeofencesPage() {
                 ) : geofences.map(fence => (
                   <div key={fence.id}
                     onClick={() => setSelected(fence.id === selected ? null : fence.id)}
-                    className={`bg-white border rounded-xl p-4 cursor-pointer transition ${selected === fence.id ? 'border-blue-400 ring-2 ring-blue-100' : 'border-gray-200 hover:border-gray-300'}`}>
+                    className={`bg-white border rounded-xl p-4 cursor-pointer transition ${selected === fence.id ? 'border-orange-400 ring-2 ring-orange-100' : 'border-gray-200 hover:border-gray-300'}`}>
                     <div className="flex items-start gap-3">
                       <div className="w-4 h-4 rounded-full mt-0.5 flex-shrink-0" style={{ background: fence.color }} />
                       <div className="flex-1 min-w-0">
@@ -344,7 +344,7 @@ export default function GeofencesPage() {
                           {fence.type === 'circular' ? `Circular · ${fence.radius_m}m` : 'Polígono'}
                         </div>
                         <div className="flex gap-2 mt-1.5 text-xs flex-wrap">
-                          {fence.alert_on_enter && <span className="text-blue-600">Entrada</span>}
+                          {fence.alert_on_enter && <span className="text-orange-500">Entrada</span>}
                           {fence.alert_on_exit && <span className="text-orange-600">Salida</span>}
                           <span className="text-gray-400">
                             · {!fence.vehicle_ids?.length ? 'Toda la flota' : `${fence.vehicle_ids.length} vehículo(s)`}
@@ -354,7 +354,7 @@ export default function GeofencesPage() {
                       <div className="flex flex-col gap-1 items-end">
                         {canWriteFleet && (
                           <>
-                            <button onClick={e => { e.stopPropagation(); void toggleActive(fence) }} className="text-gray-400 hover:text-blue-600">
+                            <button onClick={e => { e.stopPropagation(); void toggleActive(fence) }} className="text-gray-400 hover:text-orange-500">
                               {fence.is_active ? <ToggleRight className="w-5 h-5 text-green-500" /> : <ToggleLeft className="w-5 h-5" />}
                             </button>
                             <div className="flex gap-1">
@@ -463,7 +463,7 @@ function GeofenceEditModal({ fence, onClose, onSave }: { fence: Geofence; onClos
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Nombre *</label>
             <input required value={form.name} onChange={e => set('name', e.target.value)}
-              className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Color</label>
@@ -484,18 +484,18 @@ function GeofenceEditModal({ fence, onClose, onSave }: { fence: Geofence; onClos
             <div className="grid grid-cols-2 gap-2">
               <button type="button" onClick={() => setVehicleScope('all')}
                 className={`px-3 py-2.5 rounded-lg text-sm font-medium border transition ${
-                  vehicleScope === 'all' ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                  vehicleScope === 'all' ? 'bg-orange-50 border-orange-300 text-orange-600' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
                 }`}>Toda la flota</button>
               <button type="button" onClick={() => setVehicleScope('selected')}
                 className={`px-3 py-2.5 rounded-lg text-sm font-medium border transition ${
-                  vehicleScope === 'selected' ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                  vehicleScope === 'selected' ? 'bg-orange-50 border-orange-300 text-orange-600' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
                 }`}>Vehículos seleccionados</button>
             </div>
             {vehicleScope === 'selected' && (
               <div className="space-y-2">
                 <input value={vehicleSearch} onChange={e => setVehicleSearch(e.target.value)}
                   placeholder="Buscar por económico o placas..."
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
                 <div className="max-h-40 overflow-y-auto border border-gray-100 rounded-lg divide-y divide-gray-50">
                   {filteredVehicles.map(v => (
                     <label key={v.id} className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 cursor-pointer text-sm">
@@ -513,7 +513,7 @@ function GeofenceEditModal({ fence, onClose, onSave }: { fence: Geofence; onClos
           <div className="flex gap-3">
             <button type="button" onClick={onClose} className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-xl text-sm font-medium hover:bg-gray-50">Cancelar</button>
             <button type="submit" disabled={loading}
-              className="flex-1 bg-blue-600 text-white py-3 rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-60 flex items-center justify-center gap-2">
+              className="flex-1 bg-orange-500 text-white py-3 rounded-xl text-sm font-medium hover:bg-orange-600 disabled:opacity-60 flex items-center justify-center gap-2">
               {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Guardando...</> : 'Guardar'}
             </button>
           </div>

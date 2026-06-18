@@ -59,7 +59,7 @@ export function TopBar({ profile }: TopBarProps) {
         </button>
         <span className="font-medium text-gray-900 truncate">{profile.company?.name}</span>
         {profile.company?.plan && (
-          <span className="hidden sm:inline bg-blue-50 text-blue-700 text-xs font-medium px-2 py-0.5 rounded-full">
+          <span className="hidden sm:inline bg-orange-50 text-orange-600 text-xs font-medium px-2 py-0.5 rounded-full">
             {profile.company.plan.name}
           </span>
         )}
@@ -70,7 +70,7 @@ export function TopBar({ profile }: TopBarProps) {
         {isGeofencesPage && (
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('open-geofence-modal'))}
-            className="inline-flex items-center gap-1 sm:gap-2 bg-blue-600 hover:bg-blue-700 text-white px-2 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition"
+            className="inline-flex items-center gap-1 sm:gap-2 bg-orange-500 hover:bg-orange-600 text-white px-2 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition"
           >
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">Nueva geocerca</span>
@@ -88,7 +88,7 @@ export function TopBar({ profile }: TopBarProps) {
             onClick={() => setMenuOpen(!menuOpen)}
             className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-xl hover:bg-gray-100 transition"
           >
-            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+            <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
               {initials}
             </div>
             <div className="text-left hidden md:block">

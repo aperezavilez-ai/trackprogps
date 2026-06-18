@@ -58,7 +58,7 @@ export default function ResetPasswordPage() {
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           {loading ? (
             <div className="flex justify-center py-8">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
             </div>
           ) : done ? (
             <div className="text-center">
@@ -69,7 +69,7 @@ export default function ResetPasswordPage() {
           ) : !ready ? (
             <div className="text-center">
               <p className="text-sm text-red-600 mb-4">{error}</p>
-              <Link href="/forgot-password" className="text-sm text-blue-600 hover:underline">
+              <Link href="/forgot-password" className="text-sm text-orange-500 hover:underline">
                 Solicitar nuevo enlace
               </Link>
             </div>
@@ -89,7 +89,7 @@ export default function ResetPasswordPage() {
                     onChange={e => setPassword(e.target.value)}
                     required
                     minLength={8}
-                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
                 </div>
                 <div>
@@ -100,7 +100,7 @@ export default function ResetPasswordPage() {
                     onChange={e => setConfirm(e.target.value)}
                     required
                     minLength={8}
-                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
                 </div>
                 {error && (
@@ -109,7 +109,7 @@ export default function ResetPasswordPage() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-medium py-3 rounded-xl text-sm flex items-center justify-center gap-2"
+                  className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-medium py-3 rounded-xl text-sm flex items-center justify-center gap-2"
                 >
                   {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Guardando…</> : 'Guardar contraseña'}
                 </button>

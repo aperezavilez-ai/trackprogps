@@ -90,7 +90,7 @@ export function Sidebar({ profile }: SidebarProps) {
                     className={cn(
                       'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors mb-0.5',
                       active
-                        ? 'bg-blue-600 text-white'
+                        ? 'bg-orange-500 text-white'
                         : 'text-gray-400 hover:text-white hover:bg-gray-800',
                       collapsed && 'justify-center px-0'
                     )}
@@ -110,7 +110,7 @@ export function Sidebar({ profile }: SidebarProps) {
             type="button"
             onClick={() => window.dispatchEvent(new CustomEvent('open-ai-assistant'))}
             className={cn(
-              'w-full mx-2 mt-2 p-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl cursor-pointer hover:from-blue-500 hover:to-purple-500 transition text-left',
+              'w-full mx-2 mt-2 p-3 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl cursor-pointer hover:from-orange-500 hover:to-orange-400 transition text-left',
               collapsed && 'p-2 flex justify-center'
             )}
           >
@@ -119,7 +119,7 @@ export function Sidebar({ profile }: SidebarProps) {
               {!collapsed && (
                 <div>
                   <div className="text-xs font-semibold text-white">Asistente IA</div>
-                  <div className="text-xs text-blue-200">Pregunta sobre tu flota</div>
+                  <div className="text-xs text-orange-200">Pregunta sobre tu flota</div>
                 </div>
               )}
             </div>

@@ -64,7 +64,7 @@ export function VehicleMapPanel({ vehicle, onClose }: Props) {
     <div className="vehicle-map-panel w-full sm:w-[min(320px,calc(100vw-2rem))] rounded-2xl border border-white/25 bg-slate-900/90 backdrop-blur-xl shadow-2xl text-white overflow-hidden">
       <div className="flex items-start justify-between gap-2 px-4 pt-4 pb-2 border-b border-white/10">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 text-blue-300 text-xs font-medium uppercase tracking-wide mb-1">
+          <div className="flex items-center gap-2 text-orange-300 text-xs font-medium uppercase tracking-wide mb-1">
             <User className="w-3.5 h-3.5 flex-shrink-0" />
             Cliente
           </div>
@@ -136,14 +136,14 @@ export function VehicleMapPanel({ vehicle, onClose }: Props) {
         {vehicle.deviceId && (
           <Link
             href={`/devices/${vehicle.deviceId}`}
-            className="text-xs font-medium text-blue-300 hover:text-blue-200"
+            className="text-xs font-medium text-orange-300 hover:text-orange-200"
           >
             Ver dispositivo GPS →
           </Link>
         )}
         <Link
           href={`/history?vehicle_id=${vehicle.vehicleId}&lat=${vehicle.lat}&lng=${vehicle.lng}`}
-          className="text-xs font-medium text-blue-300 hover:text-blue-200"
+          className="text-xs font-medium text-orange-300 hover:text-orange-200"
         >
           Historial completo →
         </Link>

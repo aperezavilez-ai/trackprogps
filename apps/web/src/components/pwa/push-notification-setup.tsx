@@ -37,11 +37,11 @@ export function PushNotificationSetup() {
   if (!visible) return null
 
   return (
-    <div className="mx-3 mt-2 mb-0 flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 shadow-sm">
+    <div className="mx-3 mt-2 mb-0 flex items-start gap-3 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900 shadow-sm">
       <Bell className="mt-0.5 h-4 w-4 flex-shrink-0" />
       <div className="flex-1 min-w-0">
         <p className="font-medium">Activa alertas en este dispositivo</p>
-        <p className="mt-0.5 text-xs text-blue-700">
+        <p className="mt-0.5 text-xs text-orange-600">
           Recibe notificaciones de velocidad, geocercas y eventos críticos aunque no tengas la app abierta.
         </p>
         <div className="mt-2 flex gap-2">
@@ -49,20 +49,20 @@ export function PushNotificationSetup() {
             type="button"
             onClick={enable}
             disabled={loading || done}
-            className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+            className="rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-orange-600 disabled:opacity-60"
           >
             {loading ? 'Activando…' : done ? 'Activado' : 'Activar alertas'}
           </button>
           <button
             type="button"
             onClick={dismiss}
-            className="rounded-lg px-3 py-1.5 text-xs text-blue-700 hover:bg-blue-100"
+            className="rounded-lg px-3 py-1.5 text-xs text-orange-600 hover:bg-orange-100"
           >
             Ahora no
           </button>
         </div>
       </div>
-      <button type="button" onClick={dismiss} className="text-blue-500 hover:text-blue-700" aria-label="Cerrar">
+      <button type="button" onClick={dismiss} className="text-orange-500 hover:text-orange-600" aria-label="Cerrar">
         <X className="h-4 w-4" />
       </button>
     </div>

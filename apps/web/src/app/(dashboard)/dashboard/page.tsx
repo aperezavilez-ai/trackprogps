@@ -156,7 +156,7 @@ export default async function DashboardPage() {
         <DashboardStats stats={stats} />
         <Link
           href="/map"
-          className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-3 px-4 text-sm font-medium shadow-md transition"
+          className="flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl py-3 px-4 text-sm font-medium shadow-md transition"
         >
           <Map className="w-4 h-4" />
           Abrir mapa en pantalla completa

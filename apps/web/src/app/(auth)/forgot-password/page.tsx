@@ -47,7 +47,7 @@ export default function ForgotPasswordPage() {
               <p className="text-sm text-gray-500 mb-6">
                 Si existe una cuenta con <strong>{email}</strong>, recibirás instrucciones para restablecer tu contraseña.
               </p>
-              <Link href="/login" className="flex items-center justify-center gap-2 text-sm text-blue-600 hover:text-blue-700">
+              <Link href="/login" className="flex items-center justify-center gap-2 text-sm text-orange-500 hover:text-orange-600">
                 <ArrowLeft className="w-4 h-4" /> Volver al login
               </Link>
             </div>
@@ -70,7 +70,7 @@ export default function ForgotPasswordPage() {
                     onChange={e => setEmail(e.target.value)}
                     placeholder="correo@trackprogps.mx"
                     required
-                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
                 </div>
 
@@ -81,7 +81,7 @@ export default function ForgotPasswordPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-medium py-3 rounded-xl text-sm flex items-center justify-center gap-2"
+                  className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-medium py-3 rounded-xl text-sm flex items-center justify-center gap-2"
                 >
                   {loading
                     ? <><Loader2 className="w-4 h-4 animate-spin" /> Enviando...</>

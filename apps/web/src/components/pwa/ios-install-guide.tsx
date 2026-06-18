@@ -17,7 +17,7 @@ export function IosInstallGuide({ inAppBrowser }: { inAppBrowser: boolean }) {
         <li className="flex gap-3 items-start">
           <span className="w-6 h-6 rounded-full bg-orange-500/20 text-orange-300 text-xs font-bold flex items-center justify-center shrink-0">1</span>
           <span>
-            Toca <Share className="w-4 h-4 inline -mt-0.5 text-blue-400" /> <strong>Compartir</strong> (barra inferior de Safari)
+            Toca <Share className="w-4 h-4 inline -mt-0.5 text-orange-400" /> <strong>Compartir</strong> (barra inferior de Safari)
           </span>
         </li>
         <li className="flex gap-3 items-start">

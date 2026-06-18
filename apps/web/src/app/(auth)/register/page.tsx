@@ -152,7 +152,7 @@ function RegisterForm() {
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           <div className="flex gap-2 mb-6">
             {[1, 2, 3].map(s => (
-              <div key={s} className={`flex-1 h-1 rounded-full transition-colors ${s <= step ? 'bg-blue-600' : 'bg-gray-200'}`} />
+              <div key={s} className={`flex-1 h-1 rounded-full transition-colors ${s <= step ? 'bg-orange-500' : 'bg-gray-200'}`} />
             ))}
           </div>
 
@@ -180,11 +180,11 @@ function RegisterForm() {
                       type="button"
                       onClick={() => setAccountType(t.value)}
                       className={`text-left p-4 rounded-xl border-2 transition ${
-                        selected ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                        selected ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
                       <div className="flex items-start gap-3">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selected ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selected ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-500'}`}>
                           <Icon className="w-5 h-5" />
                         </div>
                         <div>
@@ -208,7 +208,7 @@ function RegisterForm() {
                     onChange={e => setCompanyName(e.target.value)}
                     required={accountType !== 'personal'}
                     placeholder={accountConfig.accountPlaceholder}
-                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
                   {accountType === 'personal' && (
                     <p className="text-xs text-gray-400 mt-1">Opcional — si lo dejas vacío usamos tu nombre</p>
@@ -217,12 +217,12 @@ function RegisterForm() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Correo de contacto</label>
                   <input type="email" value={companyEmail} onChange={e => setCompanyEmail(e.target.value)} required placeholder="contacto@trackprogps.mx"
-                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Teléfono</label>
                   <input type="tel" value={companyPhone} onChange={e => setCompanyPhone(e.target.value)} placeholder="+52 55 1234 5678"
-                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
                 </div>
               </>
             )}
@@ -232,22 +232,22 @@ function RegisterForm() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Nombre completo</label>
                   <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} required placeholder="Juan García López"
-                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Tu correo (admin)</label>
                   <input type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="correo@trackprogps.mx"
-                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Contraseña</label>
                   <input type="password" value={password} onChange={e => setPassword(e.target.value)} required placeholder="Mín. 8 caracteres"
-                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Confirmar contraseña</label>
                   <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required placeholder="••••••••"
-                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
                 </div>
                 <label className="flex items-start gap-3 p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50">
                   <input

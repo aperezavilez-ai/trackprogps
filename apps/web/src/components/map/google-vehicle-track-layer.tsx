@@ -50,7 +50,7 @@ export function GoogleVehicleTrackLayer({ vehicleId }: Props) {
       />
       <Polyline
         path={path}
-        strokeColor="#3B82F6"
+        strokeColor="#F97316"
         strokeWeight={4}
         strokeOpacity={0.9}
       />

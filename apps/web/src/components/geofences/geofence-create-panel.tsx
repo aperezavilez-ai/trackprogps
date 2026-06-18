@@ -89,7 +89,7 @@ export function GeofenceCreatePanel({
             onClick={() => onChange({ type: 'circular' })}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium border transition ${
               draft.type === 'circular'
-                ? 'bg-blue-50 border-blue-300 text-blue-700'
+                ? 'bg-orange-50 border-orange-300 text-orange-600'
                 : 'border-gray-200 text-gray-600 hover:bg-gray-50'
             }`}
           >
@@ -101,7 +101,7 @@ export function GeofenceCreatePanel({
             onClick={() => onChange({ type: 'polygon' })}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium border transition ${
               draft.type === 'polygon'
-                ? 'bg-blue-50 border-blue-300 text-blue-700'
+                ? 'bg-orange-50 border-orange-300 text-orange-600'
                 : 'border-gray-200 text-gray-600 hover:bg-gray-50'
             }`}
           >
@@ -117,7 +117,7 @@ export function GeofenceCreatePanel({
             value={draft.name}
             onChange={e => onChange({ name: e.target.value })}
             placeholder="Bodega Central"
-            className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
           />
         </div>
 
@@ -177,7 +177,7 @@ export function GeofenceCreatePanel({
               type="button"
               onClick={() => onChange({ vehicleScope: 'all' })}
               className={`px-3 py-2 rounded-lg text-xs font-medium border ${
-                draft.vehicleScope === 'all' ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-gray-200 text-gray-600'
+                draft.vehicleScope === 'all' ? 'bg-orange-50 border-orange-300 text-orange-600' : 'border-gray-200 text-gray-600'
               }`}
             >
               Toda la flota
@@ -186,7 +186,7 @@ export function GeofenceCreatePanel({
               type="button"
               onClick={() => onChange({ vehicleScope: 'selected' })}
               className={`px-3 py-2 rounded-lg text-xs font-medium border ${
-                draft.vehicleScope === 'selected' ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-gray-200 text-gray-600'
+                draft.vehicleScope === 'selected' ? 'bg-orange-50 border-orange-300 text-orange-600' : 'border-gray-200 text-gray-600'
               }`}
             >
               Seleccionados
@@ -236,7 +236,7 @@ export function GeofenceCreatePanel({
           type="button"
           onClick={onSave}
           disabled={!canSave || saving}
-          className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white py-3 rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+          className="flex-1 flex items-center justify-center gap-2 bg-orange-500 text-white py-3 rounded-xl text-sm font-medium hover:bg-orange-600 disabled:opacity-50"
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           Guardar

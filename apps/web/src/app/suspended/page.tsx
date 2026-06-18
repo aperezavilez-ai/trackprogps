@@ -32,14 +32,14 @@ export default async function SuspendedPage() {
 
           <div className="space-y-3">
             <Link href="/billing?trial_expired=1&tab=suscripcion"
-              className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-medium text-sm">
+              className="flex items-center justify-center gap-2 w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl font-medium text-sm">
               <CreditCard className="w-4 h-4" />
               Elegir plan y pagar
             </Link>
 
             <p className="text-sm text-gray-400">
               ¿Tienes preguntas? Escríbenos a{' '}
-              <a href="mailto:alertas@trackprogps.mx" className="text-blue-600 hover:underline">
+              <a href="mailto:alertas@trackprogps.mx" className="text-orange-500 hover:underline">
                 alertas@trackprogps.mx
               </a>
             </p>

@@ -16,7 +16,7 @@ interface Props {
   accountType: string
 }
 
-const PRESET_COLORS = ['#3B82F6', '#22C55E', '#F59E0B', '#8B5CF6', '#EF4444', '#EC4899', '#06B6D4']
+const PRESET_COLORS = ['#F97316', '#22C55E', '#F59E0B', '#8B5CF6', '#EF4444', '#EC4899', '#06B6D4']
 
 export function VehicleGroupsPanel({ canEdit, accountType }: Props) {
   const [groups, setGroups] = useState<VehicleGroup[]>([])
@@ -24,7 +24,7 @@ export function VehicleGroupsPanel({ canEdit, accountType }: Props) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [newName, setNewName] = useState('')
-  const [newColor, setNewColor] = useState('#3B82F6')
+  const [newColor, setNewColor] = useState('#F97316')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editColor, setEditColor] = useState('')
@@ -97,7 +97,7 @@ export function VehicleGroupsPanel({ canEdit, accountType }: Props) {
     <div className="space-y-6">
       <div className="bg-white border border-gray-200 rounded-2xl p-6">
         <div className="flex items-center gap-2 mb-1">
-          <Layers className="w-5 h-5 text-blue-600" />
+          <Layers className="w-5 h-5 text-orange-500" />
           <h2 className="text-base font-semibold text-gray-900">Grupos / Flotillas</h2>
         </div>
         <p className="text-sm text-gray-500 mb-4">
@@ -110,7 +110,7 @@ export function VehicleGroupsPanel({ canEdit, accountType }: Props) {
               <label className="block text-xs text-gray-500 mb-1">Nuevo grupo</label>
               <input value={newName} onChange={e => setNewName(e.target.value)}
                 placeholder={accountType === 'family' ? 'Ej. Abuelos' : 'Ej. Zona Norte'}
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">Color</label>
@@ -123,7 +123,7 @@ export function VehicleGroupsPanel({ canEdit, accountType }: Props) {
               </div>
             </div>
             <button type="submit" disabled={saving || !newName.trim()}
-              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+              className="flex items-center gap-2 bg-orange-500 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-orange-600 disabled:opacity-50">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
               Agregar
             </button>
@@ -153,7 +153,7 @@ export function VehicleGroupsPanel({ canEdit, accountType }: Props) {
                       ))}
                     </div>
                     <button onClick={() => saveEdit(g.id)} disabled={saving}
-                      className="text-xs text-blue-600 font-medium">Guardar</button>
+                      className="text-xs text-orange-500 font-medium">Guardar</button>
                     <button onClick={() => setEditingId(null)} className="text-xs text-gray-400">Cancelar</button>
                   </>
                 ) : (
@@ -165,7 +165,7 @@ export function VehicleGroupsPanel({ canEdit, accountType }: Props) {
                     {canEdit && (
                       <div className="flex gap-1">
                         <button onClick={() => { setEditingId(g.id); setEditName(g.name); setEditColor(g.color) }}
-                          className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50">
+                          className="p-1.5 text-gray-400 hover:text-orange-500 rounded-lg hover:bg-orange-50">
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
                         {!g.is_default && (

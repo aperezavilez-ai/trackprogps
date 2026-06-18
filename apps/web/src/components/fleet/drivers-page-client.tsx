@@ -28,7 +28,7 @@ export function DriversPageClient({ drivers, count, page, perPage, search }: Pro
           <div className="flex gap-2">
             <Link
               href="/drivers/new"
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium"
+              className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium"
             >
               <Plus className="w-4 h-4" />
               Nueva instalación

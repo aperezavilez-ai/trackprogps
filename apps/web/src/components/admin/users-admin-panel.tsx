@@ -33,9 +33,9 @@ const ROLE_LABELS: Record<string, string> = Object.fromEntries(
 )
 
 const ROLE_COLORS: Record<string, string> = {
-  super_admin:      'bg-indigo-50 text-indigo-700 border-indigo-200',
+  super_admin:      'bg-orange-50 text-orange-700 border-orange-200',
   admin_empresa:    'bg-purple-50 text-purple-700 border-purple-200',
-  supervisor:       'bg-blue-50 text-blue-700 border-blue-200',
+  supervisor:       'bg-orange-50 text-orange-600 border-orange-200',
   operador:         'bg-gray-50 text-gray-600 border-gray-200',
   miembro_familiar: 'bg-teal-50 text-teal-700 border-teal-200',
 }
@@ -168,7 +168,7 @@ export function UsersAdminPanel({ currentUserId, isSuperAdmin, defaultCompanyId,
       {/* Invitar */}
       <div id="alta-usuario" className="bg-white border border-gray-200 rounded-2xl p-6 scroll-mt-24">
         <div className="flex items-center gap-2 mb-4">
-          <UserPlus className="w-5 h-5 text-blue-600" />
+          <UserPlus className="w-5 h-5 text-orange-500" />
           <h2 className="text-base font-semibold text-gray-900">
             Dar de alta usuario
           </h2>
@@ -177,33 +177,33 @@ export function UsersAdminPanel({ currentUserId, isSuperAdmin, defaultCompanyId,
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
             required placeholder="correo@trackprogps.mx"
-            className="border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            className="border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
           {isSuperAdmin && (
             <select value={inviteCompany} onChange={e => setInviteCompany(e.target.value)}
-              className="border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              className="border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
               <option value="">Plataforma (sin empresa)</option>
               {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           )}
           <select value={inviteRole} onChange={e => setInviteRole(e.target.value)}
-            className="border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            className="border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
             {assignableRoles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
           </select>
           <button type="submit" disabled={inviting}
-            className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-60">
+            className="flex items-center justify-center gap-2 bg-orange-500 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-orange-600 disabled:opacity-60">
             {inviting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
             Dar de alta
           </button>
           </div>
 
           {showGroupPicker && vehicleGroups.length > 0 && (
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-              <p className="text-xs font-medium text-blue-800 mb-2">
+            <div className="bg-orange-50 border border-orange-100 rounded-xl p-4">
+              <p className="text-xs font-medium text-orange-800 mb-2">
                 Grupos visibles — el miembro solo verá vehículos de estos grupos
               </p>
               <div className="flex flex-wrap gap-2">
                 {vehicleGroups.map(g => (
-                  <label key={g.id} className="flex items-center gap-2 text-sm bg-white border border-gray-200 rounded-lg px-3 py-2 cursor-pointer hover:border-blue-300">
+                  <label key={g.id} className="flex items-center gap-2 text-sm bg-white border border-gray-200 rounded-lg px-3 py-2 cursor-pointer hover:border-orange-300">
                     <input
                       type="checkbox"
                       checked={inviteGroups.includes(g.id)}
@@ -245,7 +245,7 @@ export function UsersAdminPanel({ currentUserId, isSuperAdmin, defaultCompanyId,
         <div className="flex items-center gap-3">
           <Building2 className="w-4 h-4 text-gray-400" />
           <select value={companyId} onChange={e => setCompanyId(e.target.value)}
-            className="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            className="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
             <option value="">Todas las empresas y plataforma</option>
             {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
@@ -279,7 +279,7 @@ export function UsersAdminPanel({ currentUserId, isSuperAdmin, defaultCompanyId,
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
                       {u.full_name}
-                      {isSelf && <span className="text-xs text-blue-600">(tú)</span>}
+                      {isSelf && <span className="text-xs text-orange-500">(tú)</span>}
                       {!u.is_active && <span className="text-xs text-red-500">Inactivo</span>}
                     </div>
                     <div className="text-xs text-gray-500">{u.email}</div>
@@ -300,7 +300,7 @@ export function UsersAdminPanel({ currentUserId, isSuperAdmin, defaultCompanyId,
                     value={u.role}
                     disabled={isSelf || isSaving || (!isSuperAdmin && u.role === 'super_admin')}
                     onChange={e => updateUser(u.id, { role: e.target.value })}
-                    className="border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    className="border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-50"
                   >
                     {assignableRoles.map(r => (
                       <option key={r.value} value={r.value}>{r.label}</option>
@@ -325,7 +325,7 @@ export function UsersAdminPanel({ currentUserId, isSuperAdmin, defaultCompanyId,
                             disabled={isSaving}
                             onClick={() => toggleUserGroup(u.id, (u.group_access ?? []).map(ga => ga.id), g.id)}
                             className={`text-[10px] px-2 py-1 rounded-full border transition disabled:opacity-40
-                              ${selected ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
+                              ${selected ? 'bg-orange-50 border-orange-300 text-orange-600' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
                           >
                             {g.name}
                           </button>

@@ -31,7 +31,7 @@ export function MobileBottomNav() {
               href={tab.href}
               className={cn(
                 'flex flex-col items-center justify-center gap-0.5 py-2 rounded-lg text-[11px] font-medium transition',
-                active ? 'text-blue-600 bg-blue-50' : 'text-gray-500'
+                active ? 'text-orange-500 bg-orange-50' : 'text-gray-500'
               )}
             >
               <Icon className="w-4 h-4" />

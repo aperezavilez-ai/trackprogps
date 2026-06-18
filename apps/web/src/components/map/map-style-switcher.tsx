@@ -24,7 +24,7 @@ export function MapStyleSwitcher({ style, onChange }: Props) {
             onClick={() => onChange(s)}
             className={`px-3 py-1.5 text-xs font-medium rounded-lg transition whitespace-nowrap
               ${style === s
-                ? 'bg-blue-600 text-white shadow-sm'
+                ? 'bg-orange-500 text-white shadow-sm'
                 : 'text-gray-600 hover:bg-gray-100'}`}
           >
             {MAP_STYLE_LABELS[s]}

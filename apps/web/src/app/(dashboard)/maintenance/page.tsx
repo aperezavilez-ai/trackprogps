@@ -41,7 +41,7 @@ export default function MaintenancePage() {
 
   return (
     <div className="p-6">
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 text-sm text-blue-800">
+      <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-6 text-sm text-orange-800">
         <strong>¿Qué es Mantenimiento?</strong> Registra servicios de tu flota (aceite, frenos, llantas, verificación, seguro).
         El sistema te avisa cuando un servicio está por vencer por fecha o kilometraje, y genera alertas automáticas.
       </div>
@@ -53,7 +53,7 @@ export default function MaintenancePage() {
         </div>
         {canWriteFleet && (
         <button onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium">
+          className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium">
           <Plus className="w-4 h-4" /> Registrar mantenimiento
         </button>
         )}
@@ -70,7 +70,7 @@ export default function MaintenancePage() {
               <Wrench className="w-12 h-12 text-gray-300 mx-auto mb-3" />
               <p className="text-gray-500 text-sm">No hay registros de mantenimiento</p>
               {canWriteFleet && (
-              <button onClick={() => setShowModal(true)} className="mt-3 text-blue-600 text-sm hover:underline">
+              <button onClick={() => setShowModal(true)} className="mt-3 text-orange-500 text-sm hover:underline">
                 Registrar el primero
               </button>
               )}
@@ -93,7 +93,7 @@ export default function MaintenancePage() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-gray-900">{mt.label}</span>
                         {r.vehicle && (
-                          <span className="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded-full">
+                          <span className="text-xs text-orange-500 font-medium bg-orange-50 px-2 py-0.5 rounded-full">
                             {r.vehicle.economic_num} ({r.vehicle.plates})
                           </span>
                         )}
@@ -187,7 +187,7 @@ function MaintenanceModal({ onClose, onSave }: { onClose: () => void; onSave: ()
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Vehículo *</label>
             <select required value={form.vehicle_id} onChange={e => set('vehicle_id', e.target.value)}
-              className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
               <option value="">Seleccionar vehículo</option>
               {vehicles.map(v => <option key={v.id} value={v.id}>{v.economic_num} — {v.plates}</option>)}
             </select>
@@ -196,51 +196,51 @@ function MaintenanceModal({ onClose, onSave }: { onClose: () => void; onSave: ()
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Tipo *</label>
               <select value={form.type} onChange={e => set('type', e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
                 {Object.entries(MAINTENANCE_TYPES).map(([k, v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Fecha de servicio *</label>
               <input type="date" required value={form.service_date} onChange={e => set('service_date', e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
             </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Descripción *</label>
             <textarea required value={form.description} onChange={e => set('description', e.target.value)} rows={2}
               placeholder="Cambio de aceite 5W-30, filtro de aceite..."
-              className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+              className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Costo (MXN)</label>
               <input type="number" value={form.cost} onChange={e => set('cost', e.target.value)} placeholder="1,500.00"
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Taller</label>
               <input type="text" value={form.workshop} onChange={e => set('workshop', e.target.value)} placeholder="Servicio Express"
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Próximo servicio (fecha)</label>
               <input type="date" value={form.next_service_date} onChange={e => set('next_service_date', e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Próximo servicio (km)</label>
               <input type="number" value={form.next_odometer} onChange={e => set('next_odometer', e.target.value)} placeholder="250,000"
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
             </div>
           </div>
           {error && <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">{error}</div>}
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-xl text-sm font-medium hover:bg-gray-50">Cancelar</button>
             <button type="submit" disabled={loading}
-              className="flex-1 bg-blue-600 text-white py-3 rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-60 flex items-center justify-center gap-2">
+              className="flex-1 bg-orange-500 text-white py-3 rounded-xl text-sm font-medium hover:bg-orange-600 disabled:opacity-60 flex items-center justify-center gap-2">
               {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Guardando...</> : 'Guardar'}
             </button>
           </div>

@@ -16,9 +16,9 @@ export function DashboardStats({ stats }: DashboardStatsProps) {
       label:   'Total',
       value:   stats.total_vehicles,
       icon:    Truck,
-      color:   'text-blue-600',
-      bg:      'bg-blue-50',
-      border:  'border-blue-100',
+      color:   'text-orange-500',
+      bg:      'bg-orange-50',
+      border:  'border-orange-100',
     },
     {
       label:   'En movimiento',

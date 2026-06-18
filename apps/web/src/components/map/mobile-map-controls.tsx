@@ -42,7 +42,7 @@ export function MobileMapControls({
                 setShowStyles(false)
               }}
               className={`px-2.5 py-1.5 text-xs rounded-lg text-left ${
-                mapStyle === style.id ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'
+                mapStyle === style.id ? 'bg-orange-500 text-white' : 'text-gray-700 hover:bg-gray-100'
               }`}
             >
               {style.label}

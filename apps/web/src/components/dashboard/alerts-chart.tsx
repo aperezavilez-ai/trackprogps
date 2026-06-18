@@ -75,7 +75,7 @@ export function AlertsChart({ companyId }: AlertsChartProps) {
               onClick={() => setRange(r)}
               className={`px-2.5 py-1 text-xs rounded-lg font-medium transition ${
                 range === r
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-orange-500 text-white'
                   : 'text-gray-500 hover:bg-gray-100'
               }`}
             >
@@ -87,7 +87,7 @@ export function AlertsChart({ companyId }: AlertsChartProps) {
 
       {loading ? (
         <div className="h-48 flex items-center justify-center">
-          <div className="animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full" />
+          <div className="animate-spin w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full" />
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={180}>
@@ -130,7 +130,7 @@ export function AlertsChart({ companyId }: AlertsChartProps) {
             <Area type="monotone" dataKey="critical" stroke="#EF4444" fill="url(#colorCritical)" strokeWidth={2} />
             <Area type="monotone" dataKey="high"     stroke="#F97316" fill="url(#colorHigh)"     strokeWidth={2} />
             <Area type="monotone" dataKey="medium"   stroke="#EAB308" fill="none"               strokeWidth={1.5} strokeDasharray="4 2" />
-            <Area type="monotone" dataKey="low"      stroke="#3B82F6" fill="none"               strokeWidth={1} strokeDasharray="4 2" />
+            <Area type="monotone" dataKey="low"      stroke="#F97316" fill="none"               strokeWidth={1} strokeDasharray="4 2" />
           </AreaChart>
         </ResponsiveContainer>
       )}

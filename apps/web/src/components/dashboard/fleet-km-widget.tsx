@@ -43,7 +43,7 @@ export function FleetKmWidget() {
           <TrendingUp className="w-4 h-4 text-gray-500" />
           <h3 className="text-sm font-semibold text-gray-900">Km hoy</h3>
         </div>
-        <span className="text-lg font-bold text-blue-600">
+        <span className="text-lg font-bold text-orange-500">
           {total.toFixed(0)} km
         </span>
       </div>
@@ -74,7 +74,7 @@ export function FleetKmWidget() {
                   </div>
                   <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-blue-500 rounded-full transition-all"
+                      className="h-full bg-orange-500 rounded-full transition-all"
                       style={{ width: `${pct}%` }}
                     />
                   </div>

@@ -89,7 +89,7 @@ export function MaintenanceWidget() {
 
       {items.length > 5 && (
         <Link href="/maintenance"
-          className="flex items-center justify-center gap-1 mt-3 text-xs text-blue-600 hover:text-blue-700 font-medium">
+          className="flex items-center justify-center gap-1 mt-3 text-xs text-orange-500 hover:text-orange-600 font-medium">
           Ver todos ({items.length}) <ArrowRight className="w-3 h-3" />
         </Link>
       )}

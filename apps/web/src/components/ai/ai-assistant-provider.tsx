@@ -26,7 +26,7 @@ export function AIAssistantProvider({ children }: { children: React.ReactNode })
       {children}
       <button
         onClick={() => setOpen(true)}
-        className="fixed z-[60] w-14 h-14 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full shadow-xl hover:shadow-2xl hover:scale-105 transition-all flex items-center justify-center bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-4 lg:bottom-6 lg:right-6"
+        className="fixed z-[60] w-14 h-14 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-full shadow-xl hover:shadow-2xl hover:scale-105 transition-all flex items-center justify-center bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-4 lg:bottom-6 lg:right-6"
         title="Asistente IA"
       >
         <Bot className="w-6 h-6" />

@@ -50,7 +50,7 @@ export function MapFilters({ activeAlerts, productivity }: MapFiltersProps) {
         <select
           value={groupFilter}
           onChange={e => setGroupFilter(e.target.value)}
-          className="pointer-events-auto bg-white border border-gray-200 rounded-xl shadow-md px-3 py-2 text-xs font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-auto"
+          className="pointer-events-auto bg-white border border-gray-200 rounded-xl shadow-md px-3 py-2 text-xs font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500 w-full sm:w-auto"
         >
           <option value="all">Todos los grupos</option>
           {vehicleGroups.map(g => (
@@ -66,7 +66,7 @@ export function MapFilters({ activeAlerts, productivity }: MapFiltersProps) {
               key={f.key}
               onClick={() => setFilter(f.key)}
               className={`flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap ${
-                filter === f.key ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                filter === f.key ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
               <f.icon className="w-3.5 h-3.5 flex-shrink-0" />

@@ -235,7 +235,7 @@ export function InstallationWizard({ mode, driverId, driverName }: Props) {
           lat: parseFloat(geoConfig.newLat),
           lng: parseFloat(geoConfig.newLng),
           radius_m: geoConfig.newRadius,
-          color: '#3B82F6',
+          color: '#F97316',
           alert_on_enter: true,
           alert_on_exit: true,
         }
@@ -289,7 +289,7 @@ export function InstallationWizard({ mode, driverId, driverName }: Props) {
           return (
             <div key={s.id} className="flex items-center gap-1 flex-shrink-0">
               <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition ${
-                active ? 'bg-blue-600 text-white' : done ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'
+                active ? 'bg-orange-500 text-white' : done ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'
               }`}>
                 {done ? <Check className="w-3.5 h-3.5" /> : <Icon className="w-3.5 h-3.5" />}
                 {s.label}
@@ -318,7 +318,7 @@ export function InstallationWizard({ mode, driverId, driverName }: Props) {
                   value={(driver as Record<string, string>)[field] ?? ''}
                   onChange={e => setDriverField(field, e.target.value)}
                   placeholder={placeholder}
-                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
               </div>
             ))}
@@ -328,7 +328,7 @@ export function InstallationWizard({ mode, driverId, driverName }: Props) {
                 value={driver.notes}
                 onChange={e => setDriverField('notes', e.target.value)}
                 rows={2}
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
               />
             </div>
           </div>
@@ -341,24 +341,24 @@ export function InstallationWizard({ mode, driverId, driverName }: Props) {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">{economicLabel}</label>
                 <input required value={vehicle.economic_num} onChange={e => setVehicleField('economic_num', e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Placas *</label>
                 <input required value={vehicle.plates} onChange={e => setVehicleField('plates', e.target.value.toUpperCase())}
-                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Titular</label>
                 <input value={vehicle.owner_name} onChange={e => setVehicleField('owner_name', e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Grupo / Flotilla</label>
                 <select value={vehicle.group_id} onChange={e => setVehicleField('group_id', e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
                   {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                 </select>
               </div>
@@ -367,31 +367,31 @@ export function InstallationWizard({ mode, driverId, driverName }: Props) {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Marca *</label>
                 <input required value={vehicle.brand} onChange={e => setVehicleField('brand', e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Modelo *</label>
                 <input required value={vehicle.model} onChange={e => setVehicleField('model', e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Año *</label>
                 <input type="number" required value={vehicle.year} onChange={e => setVehicleField('year', e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Tipo</label>
                 <select value={vehicle.type} onChange={e => setVehicleField('type', e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
                   {VEHICLE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Vel. máxima (alertas)</label>
                 <input type="number" value={vehicle.max_speed} onChange={e => setVehicleField('max_speed', e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
               </div>
             </div>
           </div>
@@ -404,12 +404,12 @@ export function InstallationWizard({ mode, driverId, driverName }: Props) {
               <label className="block text-sm font-medium text-gray-700 mb-1.5">IMEI (15 dígitos) *</label>
               <input required value={device.imei} onChange={e => setDeviceField('imei', e.target.value.replace(/\D/g, '').slice(0, 15))}
                 placeholder="123456789012345"
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Modelo *</label>
               <select value={device.model} onChange={e => setDeviceField('model', e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
                 {DEVICE_MODEL_GROUPS.map(g => (
                   <optgroup key={g.label} label={g.label}>
                     {g.models.map(m => <option key={m} value={m}>{m}</option>)}
@@ -419,19 +419,19 @@ export function InstallationWizard({ mode, driverId, driverName }: Props) {
               {isCustomModel && (
                 <input value={device.model_custom} onChange={e => setDeviceField('model_custom', e.target.value)}
                   placeholder="Modelo exacto" required
-                  className="mt-2 w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="mt-2 w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
               )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">ICCID SIM</label>
                 <input value={device.sim_iccid} onChange={e => setDeviceField('sim_iccid', e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Teléfono SIM</label>
                 <input value={device.phone_num} onChange={e => setDeviceField('phone_num', e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
               </div>
             </div>
           </div>
@@ -477,17 +477,17 @@ export function InstallationWizard({ mode, driverId, driverName }: Props) {
                     <div className="col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">Nombre</label>
                       <input value={geoConfig.newName} onChange={e => setGeoConfig(p => ({ ...p, newName: e.target.value }))}
-                        className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">Latitud</label>
                       <input value={geoConfig.newLat} onChange={e => setGeoConfig(p => ({ ...p, newLat: e.target.value }))}
-                        className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">Longitud</label>
                       <input value={geoConfig.newLng} onChange={e => setGeoConfig(p => ({ ...p, newLng: e.target.value }))}
-                        className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
                     </div>
                     <div className="col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -554,7 +554,7 @@ export function InstallationWizard({ mode, driverId, driverName }: Props) {
           <div className="flex-1" />
           {step < 5 ? (
             <button type="button" onClick={nextStep}
-              className="flex items-center gap-2 px-5 py-3 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700">
+              className="flex items-center gap-2 px-5 py-3 bg-orange-500 text-white rounded-xl text-sm font-medium hover:bg-orange-600">
               Siguiente <ArrowRight className="w-4 h-4" />
             </button>
           ) : (

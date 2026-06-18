@@ -102,7 +102,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <div className="lg:col-span-1 bg-white border border-gray-200 rounded-2xl p-6">
           <div className="flex items-center gap-2 mb-5">
-            <User className="w-5 h-5 text-blue-600" />
+            <User className="w-5 h-5 text-orange-500" />
             <h2 className="text-base font-semibold text-gray-900">Datos del cliente</h2>
           </div>
           <dl className="space-y-4 text-sm">

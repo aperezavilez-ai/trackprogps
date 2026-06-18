@@ -83,14 +83,14 @@ export function AIChat({ onClose }: AIChatProps) {
   return (
     <div className="flex flex-col h-full bg-white rounded-xl border border-gray-200 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-blue-600 to-blue-700">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-orange-500 to-orange-600">
         <div className="flex items-center gap-2">
           <Bot className="w-5 h-5 text-white" />
           <span className="text-sm font-semibold text-white">Asistente de Flota</span>
-          <span className="text-xs text-blue-200">• IA</span>
+          <span className="text-xs text-orange-200">• IA</span>
         </div>
         {onClose && (
-          <button onClick={onClose} className="text-blue-200 hover:text-white">
+          <button onClick={onClose} className="text-orange-200 hover:text-white">
             <X className="w-4 h-4" />
           </button>
         )}
@@ -104,20 +104,20 @@ export function AIChat({ onClose }: AIChatProps) {
             className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             {msg.role === 'assistant' && (
-              <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Bot className="w-4 h-4 text-blue-600" />
+              <div className="w-7 h-7 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Bot className="w-4 h-4 text-orange-500" />
               </div>
             )}
 
             <div
               className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
                 msg.role === 'user'
-                  ? 'bg-blue-600 text-white rounded-tr-sm'
+                  ? 'bg-orange-500 text-white rounded-tr-sm'
                   : 'bg-gray-100 text-gray-900 rounded-tl-sm'
               }`}
             >
               <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
-              <p className={`text-xs mt-1 ${msg.role === 'user' ? 'text-blue-200' : 'text-gray-400'}`}>
+              <p className={`text-xs mt-1 ${msg.role === 'user' ? 'text-orange-200' : 'text-gray-400'}`}>
                 {msg.timestamp.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
               </p>
             </div>
@@ -132,8 +132,8 @@ export function AIChat({ onClose }: AIChatProps) {
 
         {isLoading && (
           <div className="flex gap-2 justify-start">
-            <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center">
-              <Bot className="w-4 h-4 text-blue-600" />
+            <div className="w-7 h-7 rounded-full bg-orange-100 flex items-center justify-center">
+              <Bot className="w-4 h-4 text-orange-500" />
             </div>
             <div className="bg-gray-100 rounded-2xl rounded-tl-sm px-4 py-3">
               <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
@@ -153,7 +153,7 @@ export function AIChat({ onClose }: AIChatProps) {
               <button
                 key={q}
                 onClick={() => void sendMessage(q)}
-                className="text-xs bg-blue-50 text-blue-600 border border-blue-100 rounded-full px-3 py-1 hover:bg-blue-100"
+                className="text-xs bg-orange-50 text-orange-500 border border-orange-100 rounded-full px-3 py-1 hover:bg-orange-100"
               >
                 {q}
               </button>
@@ -176,12 +176,12 @@ export function AIChat({ onClose }: AIChatProps) {
             }}
             placeholder="Pregunta sobre tu flota..."
             rows={1}
-            className="flex-1 resize-none border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="flex-1 resize-none border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
           />
           <button
             onClick={() => void sendMessage(input)}
             disabled={!input.trim() || isLoading}
-            className="p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send className="w-4 h-4" />
           </button>

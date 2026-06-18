@@ -68,7 +68,7 @@ export default async function HistoryPage({
           <select
             name="vehicle_id"
             defaultValue={searchParams.vehicle_id ?? ''}
-            className="border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 min-w-0 sm:min-w-52"
+            className="border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 flex-1 min-w-0 sm:min-w-52"
           >
             <option value="">Seleccionar vehículo</option>
             {(vehicles ?? []).map(v => (
@@ -79,7 +79,7 @@ export default async function HistoryPage({
           </select>
           <button
             type="submit"
-            className="bg-blue-600 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700 whitespace-nowrap"
+            className="bg-orange-500 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-sm font-medium hover:bg-orange-600 whitespace-nowrap"
           >
             Buscar
           </button>

@@ -146,7 +146,7 @@ export function AlertRulesPanel() {
                 type="button"
                 onClick={seedDefaults}
                 disabled={saving}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm border border-blue-200 text-blue-700 hover:bg-blue-50"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm border border-orange-200 text-orange-600 hover:bg-orange-50"
               >
                 <Zap className="w-4 h-4" /> Reglas recomendadas
               </button>
@@ -154,7 +154,7 @@ export function AlertRulesPanel() {
             <button
               type="button"
               onClick={() => setShowForm(v => !v)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm bg-blue-600 text-white hover:bg-blue-700"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm bg-orange-500 text-white hover:bg-orange-600"
             >
               <Plus className="w-4 h-4" /> Nueva regla
             </button>
@@ -216,7 +216,7 @@ export function AlertRulesPanel() {
             </div>
             <div className="flex gap-2 justify-end">
               <button type="button" onClick={() => setShowForm(false)} className="px-3 py-1.5 text-sm text-gray-600">Cancelar</button>
-              <button type="submit" disabled={saving || form.channels.length === 0} className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-lg disabled:opacity-50">
+              <button type="submit" disabled={saving || form.channels.length === 0} className="px-4 py-1.5 text-sm bg-orange-500 text-white rounded-lg disabled:opacity-50">
                 {saving ? 'Guardando…' : 'Crear regla'}
               </button>
             </div>

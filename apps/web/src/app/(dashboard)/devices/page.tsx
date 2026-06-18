@@ -66,7 +66,7 @@ export default function DevicesPage() {
           </button>
           {canWriteFleet && (
           <button onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium">
+            className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium">
             <Plus className="w-4 h-4" /> Registrar dispositivo
           </button>
           )}
@@ -77,7 +77,7 @@ export default function DevicesPage() {
       <div className="mb-4">
         <input value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Buscar por IMEI, modelo o placas..."
-          className="w-full max-w-sm border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          className="w-full max-w-sm border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
       </div>
 
       {loading ? (
@@ -109,9 +109,9 @@ export default function DevicesPage() {
                   <tr key={d.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <Link href={`/devices/${d.id}`} className="flex items-center gap-2 group">
-                        <Radio className="w-4 h-4 text-gray-400 group-hover:text-blue-600" />
+                        <Radio className="w-4 h-4 text-gray-400 group-hover:text-orange-500" />
                         <div>
-                          <div className="font-semibold text-gray-900 group-hover:text-blue-600">{d.model}</div>
+                          <div className="font-semibold text-gray-900 group-hover:text-orange-500">{d.model}</div>
                           {d.firmware_ver && <div className="text-xs text-gray-400">FW: {d.firmware_ver}</div>}
                         </div>
                       </Link>
@@ -120,7 +120,7 @@ export default function DevicesPage() {
                     <td className="px-4 py-3 text-xs text-gray-500">{d.phone_num ?? d.sim_iccid?.slice(-8) ?? '—'}</td>
                     <td className="px-4 py-3">
                       {d.vehicle
-                        ? <span className="text-sm font-medium text-blue-600">{d.vehicle.economic_num} ({d.vehicle.plates})</span>
+                        ? <span className="text-sm font-medium text-orange-500">{d.vehicle.economic_num} ({d.vehicle.plates})</span>
                         : <span className="text-xs text-gray-400">Sin asignar</span>}
                     </td>
                     <td className="px-4 py-3">
@@ -187,13 +187,13 @@ function DeviceModal({ onClose, onSave }: { onClose: () => void; onSave: () => v
               <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
               <input value={(form as Record<string, string>)[field]} onChange={e => set(field, e.target.value)}
                 placeholder={placeholder} required={required} maxLength={maxLength}
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
+                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 font-mono" />
             </div>
           ))}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Modelo *</label>
             <select value={form.model} onChange={e => set('model', e.target.value)} required
-              className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
               {DEVICE_MODEL_GROUPS.map(group => (
                 <optgroup key={group.label} label={group.label}>
                   {group.models.map(m => (
@@ -208,7 +208,7 @@ function DeviceModal({ onClose, onSave }: { onClose: () => void; onSave: () => v
                 onChange={e => set('model_custom', e.target.value)}
                 placeholder="Escribe el modelo exacto"
                 required
-                className="mt-2 w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="mt-2 w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
             )}
             <p className="mt-1.5 text-xs text-gray-400">
@@ -219,7 +219,7 @@ function DeviceModal({ onClose, onSave }: { onClose: () => void; onSave: () => v
           <div className="flex gap-3">
             <button type="button" onClick={onClose} className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-xl text-sm font-medium hover:bg-gray-50">Cancelar</button>
             <button type="submit" disabled={loading}
-              className="flex-1 bg-blue-600 text-white py-3 rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-60 flex items-center justify-center gap-2">
+              className="flex-1 bg-orange-500 text-white py-3 rounded-xl text-sm font-medium hover:bg-orange-600 disabled:opacity-60 flex items-center justify-center gap-2">
               {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Registrando...</> : 'Registrar'}
             </button>
           </div>

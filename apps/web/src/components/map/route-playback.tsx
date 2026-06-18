@@ -199,7 +199,7 @@ export function RoutePlayback({
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
           </div>
           <button onClick={fetchHistory} disabled={isLoading || !dateFrom || !dateTo}
-            className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+            className="w-full sm:w-auto bg-orange-500 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-orange-600 disabled:opacity-50">
             {isLoading ? 'Cargando...' : 'Buscar ruta'}
           </button>
         </div>
@@ -233,7 +233,7 @@ export function RoutePlayback({
                 <RotateCcw className="w-4 h-4" />
               </button>
               <button onClick={isPlaying ? pause : play}
-                className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700" aria-label={isPlaying ? 'Pausar' : 'Reproducir'}>
+                className="p-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600" aria-label={isPlaying ? 'Pausar' : 'Reproducir'}>
                 {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
               </button>
             </div>
@@ -252,7 +252,7 @@ export function RoutePlayback({
           <div className="relative pt-2 pb-1">
             <div className="h-1.5 rounded-full bg-gray-200 overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-[width] duration-75"
+                className="h-full bg-gradient-to-r from-orange-500 to-orange-500 transition-[width] duration-75"
                 style={{ width: `${scrubPercent}%` }}
               />
             </div>
@@ -260,7 +260,7 @@ export function RoutePlayback({
               className="absolute top-0 -translate-x-1/2 pointer-events-none transition-[left] duration-75"
               style={{ left: `${scrubPercent}%` }}
             >
-              <div className="w-7 h-7 rounded-full bg-blue-600 border-2 border-white shadow-lg flex items-center justify-center text-white">
+              <div className="w-7 h-7 rounded-full bg-orange-500 border-2 border-white shadow-lg flex items-center justify-center text-white">
                 <Car className="w-3.5 h-3.5" />
               </div>
             </div>
@@ -350,7 +350,7 @@ export function RoutePlayback({
             {currentPoint && (
               <AdvancedMarker position={{ lat: currentPoint.lat, lng: currentPoint.lng }}>
                 <div
-                  className="flex items-center justify-center w-9 h-9 rounded-full border-2 border-white shadow-xl bg-blue-600 text-white"
+                  className="flex items-center justify-center w-9 h-9 rounded-full border-2 border-white shadow-xl bg-orange-500 text-white"
                   style={{ transform: `rotate(${currentPoint.heading}deg)` }}
                 >
                   <Car className="w-4 h-4" />

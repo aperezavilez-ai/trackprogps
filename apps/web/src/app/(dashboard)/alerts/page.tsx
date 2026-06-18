@@ -10,7 +10,7 @@ const SEVERITY_CONFIG = {
   critical: { color: 'bg-red-50 border-red-300 text-red-800',   dot: 'bg-red-500',    label: 'Crítica' },
   high:     { color: 'bg-orange-50 border-orange-200 text-orange-800', dot: 'bg-orange-500', label: 'Alta' },
   medium:   { color: 'bg-yellow-50 border-yellow-200 text-yellow-800', dot: 'bg-yellow-500', label: 'Media' },
-  low:      { color: 'bg-blue-50 border-blue-200 text-blue-800', dot: 'bg-blue-400',   label: 'Baja' },
+  low:      { color: 'bg-orange-50 border-orange-200 text-orange-800', dot: 'bg-orange-400',   label: 'Baja' },
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -99,12 +99,12 @@ export default function AlertsPage() {
           Solo sin reconocer
         </label>
         <select value={filter.severity} onChange={e => setFilter(f => ({ ...f, severity: e.target.value }))}
-          className="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          className="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
           <option value="">Toda severidad</option>
           {Object.entries(SEVERITY_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
         </select>
         <select value={filter.type} onChange={e => setFilter(f => ({ ...f, type: e.target.value }))}
-          className="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          className="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
           <option value="">Todos los tipos</option>
           {Object.entries(TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
@@ -136,7 +136,7 @@ export default function AlertsPage() {
               const isSelected = selected.has(alert.id)
               const isAck = !!alert.acknowledged_at
               return (
-                <div key={alert.id} className={`flex items-start gap-4 px-4 py-4 transition ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'} ${isAck ? 'opacity-60' : ''}`}>
+                <div key={alert.id} className={`flex items-start gap-4 px-4 py-4 transition ${isSelected ? 'bg-orange-50' : 'hover:bg-gray-50'} ${isAck ? 'opacity-60' : ''}`}>
                   {canAcknowledgeAlerts && (
                   <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(alert.id)}
                     className="rounded mt-1" />
@@ -154,7 +154,7 @@ export default function AlertsPage() {
                       {alert.speed && <span className="flex items-center gap-1"><Gauge className="w-3 h-3" />{alert.speed} km/h</span>}
                       {alert.lat && (
                         <a href={`https://maps.google.com/?q=${alert.lat},${alert.lng}`} target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-blue-500 hover:underline">
+                          className="flex items-center gap-1 text-orange-500 hover:underline">
                           <MapPin className="w-3 h-3" /> Ver ubicación
                         </a>
                       )}

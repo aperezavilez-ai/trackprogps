@@ -48,7 +48,7 @@ export function MobileMenuPage({ role }: Props) {
                     className={cn(
                       'flex items-center gap-3 p-3 rounded-xl border text-sm font-medium transition',
                       active
-                        ? 'bg-blue-50 border-blue-200 text-blue-700'
+                        ? 'bg-orange-50 border-orange-200 text-orange-600'
                         : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300',
                     )}
                   >
@@ -65,7 +65,7 @@ export function MobileMenuPage({ role }: Props) {
       <button
         type="button"
         onClick={() => window.dispatchEvent(new CustomEvent('open-ai-assistant'))}
-        className="w-full flex items-center justify-center gap-2 p-4 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium shadow-md"
+        className="w-full flex items-center justify-center gap-2 p-4 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-medium shadow-md"
       >
         <Bot className="w-5 h-5" />
         Asistente IA

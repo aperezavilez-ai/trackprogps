@@ -62,13 +62,13 @@ export function ClientDetailClient({ driverId, driverName, units, geofences, veh
     <>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-          <Truck className="w-5 h-5 text-blue-600" />
+          <Truck className="w-5 h-5 text-orange-500" />
           Unidades ({units.length})
         </h2>
         {canWriteFleet && (
           <Link
             href={`/drivers/${driverId}/add-unit`}
-            className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700"
+            className="flex items-center gap-2 text-sm font-medium text-orange-500 hover:text-orange-600"
           >
             <Plus className="w-4 h-4" /> Agregar unidad
           </Link>
@@ -82,7 +82,7 @@ export function ClientDetailClient({ driverId, driverName, units, geofences, veh
           {canWriteFleet && (
             <Link
               href={`/drivers/${driverId}/add-unit`}
-              className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700"
+              className="inline-flex items-center gap-2 bg-orange-500 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-orange-600"
             >
               <Plus className="w-4 h-4" /> Instalar primera unidad
             </Link>
@@ -100,7 +100,7 @@ export function ClientDetailClient({ driverId, driverName, units, geofences, veh
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-gray-900">{unit.economic_num}</span>
                       <span className="text-gray-400">·</span>
-                      <span className="font-medium text-blue-600">{unit.plates}</span>
+                      <span className="font-medium text-orange-500">{unit.plates}</span>
                       <span className="text-sm text-gray-500">{unit.brand} {unit.model} {unit.year}</span>
                     </div>
 
@@ -134,7 +134,7 @@ export function ClientDetailClient({ driverId, driverName, units, geofences, veh
                         href={`https://www.google.com/maps?q=${unit.position.lat},${unit.position.lng}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-blue-600 px-3 py-2 border border-gray-200 rounded-lg hover:border-blue-200"
+                        className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-orange-500 px-3 py-2 border border-gray-200 rounded-lg hover:border-orange-200"
                       >
                         <MapPin className="w-3.5 h-3.5" /> Mapa
                       </a>
@@ -142,14 +142,14 @@ export function ClientDetailClient({ driverId, driverName, units, geofences, veh
                     {dev && (
                       <Link
                         href={`/devices/${dev.id}`}
-                        className="flex items-center gap-1.5 text-xs text-white bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-lg font-medium"
+                        className="flex items-center gap-1.5 text-xs text-white bg-orange-500 hover:bg-orange-600 px-3 py-2 rounded-lg font-medium"
                       >
                         <ExternalLink className="w-3.5 h-3.5" /> Control GPS
                       </Link>
                     )}
                     <Link
                       href={`/vehicles?search=${encodeURIComponent(unit.plates)}`}
-                      className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-blue-600 px-3 py-2 border border-gray-200 rounded-lg"
+                      className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-orange-500 px-3 py-2 border border-gray-200 rounded-lg"
                     >
                       <Pencil className="w-3.5 h-3.5" /> Vehículo
                     </Link>
@@ -168,7 +168,7 @@ export function ClientDetailClient({ driverId, driverName, units, geofences, veh
             Geocercas aplicadas
           </h2>
           {canWriteFleet && (
-            <Link href="/geofences" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+            <Link href="/geofences" className="text-sm text-orange-500 hover:text-orange-600 font-medium">
               Gestionar geocercas →
             </Link>
           )}

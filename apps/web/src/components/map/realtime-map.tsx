@@ -322,7 +322,7 @@ function GoogleMapContent({
           <div className="w-full sm:w-[320px] rounded-2xl border border-white/25 bg-slate-900/90 backdrop-blur-xl shadow-2xl text-white overflow-hidden">
             <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-2 border-b border-white/10">
               <div className="min-w-0">
-                <p className="text-xs text-blue-300 uppercase tracking-wide">Unidad seleccionada</p>
+                <p className="text-xs text-orange-300 uppercase tracking-wide">Unidad seleccionada</p>
                 <p className="font-semibold truncate">{selectedVehicle.economicNum ?? selectedVehicle.vehicleId}</p>
                 <p className="text-xs text-white/70 truncate">{selectedVehicle.plates ?? 'Sin placas'}</p>
               </div>
@@ -347,14 +347,14 @@ function GoogleMapContent({
             <div className="px-4 pb-3 flex items-center justify-between gap-2">
               <Link
                 href={`/history?vehicle_id=${selectedVehicle.vehicleId}&lat=${selectedVehicle.lat}&lng=${selectedVehicle.lng}`}
-                className="text-xs text-blue-300 hover:text-blue-200"
+                className="text-xs text-orange-300 hover:text-orange-200"
               >
                 Ver historial
               </Link>
               <button
                 type="button"
                 onClick={() => setShowDetailPanel(true)}
-                className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium"
+                className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-500 text-white font-medium"
               >
                 <ChevronUp className="w-3.5 h-3.5" />
                 Ver detalle

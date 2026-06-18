@@ -25,7 +25,7 @@ export default function DashboardError({
         {error.digest && <p className="text-xs text-gray-400 mb-5 font-mono">{error.digest}</p>}
         <button
           onClick={reset}
-          className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium"
+          className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl text-sm font-medium"
         >
           <RefreshCw className="w-4 h-4" />
           Reintentar

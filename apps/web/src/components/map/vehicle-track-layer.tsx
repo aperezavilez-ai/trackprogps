@@ -47,7 +47,7 @@ export function VehicleTrackLayer({ vehicleId }: Props) {
       <Polyline
         positions={positions}
         pathOptions={{
-          color: '#3B82F6',
+          color: '#F97316',
           weight: 4,
           opacity: 0.85,
           lineCap: 'round',

@@ -140,14 +140,14 @@ export function VehicleFormModal({ vehicle, onClose, onSave }: Props) {
               <label className="block text-sm font-medium text-gray-700 mb-1.5">{economicLabel}</label>
               <input required value={form.economic_num} onChange={e => set('economic_num', e.target.value)}
                 placeholder={economicPlaceholder}
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
               <p className="mt-1 text-xs text-gray-500">{economicHelp}</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Placas *</label>
               <input required value={form.plates} onChange={e => set('plates', e.target.value.toUpperCase())}
                 placeholder="ABC-123"
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
             </div>
           </div>
 
@@ -156,12 +156,12 @@ export function VehicleFormModal({ vehicle, onClose, onSave }: Props) {
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Titular</label>
               <input value={form.owner_name} onChange={e => set('owner_name', e.target.value)}
                 placeholder="Nombre titular"
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Grupo / Flotilla</label>
               <select value={form.group_id} onChange={e => set('group_id', e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
                 <option value="" disabled>Particular, Grupo o Flotilla</option>
                 {groups.map(g => (
                   <option key={g.id} value={g.id}>{g.name}</option>
@@ -175,19 +175,19 @@ export function VehicleFormModal({ vehicle, onClose, onSave }: Props) {
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Marca *</label>
               <input required value={form.brand} onChange={e => set('brand', e.target.value)}
                 placeholder="Toyota"
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Modelo *</label>
               <input required value={form.model} onChange={e => set('model', e.target.value)}
                 placeholder="Hilux"
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Año *</label>
               <input required type="number" value={form.year} onChange={e => set('year', e.target.value)}
                 min={1990} max={2030}
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
             </div>
           </div>
 
@@ -195,7 +195,7 @@ export function VehicleFormModal({ vehicle, onClose, onSave }: Props) {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Tipo de vehículo</label>
               <select value={form.type} onChange={e => set('type', e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
                 {VEHICLE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
@@ -203,7 +203,7 @@ export function VehicleFormModal({ vehicle, onClose, onSave }: Props) {
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Color</label>
               <input value={form.color} onChange={e => set('color', e.target.value)}
                 placeholder="Blanco"
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
             </div>
           </div>
 
@@ -225,7 +225,7 @@ export function VehicleFormModal({ vehicle, onClose, onSave }: Props) {
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Notas</label>
             <textarea value={form.notes} onChange={e => set('notes', e.target.value)}
               rows={3} placeholder="Observaciones adicionales..."
-              className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+              className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none" />
           </div>
 
           {error && (
@@ -238,7 +238,7 @@ export function VehicleFormModal({ vehicle, onClose, onSave }: Props) {
               Cancelar
             </button>
             <button type="submit" disabled={loading}
-              className="flex-1 bg-blue-600 text-white py-3 rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-60 flex items-center justify-center gap-2">
+              className="flex-1 bg-orange-500 text-white py-3 rounded-xl text-sm font-medium hover:bg-orange-600 disabled:opacity-60 flex items-center justify-center gap-2">
               {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Guardando...</> : isEdit ? 'Guardar cambios' : 'Crear vehículo'}
             </button>
           </div>

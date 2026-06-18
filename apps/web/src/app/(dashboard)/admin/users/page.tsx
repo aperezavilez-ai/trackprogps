@@ -35,7 +35,7 @@ export default async function AdminUsersPage() {
         <div className="flex flex-wrap gap-2 shrink-0">
           <a
             href="#alta-usuario"
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-orange-500 text-white text-sm font-medium rounded-xl hover:bg-orange-600 transition"
           >
             <UserPlus className="w-4 h-4" />
             Dar de alta usuario
