@@ -1,6 +1,6 @@
 import Link from 'next/link'
-import { MapPin } from 'lucide-react'
 import { LEGAL } from '@/lib/legal/site-legal'
+import { TrackProLogo } from '@/components/brand/trackpro-logo'
 
 export const metadata = {
   title: 'Términos y condiciones — TrackPro GPS',
@@ -11,8 +11,9 @@ export default function TerminosPage() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-slate-950 text-white px-4 py-5">
         <div className="max-w-3xl mx-auto flex items-center gap-2">
-          <MapPin className="w-5 h-5 text-orange-400" />
-          <Link href="/" className="font-semibold tracking-tight">{LEGAL.brand}</Link>
+        <Link href="/">
+          <TrackProLogo size="sm" />
+        </Link>
         </div>
       </header>
       <main className="max-w-3xl mx-auto px-4 py-8">

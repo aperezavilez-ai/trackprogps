@@ -3,12 +3,13 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  MapPin, Bot, ChevronLeft, ChevronRight,
+  Bot, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils/cn'
 import { filterNavByRole } from '@/lib/auth/permissions'
 import { NAV_ITEMS, NAV_SECTIONS } from '@/lib/navigation/nav-items'
+import { TrackProLogo } from '@/components/brand/trackpro-logo'
 
 interface SidebarProps {
   profile: {
@@ -56,20 +57,14 @@ export function Sidebar({ profile }: SidebarProps) {
     )}>
       {/* Logo */}
       <div className={cn(
-        'flex items-center gap-3 px-4 h-16 border-b border-gray-800 flex-shrink-0',
+        'flex items-center px-4 h-16 border-b border-gray-800 flex-shrink-0',
         collapsed && 'justify-center px-0'
       )}>
-        <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
-          <MapPin className="w-4 h-4 text-white" />
-        </div>
-        {!collapsed && (
-          <div className="min-w-0">
-            <div className="text-sm font-bold truncate">TrackProGps</div>
-            <div className="text-xs text-gray-400 truncate">
-              {profile.role === 'super_admin' ? 'Plataforma' : (profile.company?.name ?? 'GPS')}
-            </div>
-          </div>
-        )}
+        <TrackProLogo
+          size="sm"
+          iconOnly={collapsed}
+          subtitle={collapsed ? undefined : (profile.role === 'super_admin' ? 'Plataforma' : (profile.company?.name ?? 'GPS'))}
+        />
       </div>
 
       {/* Navigation */}

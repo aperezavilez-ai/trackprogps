@@ -5,7 +5,8 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { AuthLegalFooter } from '@/components/layout/auth-legal-footer'
-import { Eye, EyeOff, Loader2, User, Lock, QrCode, MapPin } from 'lucide-react'
+import { TrackProLogo } from '@/components/brand/trackpro-logo'
+import { Eye, EyeOff, Loader2, User, Lock, QrCode } from 'lucide-react'
 
 const REMEMBER_KEY = 'trackpro_remember_email'
 const DOWNLOAD_URL = 'https://trackprogps.mx/descargar'
@@ -122,13 +123,8 @@ function LoginForm() {
       <div className="relative z-10 min-h-screen flex flex-col">
         {/* Header */}
         <header className="flex items-start justify-between px-5 md:px-10 pt-6 md:pt-8">
-          <Link href="/login" className="flex items-center gap-3 group">
-            <div className="w-11 h-11 md:w-12 md:h-12 rounded-xl bg-orange-500/20 border border-orange-400/40 flex items-center justify-center shadow-lg">
-              <MapPin className="w-6 h-6 md:w-7 md:h-7 text-orange-400" strokeWidth={2.25} />
-            </div>
-            <span className="text-2xl md:text-3xl font-bold tracking-tight text-white/95 group-hover:text-white transition">
-              TrackPro <span className="text-orange-400">GPS</span>
-            </span>
+          <Link href="/login" className="group">
+            <TrackProLogo size="lg" className="group-hover:opacity-95 transition" />
           </Link>
           <div className="flex flex-col items-end gap-2">
             <Link

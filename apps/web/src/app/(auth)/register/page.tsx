@@ -3,7 +3,8 @@
 import { useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { MapPin, Loader2, CheckCircle, User, Users, Building2 } from 'lucide-react'
+import { Loader2, CheckCircle, User, Users, Building2 } from 'lucide-react'
+import { TrackProLogo } from '@/components/brand/trackpro-logo'
 import { ACCOUNT_TYPES } from '@/lib/account-types'
 import { PublicPricingPlans } from '@/components/auth/public-pricing-plans'
 import { AuthLegalFooter } from '@/components/layout/auth-legal-footer'
@@ -129,12 +130,7 @@ function RegisterForm() {
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4 py-8">
       <div className={`w-full ${fromPwa ? 'max-w-4xl' : 'max-w-lg'}`}>
         <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-2 mb-2">
-            <div className="w-10 h-10 bg-orange-500/20 border border-orange-400/30 rounded-xl flex items-center justify-center">
-              <MapPin className="w-6 h-6 text-orange-400" />
-            </div>
-            <span className="text-2xl font-bold text-white tracking-tight">TrackPro GPS</span>
-          </div>
+          <TrackProLogo size="md" className="inline-flex mb-2" />
           {installed && (
             <p className="text-sm text-green-300/90">App instalada correctamente en tu dispositivo</p>
           )}

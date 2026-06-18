@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { MapPin, Download, CheckCircle2, Smartphone } from 'lucide-react'
+import { Download, CheckCircle2, Smartphone } from 'lucide-react'
+import { TrackProLogo } from '@/components/brand/trackpro-logo'
 import { messageForProgress } from '@/lib/pwa/install-steps'
 import { isStandalonePwa, registerServiceWorker } from '@/lib/pwa/register-sw'
 import { getInstallPlatform, isInAppBrowser, isSafariBrowser } from '@/lib/pwa/detect-platform'
@@ -148,12 +149,7 @@ export default function DescargarPageClient() {
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-md text-center space-y-6">
-        <div className="inline-flex items-center gap-2 mb-2">
-          <div className="w-12 h-12 rounded-xl bg-orange-500/20 border border-orange-400/40 flex items-center justify-center">
-            <MapPin className="w-6 h-6 text-orange-400" />
-          </div>
-          <span className="text-2xl font-semibold tracking-wide">TrackPro GPS</span>
-        </div>
+        <TrackProLogo size="md" className="inline-flex mb-2" />
 
         <p className="text-sm text-white/60">
           {isIos

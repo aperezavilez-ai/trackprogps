@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
-import { MapPin, Loader2, CheckCircle, ArrowLeft } from 'lucide-react'
+import { Loader2, CheckCircle, ArrowLeft } from 'lucide-react'
+import { TrackProLogo } from '@/components/brand/trackpro-logo'
 
 export default function ForgotPasswordPage() {
   const supabase = createSupabaseBrowserClient()
@@ -30,16 +31,10 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-950 via-blue-900 to-blue-800 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
-              <MapPin className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-2xl font-bold text-white">TrackPro</span>
-          </div>
+          <TrackProLogo size="md" className="inline-flex mb-4" />
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl p-8">

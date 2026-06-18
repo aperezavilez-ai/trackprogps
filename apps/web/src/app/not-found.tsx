@@ -1,13 +1,12 @@
 import Link from 'next/link'
-import { MapPin, Home } from 'lucide-react'
+import { Home } from 'lucide-react'
+import { TrackProLogo } from '@/components/brand/trackpro-logo'
 
 export default function NotFound() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="text-center">
-        <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-          <MapPin className="w-10 h-10 text-blue-600" />
-        </div>
+        <TrackProLogo size="md" theme="light" className="inline-flex mx-auto mb-6" />
         <h1 className="text-6xl font-bold text-gray-200 mb-2">404</h1>
         <h2 className="text-xl font-semibold text-gray-900 mb-2">Página no encontrada</h2>
         <p className="text-gray-500 text-sm mb-8 max-w-xs mx-auto">
