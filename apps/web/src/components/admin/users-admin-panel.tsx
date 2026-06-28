@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { UserPlus, Loader2, Shield, Trash2, Building2 } from 'lucide-react'
+import { UserPlus, Loader2, Shield, Trash2, Mail, KeyRound } from 'lucide-react'
+import { isInternalTeamRole } from '@/lib/auth/platform-team'
 
 export interface AdminUser {
   id: string
@@ -17,16 +18,20 @@ export interface AdminUser {
 
 interface VehicleGroup { id: string; name: string; color: string }
 
-interface CompanyOption { id: string; name: string }
-
 const ROLE_OPTIONS = [
-  { value: 'super_admin',      label: 'Dueño plataforma',  desc: 'Gestiona todas las empresas clientes (solo TrackPro)' },
-  { value: 'admin_empresa',    label: 'Administrador',     desc: 'Gestiona su empresa completa' },
-  { value: 'supervisor',       label: 'Supervisor',        desc: 'Operaciones y reportes' },
-  { value: 'operador',         label: 'Operador',          desc: 'Monitoreo y alertas' },
-  { value: 'cliente_consulta', label: 'Solo consulta',     desc: 'Solo lectura' },
-  { value: 'miembro_familiar', label: 'Miembro familiar',  desc: 'Solo vehículos de sus grupos' },
+  { value: 'super_admin',      label: 'Dueño plataforma',     desc: 'Acceso total — gestiona empresas, facturación e ingresos' },
+  { value: 'admin_empresa',    label: 'Administrador interno', desc: 'Equipo TrackPro — operación y soporte' },
+  { value: 'supervisor',       label: 'Supervisor interno',   desc: 'Equipo TrackPro — monitoreo y reportes' },
+  { value: 'operador',         label: 'Operador interno',     desc: 'Equipo TrackPro — monitoreo y alertas' },
+  { value: 'cliente_consulta', label: 'Solo consulta',        desc: 'Solo lectura (empresa cliente)' },
+  { value: 'miembro_familiar', label: 'Miembro familiar',     desc: 'Solo vehículos de sus grupos' },
 ]
+
+const PLATFORM_INVITE_ROLES = ROLE_OPTIONS.filter(r =>
+  ['super_admin', 'admin_empresa', 'supervisor', 'operador'].includes(r.value),
+)
+
+const COMPANY_INVITE_ROLES = ROLE_OPTIONS.filter(r => r.value !== 'super_admin')
 
 const ROLE_LABELS: Record<string, string> = Object.fromEntries(
   ROLE_OPTIONS.map(r => [r.value, r.label])
@@ -44,41 +49,39 @@ interface Props {
   currentUserId: string
   isSuperAdmin: boolean
   defaultCompanyId?: string
-  showCompanyFilter?: boolean
+  /** platform = equipo interno TrackPro; company = staff de una empresa cliente */
+  variant?: 'platform' | 'company'
 }
 
-export function UsersAdminPanel({ currentUserId, isSuperAdmin, defaultCompanyId, showCompanyFilter }: Props) {
+export function UsersAdminPanel({
+  currentUserId,
+  isSuperAdmin,
+  defaultCompanyId,
+  variant = isSuperAdmin ? 'platform' : 'company',
+}: Props) {
+  const isPlatformTeam = variant === 'platform'
   const [users, setUsers]           = useState<AdminUser[]>([])
-  const [companies, setCompanies]   = useState<CompanyOption[]>([])
-  const [companyId, setCompanyId]   = useState(defaultCompanyId ?? '')
   const [loading, setLoading]       = useState(true)
   const [inviteEmail, setInviteEmail] = useState('')
-  const [inviteRole, setInviteRole]   = useState(isSuperAdmin ? 'admin_empresa' : 'operador')
-  const [inviteCompany, setInviteCompany] = useState('')
+  const [inviteRole, setInviteRole]   = useState(isPlatformTeam ? 'admin_empresa' : 'operador')
   const [inviteGroups, setInviteGroups] = useState<string[]>([])
   const [vehicleGroups, setVehicleGroups] = useState<VehicleGroup[]>([])
   const [accountType, setAccountType] = useState('business')
   const [inviting, setInviting]     = useState(false)
   const [error, setError]           = useState('')
+  const [success, setSuccess]       = useState('')
   const [savingId, setSavingId]     = useState<string | null>(null)
+  const [resendingId, setResendingId] = useState<string | null>(null)
 
   const loadUsers = useCallback(async () => {
     setLoading(true)
     const params = new URLSearchParams()
-    if (companyId) params.set('company_id', companyId)
+    if (isPlatformTeam) params.set('scope', 'internal')
     const res = await fetch(`/api/users?${params}`)
     const data = await res.json()
     setUsers(data.data ?? [])
     setLoading(false)
-  }, [companyId])
-
-  useEffect(() => {
-    if (showCompanyFilter) {
-      fetch('/api/billing/overview')
-        .then(r => r.json())
-        .then(d => setCompanies(d.companies ?? []))
-    }
-  }, [showCompanyFilter])
+  }, [isPlatformTeam])
 
   useEffect(() => {
     fetch('/api/vehicle-groups')
@@ -95,11 +98,21 @@ export function UsersAdminPanel({ currentUserId, isSuperAdmin, defaultCompanyId,
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault()
-    setInviting(true)
     setError('')
+    setSuccess('')
+
+    if (isPlatformTeam && inviteRole !== 'super_admin' && !isInternalTeamRole(inviteRole)) {
+      setError('Rol no válido para equipo interno.')
+      return
+    }
+
+    setInviting(true)
     try {
-      const body: Record<string, unknown> = { email: inviteEmail, role: inviteRole }
-      if (isSuperAdmin && inviteCompany) body.company_id = inviteCompany
+      const body: Record<string, unknown> = {
+        email: inviteEmail.trim(),
+        role: inviteRole,
+        scope: isPlatformTeam ? 'internal' : 'company',
+      }
       if (showGroupPicker && inviteGroups.length) body.group_ids = inviteGroups
       const res = await fetch('/api/settings/invite', {
         method: 'POST',
@@ -110,9 +123,10 @@ export function UsersAdminPanel({ currentUserId, isSuperAdmin, defaultCompanyId,
       if (!res.ok) throw new Error(data.error ?? 'Error al invitar')
       setInviteEmail('')
       setInviteGroups([])
+      setSuccess(data.message ?? `Invitación enviada a ${body.email}`)
       void loadUsers()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error')
+      setError(err instanceof Error ? err.message : 'Error al dar de alta')
     } finally {
       setInviting(false)
     }
@@ -134,6 +148,26 @@ export function UsersAdminPanel({ currentUserId, isSuperAdmin, defaultCompanyId,
     setSavingId(null)
   }
 
+  async function resendAccess(id: string, type: 'activation' | 'reset') {
+    setResendingId(`${id}:${type}`)
+    setError('')
+    setSuccess('')
+    try {
+      const res = await fetch(`/api/users/${id}/resend-access`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Error al enviar correo')
+      setSuccess(data.message ?? 'Correo enviado')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al enviar correo')
+    } finally {
+      setResendingId(null)
+    }
+  }
+
   async function removeUser(id: string, name: string) {
     if (!confirm(`¿Desactivar acceso de ${name}?`)) return
     const res = await fetch(`/api/users/${id}`, { method: 'DELETE' })
@@ -145,9 +179,11 @@ export function UsersAdminPanel({ currentUserId, isSuperAdmin, defaultCompanyId,
     }
   }
 
-  const assignableRoles = isSuperAdmin
-    ? ROLE_OPTIONS
-    : ROLE_OPTIONS.filter(r => r.value !== 'super_admin')
+  const assignableRoles = isPlatformTeam
+    ? PLATFORM_INVITE_ROLES
+    : isSuperAdmin
+      ? ROLE_OPTIONS
+      : COMPANY_INVITE_ROLES
 
   const showGroupPicker = ['personal', 'family'].includes(accountType)
     && ['operador', 'cliente_consulta', 'miembro_familiar'].includes(inviteRole)
@@ -167,26 +203,34 @@ export function UsersAdminPanel({ currentUserId, isSuperAdmin, defaultCompanyId,
     <div className="space-y-6">
       {/* Invitar */}
       <div id="alta-usuario" className="bg-white border border-gray-200 rounded-2xl p-6 scroll-mt-24">
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2 mb-2">
           <UserPlus className="w-5 h-5 text-orange-500" />
           <h2 className="text-base font-semibold text-gray-900">
-            Dar de alta usuario
+            {isPlatformTeam ? 'Dar de alta — equipo interno TrackPro' : 'Dar de alta usuario'}
           </h2>
         </div>
+        {isPlatformTeam ? (
+          <p className="text-sm text-gray-600 mb-4 leading-relaxed">
+            Solo personal de <strong>TrackPro GPS</strong>. Recibirán un correo para{' '}
+            <strong>activar la cuenta y crear su contraseña</strong>.
+            Los clientes se registran en{' '}
+            <a href="/register" className="text-orange-500 hover:underline">trackprogps.mx/register</a>.
+          </p>
+        ) : (
+          <p className="text-sm text-gray-600 mb-4">
+            Invita colaboradores de tu empresa. Recibirán un correo con enlace para <strong>activar la cuenta y crear su contraseña</strong> (no enviamos contraseñas por email).
+          </p>
+        )}
         <form onSubmit={handleInvite} className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
             required placeholder="correo@trackprogps.mx"
-            className="border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
-          {isSuperAdmin && (
-            <select value={inviteCompany} onChange={e => setInviteCompany(e.target.value)}
-              className="border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
-              <option value="">Plataforma (sin empresa)</option>
-              {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          )}
-          <select value={inviteRole} onChange={e => setInviteRole(e.target.value)}
-            className="border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
+            className="border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 sm:col-span-1 lg:col-span-1" />
+          <select
+            value={inviteRole}
+            onChange={e => setInviteRole(e.target.value)}
+            className="border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+          >
             {assignableRoles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
           </select>
           <button type="submit" disabled={inviting}
@@ -218,9 +262,14 @@ export function UsersAdminPanel({ currentUserId, isSuperAdmin, defaultCompanyId,
             </div>
           )}
         </form>
-        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+        {error && (
+          <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>
+        )}
+        {success && (
+          <p className="mt-3 text-sm text-green-700 bg-green-50 border border-green-100 rounded-lg px-3 py-2">{success}</p>
+        )}
         <p className="mt-3 text-xs text-gray-400">
-          Se enviará un correo de invitación. El usuario definirá su contraseña al ingresar.
+          Enlace de activación por correo · Recuperación con «Olvidé mi contraseña» · Reenviar desde la lista de usuarios.
         </p>
       </div>
 
@@ -230,8 +279,8 @@ export function UsersAdminPanel({ currentUserId, isSuperAdmin, defaultCompanyId,
           <Shield className="w-4 h-4 text-gray-500" />
           <h3 className="text-sm font-semibold text-gray-900">Permisos por rol</h3>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-          {ROLE_OPTIONS.map(r => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {(isPlatformTeam ? PLATFORM_INVITE_ROLES : ROLE_OPTIONS).map(r => (
             <div key={r.value} className="text-xs bg-white rounded-lg px-3 py-2 border border-gray-100">
               <span className="font-medium text-gray-800">{r.label}</span>
               <span className="text-gray-400 ml-1">— {r.desc}</span>
@@ -240,23 +289,11 @@ export function UsersAdminPanel({ currentUserId, isSuperAdmin, defaultCompanyId,
         </div>
       </div>
 
-      {/* Filtro empresa */}
-      {showCompanyFilter && (
-        <div className="flex items-center gap-3">
-          <Building2 className="w-4 h-4 text-gray-400" />
-          <select value={companyId} onChange={e => setCompanyId(e.target.value)}
-            className="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
-            <option value="">Todas las empresas y plataforma</option>
-            {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        </div>
-      )}
-
       {/* Lista de usuarios */}
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="text-base font-semibold text-gray-900">
-            Usuarios ({users.length})
+            {isPlatformTeam ? 'Equipo interno TrackPro' : 'Usuarios'} ({users.length})
           </h2>
         </div>
 
@@ -283,6 +320,11 @@ export function UsersAdminPanel({ currentUserId, isSuperAdmin, defaultCompanyId,
                       {!u.is_active && <span className="text-xs text-red-500">Inactivo</span>}
                     </div>
                     <div className="text-xs text-gray-500">{u.email}</div>
+                    {u.last_sign_in_at ? (
+                      <div className="text-[10px] text-green-600 mt-0.5">Cuenta activada</div>
+                    ) : (
+                      <div className="text-[10px] text-amber-600 mt-0.5">Pendiente de activación</div>
+                    )}
                     {u.company && <div className="text-xs text-gray-400 mt-0.5">{u.company.name}</div>}
                     {u.group_access && u.group_access.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1.5">
@@ -331,6 +373,42 @@ export function UsersAdminPanel({ currentUserId, isSuperAdmin, defaultCompanyId,
                           </button>
                         )
                       })}
+                    </div>
+                  )}
+
+                  {/* Reenviar activación / restablecer */}
+                  {!isSelf && (
+                    <div className="flex flex-col gap-1">
+                      {!u.last_sign_in_at && (
+                        <button
+                          type="button"
+                          disabled={isSaving || resendingId === `${u.id}:activation`}
+                          onClick={() => resendAccess(u.id, 'activation')}
+                          className="flex items-center gap-1 text-[11px] px-2.5 py-1.5 rounded-lg border border-orange-200 text-orange-700 hover:bg-orange-50 disabled:opacity-40 whitespace-nowrap"
+                          title="Reenviar correo de activación"
+                        >
+                          {resendingId === `${u.id}:activation` ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Mail className="w-3 h-3" />
+                          )}
+                          Reenviar activación
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        disabled={isSaving || resendingId === `${u.id}:reset`}
+                        onClick={() => resendAccess(u.id, 'reset')}
+                        className="flex items-center gap-1 text-[11px] px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 whitespace-nowrap"
+                        title="Enviar enlace para restablecer contraseña"
+                      >
+                        {resendingId === `${u.id}:reset` ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <KeyRound className="w-3 h-3" />
+                        )}
+                        Restablecer acceso
+                      </button>
                     </div>
                   )}
 

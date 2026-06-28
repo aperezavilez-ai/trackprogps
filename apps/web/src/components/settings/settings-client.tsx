@@ -76,7 +76,7 @@ export function SettingsClient({ profile, currentUserId }: {
           currentUserId={currentUserId}
           isSuperAdmin={profile?.role === 'super_admin'}
           defaultCompanyId={profile?.company?.id}
-          showCompanyFilter={profile?.role === 'super_admin'}
+          variant={profile?.role === 'super_admin' ? 'platform' : 'company'}
         />
       )}
       {tab === 'Notificaciones' && <NotificationSettings profile={profile} />}

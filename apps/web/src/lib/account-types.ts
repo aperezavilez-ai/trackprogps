@@ -10,7 +10,7 @@ export const ACCOUNT_TYPES: {
   {
     value: 'personal',
     label: 'Personal',
-    description: '1–3 vehículos propios (auto, moto, pickup)',
+    description: '1 vehículo incluido — puedes agregar más después (auto, moto, pickup)',
     accountLabel: 'Nombre de tu cuenta',
     accountPlaceholder: 'Juan Pérez',
   },
@@ -23,13 +23,16 @@ export const ACCOUNT_TYPES: {
   },
   {
     value: 'business',
-    label: 'Empresa / Flota',
-    description: 'Flotilla comercial con múltiples unidades',
+    label: 'Empresarial',
+    description: 'Flotilla comercial con múltiples unidades y operadores',
     accountLabel: 'Nombre de la empresa',
     accountPlaceholder: 'Transportes García S.A.',
   },
 ]
 
+/** Opciones visibles en el registro público (sin tipo Familiar) */
+export const REGISTER_ACCOUNT_TYPES = ACCOUNT_TYPES.filter(t => t.value !== 'family')
+
 export function getAccountTypeConfig(type: AccountType) {
-  return ACCOUNT_TYPES.find(t => t.value === type) ?? ACCOUNT_TYPES[2]!
+  return ACCOUNT_TYPES.find(t => t.value === type) ?? ACCOUNT_TYPES.find(t => t.value === 'business')!
 }

@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { createSupabaseServiceClient } from '@/lib/supabase/server'
 import { isSuperAdmin } from '@/lib/auth/scope'
 import { getUserGroupAccessMap } from '@/lib/auth/group-access'
+import { getPlatformInternalCompanyId } from '@/lib/auth/platform-team'
 
 export async function GET(request: NextRequest) {
   const supabase = createSupabaseServerClient()
@@ -21,6 +23,7 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url)
   const filterCompany = searchParams.get('company_id')
+  const scope = searchParams.get('scope')
 
   let query = supabase
     .from('users')
@@ -28,7 +31,17 @@ export async function GET(request: NextRequest) {
     .order('created_at', { ascending: false })
 
   if (isSuperAdmin(profile)) {
-    if (filterCompany) query = query.eq('company_id', filterCompany)
+    if (scope === 'internal') {
+      const serviceClient = createSupabaseServiceClient()
+      const platformCompanyId = await getPlatformInternalCompanyId(serviceClient)
+      if (platformCompanyId) {
+        query = query.or(`company_id.is.null,company_id.eq.${platformCompanyId}`)
+      } else {
+        query = query.is('company_id', null)
+      }
+    } else if (filterCompany) {
+      query = query.eq('company_id', filterCompany)
+    }
   } else {
     query = query.eq('company_id', profile.company_id!)
   }

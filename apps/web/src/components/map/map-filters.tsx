@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { useMapStore } from '@/lib/stores/app-store'
-import { Navigation, PauseCircle, WifiOff, Layers, AlertTriangle, TrendingUp } from 'lucide-react'
+import { Navigation, PauseCircle, WifiOff, Layers, AlertTriangle, TrendingUp, Smartphone, Truck, User } from 'lucide-react'
 
 type Filter = 'all' | 'online' | 'offline' | 'moving' | 'stopped'
 
@@ -20,7 +20,7 @@ interface MapFiltersProps {
 
 export function MapFilters({ activeAlerts, productivity }: MapFiltersProps) {
   const {
-    filter, setFilter, groupFilter, setGroupFilter,
+    filter, setFilter, assetFilter, setAssetFilter, groupFilter, setGroupFilter,
     vehicles, vehicleGroups, setVehicleGroups,
   } = useMapStore()
 
@@ -33,6 +33,9 @@ export function MapFilters({ activeAlerts, productivity }: MapFiltersProps) {
 
   const visible = [...vehicles.values()].filter(v => {
     if (groupFilter !== 'all' && v.groupId !== groupFilter) return false
+    if (assetFilter === 'mobile') return v.deviceSource === 'mobile'
+    if (assetFilter === 'vehicles') return v.deviceSource !== 'mobile'
+    if (assetFilter === 'personnel') return v.deviceSource === 'mobile' || v.vehicleType === 'other'
     return true
   })
 
@@ -58,6 +61,29 @@ export function MapFilters({ activeAlerts, productivity }: MapFiltersProps) {
           ))}
         </select>
       )}
+
+      <div className="overflow-x-auto no-scrollbar pointer-events-auto -mx-0.5 px-0.5">
+        <div className="flex items-center gap-1 bg-white rounded-xl shadow-md p-1 border border-gray-200 w-max min-w-0">
+          {([
+            { key: 'all' as const, label: 'Todos', icon: Layers },
+            { key: 'vehicles' as const, label: 'Vehículos', icon: Truck },
+            { key: 'mobile' as const, label: 'Móviles', icon: Smartphone },
+            { key: 'personnel' as const, label: 'Personal', icon: User },
+          ]).map(f => (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => setAssetFilter(f.key)}
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap ${
+                assetFilter === f.key ? 'bg-slate-800 text-white' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <f.icon className="w-3.5 h-3.5 flex-shrink-0" />
+              <span className="hidden sm:inline">{f.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="overflow-x-auto no-scrollbar pointer-events-auto -mx-0.5 px-0.5">
         <div className="flex items-center gap-1 bg-white rounded-xl shadow-md p-1 border border-gray-200 w-max min-w-0">

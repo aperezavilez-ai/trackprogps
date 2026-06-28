@@ -38,10 +38,25 @@ async function getDashboardData(companyId: string) {
   positionsQuery = positionsQuery.eq('company_id', companyId)
   alertsQuery = alertsQuery.eq('company_id', companyId)
 
-  const [positionsResult, alertsResult] = await Promise.all([positionsQuery, alertsQuery])
+  const [positionsResult, alertsResult, kmTodayResult, kmMonthResult] = await Promise.all([
+    positionsQuery,
+    alertsQuery,
+    supabase.rpc('get_km_stats', {
+      p_company_id: companyId,
+      p_from: startOfToday().toISOString(),
+      p_to: new Date().toISOString(),
+    }),
+    supabase.rpc('get_km_stats', {
+      p_company_id: companyId,
+      p_from: startOfMonth().toISOString(),
+      p_to: new Date().toISOString(),
+    }),
+  ])
 
   const positions = positionsResult.data ?? []
   const alerts    = alertsResult.data ?? []
+  const kmTodayRows = (kmTodayResult.data ?? []) as { km_total?: number }[]
+  const kmMonthRows = (kmMonthResult.data ?? []) as { km_total?: number; trips_count?: number }[]
   const now       = Date.now()
   const OFFLINE_THRESHOLD_MS = 5 * 60 * 1000
 
@@ -86,6 +101,10 @@ async function getDashboardData(companyId: string) {
     }
   })
 
+  const kmToday = kmTodayRows.reduce((s, r) => s + (r.km_total ?? 0), 0)
+  const kmMonth = kmMonthRows.reduce((s, r) => s + (r.km_total ?? 0), 0)
+  const activeThisMonth = kmMonthRows.filter(r => (r.km_total ?? 0) > 0).length
+
   const stats: DashboardStatsType = {
     total_vehicles:     positions.length,
     vehicles_online:    online,
@@ -93,13 +112,26 @@ async function getDashboardData(companyId: string) {
     vehicles_offline:   offline,
     vehicles_no_signal: noSignal,
     active_alerts:      alerts.length,
-    km_today:           0,
-    km_month:           0,
+    km_today:           Math.round(kmToday),
+    km_month:           Math.round(kmMonth),
     productivity_today: positions.length > 0 ? Math.round((online / positions.length) * 100) : 0,
-    productivity_month: 0,
+    productivity_month: positions.length > 0 ? Math.round((activeThisMonth / positions.length) * 100) : 0,
   }
 
   return { stats, liveVehicles, alerts }
+}
+
+function startOfToday() {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+function startOfMonth() {
+  const d = new Date()
+  d.setDate(1)
+  d.setHours(0, 0, 0, 0)
+  return d
 }
 
 export default async function DashboardPage() {

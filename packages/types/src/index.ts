@@ -34,6 +34,38 @@ export type VehicleType =
 
 export type DeviceStatus = 'online' | 'offline' | 'no_signal' | 'unknown'
 
+export type DeviceSourceType = 'hardware' | 'mobile'
+
+export type MobilePlatform = 'android' | 'ios'
+
+export type MobileEventType =
+  | 'sos'
+  | 'battery_low'
+  | 'gps_disabled'
+  | 'no_internet'
+  | 'app_closed'
+  | 'permissions_revoked'
+  | 'mock_location'
+  | 'root_detected'
+  | 'jailbreak_detected'
+  | 'geofence_enter'
+  | 'geofence_exit'
+  | 'movement_start'
+  | 'movement_stop'
+  | 'check_in'
+  | 'check_out'
+
+export type MobileActivityType =
+  | 'still'
+  | 'walking'
+  | 'running'
+  | 'cycling'
+  | 'motorcycle'
+  | 'automotive'
+  | 'unknown'
+
+export type MapAssetFilter = 'all' | 'vehicles' | 'mobile' | 'personnel'
+
 export type GeofenceType = 'circular' | 'polygon'
 
 export type AlertType =
@@ -160,6 +192,8 @@ export interface Vehicle {
   color: string | null
   status: VehicleStatus
   max_speed: number
+  /** km/L declarado; null = estimar por tipo y año */
+  fuel_efficiency_km_per_l: number | null
   odometer_offset: number
   notes: string | null
   created_at: string
@@ -207,6 +241,13 @@ export interface GpsDevice {
   phone_num: string | null
   last_seen: string | null
   status: DeviceStatus
+  source_type: DeviceSourceType
+  mobile_platform: MobilePlatform | null
+  assigned_user_id: string | null
+  mobile_device_uid: string | null
+  tracking_interval_sec: number
+  tracking_enabled: boolean
+  mobile_metadata: Record<string, unknown>
   created_at: string
   updated_at: string
 }
@@ -254,6 +295,9 @@ export interface LiveVehicle {
   owner_name: string | null
   driver_name: string | null
   device_status: DeviceStatus
+  device_source?: DeviceSourceType
+  mobile_platform?: MobilePlatform | null
+  battery_pct?: number | null
   lat: number
   lng: number
   speed: number
@@ -261,6 +305,35 @@ export interface LiveVehicle {
   ignition: boolean
   odometer: number
   last_update: string
+}
+
+export interface MobileTelemetryPoint {
+  lat: number
+  lng: number
+  speed: number
+  heading: number
+  altitude?: number | null
+  accuracy?: number | null
+  recorded_at: string
+  battery_pct?: number | null
+  battery_charging?: boolean | null
+  connection_type?: string | null
+  gps_enabled?: boolean | null
+  internet_available?: boolean | null
+  is_moving?: boolean | null
+  activity?: MobileActivityType | null
+  mock_location?: boolean | null
+}
+
+export interface MobileDeviceRegistration {
+  device_uid: string
+  platform: MobilePlatform
+  brand?: string | null
+  model?: string | null
+  os_version?: string | null
+  app_version?: string | null
+  push_token?: string | null
+  permissions?: Record<string, boolean>
 }
 
 // ------------------------------------------------------------

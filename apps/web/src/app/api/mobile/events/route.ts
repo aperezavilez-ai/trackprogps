@@ -1,0 +1,57 @@
+import { NextResponse, type NextRequest } from 'next/server'
+import { createSupabaseServerClient, createSupabaseServiceClient } from '@/lib/supabase/server'
+import { MobileEventSchema } from '@/lib/mobile/schemas'
+import { resolveMobileDevice } from '@/lib/mobile/device-registry'
+import { processMobileEvent } from '@/lib/mobile/event-processor'
+
+export async function POST(request: NextRequest) {
+  const supabase = createSupabaseServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('company_id, role')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile?.company_id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const body = await request.json()
+  const parsed = MobileEventSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Validation error', details: parsed.error.flatten() }, { status: 422 })
+  }
+
+  const service = createSupabaseServiceClient()
+  const device = await resolveMobileDevice(service, user.id, profile.company_id, {
+    deviceId: parsed.data.device_id,
+    deviceUid: parsed.data.device_uid,
+  })
+
+  if (!device) {
+    return NextResponse.json({ error: 'Dispositivo no encontrado' }, { status: 404 })
+  }
+
+  try {
+    const result = await processMobileEvent(service, {
+      deviceId: device.deviceId,
+      vehicleId: device.vehicleId,
+      companyId: device.companyId,
+      userId: user.id,
+      eventType: parsed.data.event_type,
+      lat: parsed.data.lat,
+      lng: parsed.data.lng,
+      payload: parsed.data.payload,
+    })
+
+    return NextResponse.json({ data: result }, { status: 201 })
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Error al procesar evento' },
+      { status: 500 },
+    )
+  }
+}

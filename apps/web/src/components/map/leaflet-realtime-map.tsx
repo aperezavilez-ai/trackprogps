@@ -8,7 +8,7 @@ import { useMapStore } from '@/lib/stores/app-store'
 import { useRealtimeVehicles } from '@/lib/hooks/use-realtime'
 import { ProTrackTiles } from '@/components/map/protrack-tiles'
 import { VehicleMarkerCluster } from '@/components/map/vehicle-marker-cluster'
-import { SetMexicoViewOnce } from '@/components/map/set-mexico-view-once'
+import { SetMexicoViewOnce, applyMexicoFleetViewLeaflet } from '@/components/map/set-mexico-view-once'
 import { VehicleTrackLayer } from '@/components/map/vehicle-track-layer'
 import { VehicleMapPanel } from '@/components/map/vehicle-map-panel'
 import { ChevronUp, Clock3, Gauge, Power, X } from 'lucide-react'
@@ -41,6 +41,8 @@ export function LeafletRealtimeMap({ companyId, initialVehicles }: LeafletRealti
 
   const initializedRef = useRef(false)
   const mapRef = useRef<LeafletMap | null>(null)
+  const prevSelectedRef = useRef<string | null>(null)
+  const [fleetViewKey, setFleetViewKey] = useState(0)
   const [showDetailPanel, setShowDetailPanel] = useState(false)
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null)
   const [addressLoading, setAddressLoading] = useState(false)
@@ -108,16 +110,23 @@ export function LeafletRealtimeMap({ companyId, initialVehicles }: LeafletRealti
     return () => { cancelled = true }
   }, [selectedVehicle?.vehicleId, selectedVehicle?.lat, selectedVehicle?.lng, selectedVehicle])
 
+  useEffect(() => {
+    if (prevSelectedRef.current && !selectedVehicleId) {
+      setFleetViewKey((k) => k + 1)
+    }
+    prevSelectedRef.current = selectedVehicleId
+  }, [selectedVehicleId])
+
   return (
-    <div className="relative w-full h-full min-h-[calc(100dvh-12rem)] sm:min-h-[380px] z-0">
+    <div className="relative w-full h-full min-h-0 lg:min-h-[380px] z-0">
       <MapContainer
         center={[MEXICO_DASHBOARD_VIEW.center.lat, MEXICO_DASHBOARD_VIEW.center.lng]}
         zoom={MEXICO_DASHBOARD_VIEW.zoom}
-        className="w-full h-full min-h-[380px] rounded-xl"
+        className="w-full h-full min-h-0 rounded-xl"
         scrollWheelZoom
       >
         <ProTrackTiles style={mapStyle} />
-        <SetMexicoViewOnce />
+        <SetMexicoViewOnce applyKey={fleetViewKey} />
         <BindLeafletMap onMap={(map) => { mapRef.current = map }} />
         <VehicleTrackLayer vehicleId={selectedVehicleId} />
         <VehicleMarkerCluster
@@ -210,11 +219,8 @@ export function LeafletRealtimeMap({ companyId, initialVehicles }: LeafletRealti
           mapRef.current.setView([selectedVehicle.lat, selectedVehicle.lng], Math.max(mapRef.current.getZoom(), 15))
         } : undefined}
         onCenterFleet={() => {
-          if (!mapRef.current) return
-          mapRef.current.setView(
-            [MEXICO_DASHBOARD_VIEW.center.lat, MEXICO_DASHBOARD_VIEW.center.lng],
-            MEXICO_DASHBOARD_VIEW.zoom,
-          )
+          if (mapRef.current) applyMexicoFleetViewLeaflet(mapRef.current)
+          setFleetViewKey((k) => k + 1)
         }}
         onZoomIn={() => mapRef.current?.zoomIn()}
         onZoomOut={() => mapRef.current?.zoomOut()}

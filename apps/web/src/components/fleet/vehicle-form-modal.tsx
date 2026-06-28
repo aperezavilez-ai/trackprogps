@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { X, Loader2 } from 'lucide-react'
+import { resolveKmPerL } from '@/lib/map/fuel-utils'
 
 interface VehicleGroup {
   id: string
@@ -22,6 +23,7 @@ interface Vehicle {
   owner_name?: string | null
   group_id?: string | null
   notes?: string | null
+  fuel_efficiency_km_per_l?: number | null
   device?: { id: string } | null
   driver?: { id: string } | null
   group?: VehicleGroup | null
@@ -63,7 +65,21 @@ export function VehicleFormModal({ vehicle, onClose, onSave }: Props) {
     owner_name:   vehicle?.owner_name ?? '',
     group_id:     vehicle?.group_id ?? vehicle?.group?.id ?? '',
     notes:        vehicle?.notes ?? '',
+    fuel_efficiency_km_per_l: vehicle?.fuel_efficiency_km_per_l != null
+      ? String(vehicle.fuel_efficiency_km_per_l)
+      : '',
   })
+
+  const estimatedKmPerL = useMemo(
+    () => resolveKmPerL({
+      type: form.type,
+      year: Number(form.year),
+      fuel_efficiency_km_per_l: form.fuel_efficiency_km_per_l
+        ? Number(form.fuel_efficiency_km_per_l)
+        : null,
+    }),
+    [form.type, form.year, form.fuel_efficiency_km_per_l],
+  )
 
   useEffect(() => {
     fetch('/api/vehicle-groups')
@@ -112,6 +128,9 @@ export function VehicleFormModal({ vehicle, onClose, onSave }: Props) {
           max_speed: Number(form.max_speed),
           group_id: form.group_id || null,
           owner_name: form.owner_name || null,
+          fuel_efficiency_km_per_l: form.fuel_efficiency_km_per_l
+            ? Number(form.fuel_efficiency_km_per_l)
+            : null,
         }),
       })
       const data = await res.json()
@@ -205,6 +224,27 @@ export function VehicleFormModal({ vehicle, onClose, onSave }: Props) {
                 placeholder="Blanco"
                 className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Rendimiento combustible (km/L)
+            </label>
+            <input
+              type="number"
+              min={3}
+              max={50}
+              step={0.1}
+              value={form.fuel_efficiency_km_per_l}
+              onChange={e => set('fuel_efficiency_km_per_l', e.target.value)}
+              placeholder={`Estimado ~${resolveKmPerL({ type: form.type, year: Number(form.year) })} km/L`}
+              className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Opcional. Si lo dejas vacío se estima por tipo y año del vehículo
+              {form.fuel_efficiency_km_per_l ? '' : ` (~${estimatedKmPerL} km/L)`}.
+              Se usa para calcular consumo en mapa e historial cuando no hay sensor de combustible.
+            </p>
           </div>
 
           <div>

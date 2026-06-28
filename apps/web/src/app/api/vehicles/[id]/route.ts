@@ -17,6 +17,7 @@ const UpdateVehicleSchema = z.object({
   group_id:     z.string().uuid().nullable().optional(),
   owner_name:   z.string().max(150).nullable().optional(),
   notes:        z.string().max(1000).nullable().optional(),
+  fuel_efficiency_km_per_l: z.number().min(3).max(50).nullable().optional(),
 })
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {

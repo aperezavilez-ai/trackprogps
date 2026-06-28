@@ -2,35 +2,36 @@
 
 import { useEffect, useState } from 'react'
 import { Bell, X } from 'lucide-react'
-import { isWebPushSupported, registerWebPushToken } from '@/lib/pwa/web-push'
+import {
+  dismissPushPromptForSession,
+  markPushNotificationsEnabled,
+  registerWebPushToken,
+  shouldShowPushPrompt,
+} from '@/lib/pwa/web-push'
 
 export function PushNotificationSetup() {
   const [visible, setVisible] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [done, setDone] = useState(false)
 
   useEffect(() => {
-    if (!isWebPushSupported()) return
-    if (typeof Notification === 'undefined') return
-    if (Notification.permission === 'granted') return
-    if (Notification.permission === 'denied') return
-    if (sessionStorage.getItem('trackpro-push-dismissed')) return
-    setVisible(true)
+    setVisible(shouldShowPushPrompt())
   }, [])
 
   async function enable() {
     setLoading(true)
     try {
-      const ok = await registerWebPushToken()
-      setDone(ok)
-      if (ok) setVisible(false)
+      await registerWebPushToken()
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        markPushNotificationsEnabled()
+        setVisible(false)
+      }
     } finally {
       setLoading(false)
     }
   }
 
   function dismiss() {
-    sessionStorage.setItem('trackpro-push-dismissed', '1')
+    dismissPushPromptForSession()
     setVisible(false)
   }
 
@@ -48,10 +49,10 @@ export function PushNotificationSetup() {
           <button
             type="button"
             onClick={enable}
-            disabled={loading || done}
+            disabled={loading}
             className="rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-orange-600 disabled:opacity-60"
           >
-            {loading ? 'Activando…' : done ? 'Activado' : 'Activar alertas'}
+            {loading ? 'Activando…' : 'Activar alertas'}
           </button>
           <button
             type="button"

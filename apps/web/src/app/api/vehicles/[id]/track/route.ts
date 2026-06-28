@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
-import { parseFuelFromRawIo, estimateFuelLiters } from '@/lib/map/fuel-utils'
+import { parseFuelFromRawIo, estimateFuelLiters, type FuelVehicleContext } from '@/lib/map/fuel-utils'
 
 const MAX_HOURS = 24
 const DEFAULT_HOURS = 6
@@ -41,7 +41,7 @@ export async function GET(
   const { data: vehicle } = await supabase
     .from('vehicles')
     .select(`
-      id, economic_num, plates, brand, model, owner_name,
+      id, economic_num, plates, brand, model, year, type, fuel_efficiency_km_per_l, owner_name,
       driver:drivers(full_name, phone),
       group:vehicle_groups(name),
       device:gps_devices(id)
@@ -87,8 +87,13 @@ export async function GET(
   }
   distanceKm = Math.round(distanceKm * 10) / 10
 
+  const fuelCtx: FuelVehicleContext = {
+    type: vehicle.type,
+    year: vehicle.year,
+    fuel_efficiency_km_per_l: vehicle.fuel_efficiency_km_per_l,
+  }
   const fuel = parseFuelFromRawIo(livePos?.raw_io as Record<string, unknown> | null)
-  const fuelLitersEst = estimateFuelLiters(distanceKm)
+  const fuelLitersEst = estimateFuelLiters(distanceKm, fuelCtx)
 
   const driver = vehicle.driver as { full_name: string; phone: string | null } | null
   const group = vehicle.group as { name: string } | null

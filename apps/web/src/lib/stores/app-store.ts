@@ -59,12 +59,15 @@ interface MapState {
     groupName: string | null
     ownerName: string | null
     driverName: string | null
+    deviceSource?: 'hardware' | 'mobile'
+    mobilePlatform?: 'android' | 'ios' | null
   }>
   vehicleGroups: Array<{ id: string; name: string; color: string }>
   selectedVehicleId: string | null
   mapCenter: { lat: number; lng: number }
   mapZoom: number
   filter: 'all' | 'online' | 'offline' | 'moving' | 'stopped'
+  assetFilter: 'all' | 'vehicles' | 'mobile' | 'personnel'
   groupFilter: string | 'all'
   mapStyle: 'hybrid' | 'satellite' | 'streets'
 
@@ -76,6 +79,7 @@ interface MapState {
   setMapCenter: (center: { lat: number; lng: number }) => void
   setMapZoom: (zoom: number) => void
   setFilter: (filter: MapState['filter']) => void
+  setAssetFilter: (assetFilter: MapState['assetFilter']) => void
   setGroupFilter: (groupId: string | 'all') => void
   setMapStyle: (style: MapState['mapStyle']) => void
 }
@@ -86,6 +90,7 @@ export const useMapStore = create<MapState>()((set, get) => ({
   mapCenter: MEXICO_DASHBOARD_VIEW.center,
   mapZoom: MEXICO_DASHBOARD_VIEW.zoom,
   filter: 'all',
+  assetFilter: 'all',
   groupFilter: 'all',
   mapStyle: 'hybrid',
   vehicleGroups: [],
@@ -117,6 +122,7 @@ export const useMapStore = create<MapState>()((set, get) => ({
   setMapCenter: (center) => set({ mapCenter: center }),
   setMapZoom: (zoom) => set({ mapZoom: zoom }),
   setFilter: (filter) => set({ filter }),
+  setAssetFilter: (assetFilter) => set({ assetFilter }),
   setGroupFilter: (groupFilter) => set({ groupFilter }),
   setMapStyle: (mapStyle) => set({ mapStyle }),
 }))

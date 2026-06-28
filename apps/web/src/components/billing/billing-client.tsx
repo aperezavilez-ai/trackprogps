@@ -1,11 +1,14 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
   CheckCircle, Loader2, CreditCard, Calendar, AlertTriangle,
-  FileText, Wallet, Users, Radio, Truck, Search,
+  FileText, Wallet, Users, Radio, Truck, Search, TrendingUp, Building2,
 } from 'lucide-react'
+
+type BillingTab = 'ingresos' | 'facturas' | 'pagos' | 'suscripcion'
 
 interface Plan {
   id: string; name: string; type: string
@@ -43,18 +46,41 @@ interface Props {
   subscription: Subscription | null
   plans: Plan[]
   company: { id?: string; name: string; email: string; status: string } | null
-  defaultTab?: 'facturas' | 'pagos' | 'suscripcion'
+  defaultTab?: BillingTab
   isPlatformAdmin?: boolean
   billingSettings?: Record<string, string> | null
   pendingCheckout?: { plan_id: string; billing_period: 'monthly' | 'yearly' } | null
   autoCheckout?: boolean
 }
 
-const TABS = [
+const COMPANY_TABS = [
   { id: 'facturas' as const,     label: 'Facturas CFDI', icon: FileText },
   { id: 'pagos' as const,       label: 'Pagos',         icon: Wallet },
   { id: 'suscripcion' as const, label: 'Suscripción',   icon: CreditCard },
 ]
+
+interface PlatformStats {
+  summary: {
+    estimated_mrr: number
+    paying_companies: number
+    past_due: number
+    with_stripe: number
+    total_companies: number
+    active_companies: number
+    demo_companies: number
+  }
+  by_plan: { name: string; count: number; mrr: number }[]
+  companies: {
+    company_id: string
+    company_name: string
+    company_status: string
+    plan_name: string
+    subscription_status: string
+    monthly_amount: number
+    period_end: string
+    has_stripe: boolean
+  }[]
+}
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   active:   { label: 'Activa',            color: 'bg-green-50 text-green-700 border-green-200' },
@@ -85,10 +111,22 @@ export function BillingClient({
   pendingCheckout = null,
   autoCheckout = false,
 }: Props) {
-  const [tab, setTab]                 = useState(defaultTab)
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const [tab, setTab]                 = useState<BillingTab>(defaultTab)
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
   const [billing, setBilling]         = useState<'monthly' | 'yearly'>(pendingCheckout?.billing_period ?? 'monthly')
   const [loading, setLoading]         = useState(isPlatformAdmin ?? false)
+  const [platformStats, setPlatformStats] = useState<PlatformStats | null>(null)
+  const [platformLoading, setPlatformLoading] = useState(false)
+
+  const tabs = useMemo(() => {
+    if (!isPlatformAdmin) return COMPANY_TABS
+    return [
+      { id: 'ingresos' as const, label: 'Ingresos', icon: TrendingUp },
+      ...COMPANY_TABS,
+    ]
+  }, [isPlatformAdmin])
 
   const [companies, setCompanies]         = useState<CompanyOption[]>([])
   const [companyId, setCompanyId]       = useState(initialCompany?.id ?? '')
@@ -119,18 +157,36 @@ export function BillingClient({
     }
   }, [])
 
+  const loadPlatformStats = useCallback(async () => {
+    setPlatformLoading(true)
+    try {
+      const res = await fetch('/api/billing/platform-stats')
+      const data = await res.json()
+      if (res.ok) setPlatformStats(data)
+    } finally {
+      setPlatformLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    setTab(defaultTab)
+  }, [defaultTab])
+
   useEffect(() => {
     if (isPlatformAdmin) {
+      void loadPlatformStats()
       fetch('/api/billing/overview')
         .then(r => r.json())
         .then(data => {
           setCompanies(data.companies ?? [])
           setLoading(false)
         })
+      const fromUrl = searchParams.get('company_id')
+      if (fromUrl) setCompanyId(fromUrl)
     } else if (initialCompany?.id) {
       void loadOverview(initialCompany.id)
     }
-  }, [isPlatformAdmin, initialCompany?.id, loadOverview])
+  }, [isPlatformAdmin, initialCompany?.id, loadOverview, loadPlatformStats, searchParams])
 
   useEffect(() => {
     if (companyId) void loadOverview(companyId, driverId || undefined)
@@ -181,17 +237,132 @@ export function BillingClient({
     setDriverId('')
   }
 
+  function changeTab(next: BillingTab) {
+    setTab(next)
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('tab', next)
+    params.delete('checkout')
+    router.replace(`/billing?${params.toString()}`, { scroll: false })
+  }
+
+  const showCompanyHint = isPlatformAdmin && !companyId && tab !== 'ingresos'
+
   return (
     <div className="space-y-6 max-w-5xl">
       <div className="flex gap-1 bg-gray-100 p-1 rounded-xl overflow-x-auto">
-        {TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
+        {tabs.map(t => (
+          <button key={t.id} onClick={() => changeTab(t.id)}
             className={`flex items-center gap-2 flex-1 py-2.5 px-4 rounded-lg text-sm font-medium whitespace-nowrap transition ${tab === t.id ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
             <t.icon className="w-4 h-4" />{t.label}
           </button>
         ))}
       </div>
 
+      {tab === 'ingresos' && isPlatformAdmin && (
+        <div className="space-y-4">
+          {platformLoading && (
+            <div className="flex items-center justify-center py-12 text-gray-400 text-sm gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" /> Cargando ingresos...
+            </div>
+          )}
+          {!platformLoading && platformStats && (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[
+                  { label: 'MRR estimado', value: `$${platformStats.summary.estimated_mrr.toLocaleString('es-MX')} MXN`, icon: TrendingUp, color: 'text-green-600' },
+                  { label: 'Empresas pagando', value: platformStats.summary.paying_companies, icon: Building2, color: 'text-orange-500' },
+                  { label: 'Con Stripe', value: platformStats.summary.with_stripe, icon: CreditCard, color: 'text-blue-600' },
+                  { label: 'Pago pendiente', value: platformStats.summary.past_due, icon: AlertTriangle, color: 'text-yellow-600' },
+                ].map(card => (
+                  <div key={card.label} className="bg-white border border-gray-200 rounded-2xl p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-gray-500">{card.label}</span>
+                      <card.icon className={`w-4 h-4 ${card.color}`} />
+                    </div>
+                    <div className={`text-xl font-bold ${card.color}`}>{card.value}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: 'Total empresas', value: platformStats.summary.total_companies },
+                  { label: 'Activas', value: platformStats.summary.active_companies },
+                  { label: 'En demo', value: platformStats.summary.demo_companies },
+                ].map(s => (
+                  <div key={s.label} className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm">
+                    <div className="text-gray-500 text-xs">{s.label}</div>
+                    <div className="text-lg font-semibold text-gray-900">{s.value}</div>
+                  </div>
+                ))}
+              </div>
+
+              {platformStats.by_plan.length > 0 && (
+                <div className="bg-white border border-gray-200 rounded-2xl p-6">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Ingresos por plan</h2>
+                  <div className="space-y-2">
+                    {platformStats.by_plan.map(row => (
+                      <div key={row.name} className="flex items-center justify-between text-sm py-2 border-b border-gray-100 last:border-0">
+                        <span className="font-medium text-gray-900">{row.name} <span className="text-gray-400 font-normal">({row.count})</span></span>
+                        <span className="text-green-600 font-semibold">${row.mrr.toLocaleString('es-MX')} MXN/mes</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-white border border-gray-200 rounded-2xl p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Empresas con suscripción</h2>
+                {platformStats.companies.length === 0 ? (
+                  <p className="text-sm text-gray-400 text-center py-6">No hay suscripciones activas o en prueba.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-xs text-gray-500 border-b border-gray-100">
+                          <th className="pb-2 pr-4">Empresa</th>
+                          <th className="pb-2 pr-4">Plan</th>
+                          <th className="pb-2 pr-4">Estado</th>
+                          <th className="pb-2 pr-4">Monto/mes</th>
+                          <th className="pb-2">Renovación</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {platformStats.companies.map(row => {
+                          const st = STATUS_MAP[row.subscription_status] ?? STATUS_MAP.trialing!
+                          return (
+                            <tr key={row.company_id}>
+                              <td className="py-3 pr-4">
+                                <div className="font-medium text-gray-900">{row.company_name}</div>
+                                <div className="text-xs text-gray-400">{row.company_status}{row.has_stripe ? ' · Stripe' : ''}</div>
+                              </td>
+                              <td className="py-3 pr-4 text-gray-700">{row.plan_name}</td>
+                              <td className="py-3 pr-4">
+                                <span className={`text-xs px-2 py-0.5 rounded-full border ${st.color}`}>{st.label}</span>
+                              </td>
+                              <td className="py-3 pr-4 font-medium">${row.monthly_amount.toLocaleString('es-MX')}</td>
+                              <td className="py-3 text-gray-500 text-xs">
+                                {row.period_end ? new Date(row.period_end).toLocaleDateString('es-MX') : '—'}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                <p className="mt-4 text-xs text-gray-400">
+                  MRR estimado con precio mensual del plan. Para detalle completo usa{' '}
+                  <Link href="/admin" className="text-orange-500 hover:underline">Administrador → Empresas</Link>.
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {tab !== 'ingresos' && (
+      <>
       {/* Selector por empresa / cliente */}
       <div className="bg-white border border-gray-200 rounded-2xl p-5">
         <div className="flex items-center gap-2 mb-3">
@@ -231,7 +402,7 @@ export function BillingClient({
         )}
       </div>
 
-      {isPlatformAdmin && !companyId && (
+      {showCompanyHint && (
         <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-sm text-orange-800">
           Selecciona una empresa para ver su facturación, pagos y verificar clientes.
           Gestiona suscripciones en <Link href="/admin" className="underline font-medium">Empresas y suscripciones</Link>.
@@ -468,6 +639,8 @@ export function BillingClient({
             </>
           )}
         </>
+      )}
+      </>
       )}
     </div>
   )

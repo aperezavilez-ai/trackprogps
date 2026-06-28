@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { parseFuelFromRawIo, estimateFuelLiters, type FuelVehicleContext } from '@/lib/map/fuel-utils'
 import { z } from 'zod'
 
 const HistoryQuerySchema = z.object({
@@ -32,6 +33,19 @@ export async function GET(request: NextRequest) {
 
   const { vehicle_id, date_from, date_to, simplify } = parsed.data
 
+  const { data: vehicleRow } = await supabase
+    .from('vehicles')
+    .select('type, year, fuel_efficiency_km_per_l')
+    .eq('id', vehicle_id)
+    .is('deleted_at', null)
+    .maybeSingle()
+
+  const fuelCtx: FuelVehicleContext = {
+    type: vehicleRow?.type ?? 'other',
+    year: vehicleRow?.year ?? null,
+    fuel_efficiency_km_per_l: vehicleRow?.fuel_efficiency_km_per_l ?? null,
+  }
+
   // Validate date range (max 7 days for performance)
   const diffDays = (new Date(date_to).getTime() - new Date(date_from).getTime()) / 86_400_000
   if (diffDays > 7) {
@@ -44,7 +58,7 @@ export async function GET(request: NextRequest) {
   // Fetch history points
   let query = supabase
     .from('position_history')
-    .select('lat, lng, speed, heading, ignition, odometer, recorded_at')
+    .select('lat, lng, speed, heading, ignition, odometer, altitude, gsm_signal, battery_lvl, satellites, raw_io, recorded_at')
     .eq('vehicle_id', vehicle_id)
     .gte('recorded_at', date_from)
     .lte('recorded_at', date_to)
@@ -60,37 +74,54 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ data: { points: [], stats: null } })
   }
 
-  // Simplify points using Douglas-Peucker if requested
-  const processedPoints = simplify ? simplifyPoints(points, 0.0001) : points
+  const processedPoints = (simplify ? simplifyPoints(points, 0.0001) : points).map(enrichPoint)
 
   // Calculate trip statistics
-  const stats = calculateTripStats(points)
+  const stats = calculateTripStats(points, fuelCtx)
 
   return NextResponse.json({
     data: {
       points: processedPoints,
       stats,
+      fuel_profile: fuelCtx,
       total_points: points.length,
       simplified_points: processedPoints.length,
     }
   })
 }
 
-type Point = {
+type RawPoint = {
   lat: number
   lng: number
   speed: number
   heading: number
   ignition: boolean
   odometer: number
+  altitude: number | null
+  gsm_signal: number
+  battery_lvl: number
+  satellites: number | null
+  raw_io: Record<string, unknown> | null
   recorded_at: string
 }
 
+type Point = Omit<RawPoint, 'raw_io'> & {
+  fuel_level_pct: number | null
+}
+
+function enrichPoint(p: RawPoint): Point {
+  const { raw_io, ...rest } = p
+  return {
+    ...rest,
+    fuel_level_pct: parseFuelFromRawIo(raw_io).levelPct,
+  }
+}
+
 // Simplified Douglas-Peucker algorithm for GPS track reduction
-function simplifyPoints(points: Point[], tolerance: number): Point[] {
+function simplifyPoints(points: RawPoint[], tolerance: number): RawPoint[] {
   if (points.length <= 2) return points
 
-  function perpendicularDistance(point: Point, start: Point, end: Point): number {
+  function perpendicularDistance(point: RawPoint, start: RawPoint, end: RawPoint): number {
     const dx = end.lng - start.lng
     const dy = end.lat - start.lat
     const length = Math.sqrt(dx * dx + dy * dy)
@@ -98,7 +129,7 @@ function simplifyPoints(points: Point[], tolerance: number): Point[] {
     return Math.abs(dy * point.lng - dx * point.lat + end.lng * start.lat - end.lat * start.lng) / length
   }
 
-  function recurse(points: Point[], start: number, end: number, tolerance: number, result: Set<number>) {
+  function recurse(points: RawPoint[], start: number, end: number, tolerance: number, result: Set<number>) {
     let maxDist = 0
     let maxIdx  = 0
 
@@ -127,7 +158,7 @@ function simplifyPoints(points: Point[], tolerance: number): Point[] {
   return points.filter((_, i) => keepIndices.has(i))
 }
 
-function calculateTripStats(points: Point[]) {
+function calculateTripStats(points: RawPoint[], fuelCtx: FuelVehicleContext) {
   if (points.length === 0) return null
 
   const firstPoint = points[0]!
@@ -163,13 +194,16 @@ function calculateTripStats(points: Point[]) {
     }
   }
 
+  const distanceRounded = Math.round(distanceKm * 10) / 10
+
   return {
     started_at:      firstPoint.recorded_at,
     ended_at:        lastPoint.recorded_at,
     duration_min:    durationMin,
     driving_min:     durationMin - Math.round(stoppedMinutes),
     stopped_min:     Math.round(stoppedMinutes),
-    distance_km:     Math.round(distanceKm * 10) / 10,
+    distance_km:     distanceRounded,
+    fuel_liters_est: estimateFuelLiters(distanceRounded, fuelCtx),
     max_speed:       Math.round(maxSpeed),
     avg_speed:       Math.round(avgSpeed),
     start_lat:       firstPoint.lat,
@@ -180,7 +214,7 @@ function calculateTripStats(points: Point[]) {
 }
 
 // Haversine formula for distance estimation
-function estimateDistanceKm(points: Point[]): number {
+function estimateDistanceKm(points: Array<{ lat: number; lng: number }>) {
   let total = 0
   for (let i = 1; i < points.length; i++) {
     const a = points[i - 1]!

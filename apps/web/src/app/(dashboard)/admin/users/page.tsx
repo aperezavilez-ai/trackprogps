@@ -29,7 +29,7 @@ export default async function AdminUsersPage() {
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Administrador</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Alta de usuarios, roles y permisos de la plataforma
+            Equipo interno de TrackPro GPS — no incluye clientes (ellos se registran en /register)
           </p>
         </div>
         <div className="flex flex-wrap gap-2 shrink-0">
@@ -54,7 +54,7 @@ export default async function AdminUsersPage() {
       <UsersAdminPanel
         currentUserId={user.id}
         isSuperAdmin={isSuperAdmin}
-        showCompanyFilter={isSuperAdmin}
+        variant={isSuperAdmin ? 'platform' : 'company'}
       />
     </div>
   )

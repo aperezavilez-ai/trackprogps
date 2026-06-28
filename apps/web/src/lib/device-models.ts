@@ -82,6 +82,11 @@ export const DEVICE_MODEL_GROUPS: DeviceModelGroup[] = [
       'Otro',
     ],
   },
+  {
+    label: 'TrackProGPS Mobile — Teléfonos',
+    hint: 'Rastreo vía app oficial Android / iPhone (HTTPS)',
+    models: ['TrackProGPS Android', 'TrackProGPS iPhone'],
+  },
 ]
 
 export const DEFAULT_DEVICE_MODEL = 'FMC920'

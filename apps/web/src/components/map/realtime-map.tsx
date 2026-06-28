@@ -88,6 +88,7 @@ function GoogleMapContent({
     mapCenter,
     mapZoom,
     filter,
+    assetFilter,
     groupFilter,
     mapStyle,
     setSelectedVehicle,
@@ -99,6 +100,7 @@ function GoogleMapContent({
     center: MEXICO_DASHBOARD_VIEW.center,
     zoom: MEXICO_DASHBOARD_VIEW.zoom,
   })
+  const [fleetViewKey, setFleetViewKey] = useState(0)
   const prevSelectedRef = useRef<string | null>(null)
   const [showDetailPanel, setShowDetailPanel] = useState(false)
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null)
@@ -117,6 +119,8 @@ function GoogleMapContent({
         plates:      v.plates,
         deviceId:    v.device_id ?? null,
         vehicleType: v.vehicle_type,
+        deviceSource: v.device_source ?? 'hardware',
+        mobilePlatform: v.mobile_platform ?? null,
         groupId:     v.group_id ?? null,
         groupName:   v.group_name ?? null,
         ownerName:   v.owner_name ?? null,
@@ -132,14 +136,21 @@ function GoogleMapContent({
     const byGroup = groupFilter === 'all'
       ? all
       : all.filter(v => v.groupId === groupFilter)
+    const byAsset = assetFilter === 'all'
+      ? byGroup
+      : assetFilter === 'mobile'
+        ? byGroup.filter(v => v.deviceSource === 'mobile')
+        : assetFilter === 'vehicles'
+          ? byGroup.filter(v => v.deviceSource !== 'mobile' && v.vehicleType !== 'other')
+          : byGroup.filter(v => v.deviceSource === 'mobile' || v.vehicleType === 'other')
     switch (filter) {
-      case 'online':  return byGroup.filter(v => v.ignition)
-      case 'offline': return byGroup.filter(v => !v.ignition)
-      case 'moving':  return byGroup.filter(v => v.speed > 2)
-      case 'stopped': return byGroup.filter(v => v.speed <= 2 && v.ignition)
-      default:        return byGroup
+      case 'online':  return byAsset.filter(v => v.ignition)
+      case 'offline': return byAsset.filter(v => !v.ignition)
+      case 'moving':  return byAsset.filter(v => v.speed > 2)
+      case 'stopped': return byAsset.filter(v => v.speed <= 2 && v.ignition)
+      default:        return byAsset
     }
-  }, [vehicles, filter, groupFilter])
+  }, [vehicles, filter, assetFilter, groupFilter])
 
   const selectedVehicle = selectedVehicleId ? vehicles.get(selectedVehicleId) : null
 
@@ -190,10 +201,7 @@ function GoogleMapContent({
   // Al quitar selección, volver a la vista México del dashboard
   useEffect(() => {
     if (prevSelectedRef.current && !selectedVehicleId) {
-      setCamera({
-        center: MEXICO_DASHBOARD_VIEW.center,
-        zoom: MEXICO_DASHBOARD_VIEW.zoom,
-      })
+      setFleetViewKey((k) => k + 1)
     }
     prevSelectedRef.current = selectedVehicleId
   }, [selectedVehicleId])
@@ -220,14 +228,11 @@ function GoogleMapContent({
   }, [selectedVehicle, camera.zoom])
 
   const centerFleet = useCallback(() => {
-    setCamera({
-      center: MEXICO_DASHBOARD_VIEW.center,
-      zoom: MEXICO_DASHBOARD_VIEW.zoom,
-    })
+    setFleetViewKey((k) => k + 1)
   }, [])
 
   return (
-    <div className="relative w-full h-full min-h-[calc(100dvh-12rem)] sm:min-h-[380px]">
+    <div className="relative w-full h-full min-h-0 lg:min-h-[380px]">
       <Map
         center={camera.center}
         zoom={camera.zoom}
@@ -247,7 +252,7 @@ function GoogleMapContent({
           if (err) onError()
         }}
       >
-        <SetMexicoViewOnceGoogle />
+        <SetMexicoViewOnceGoogle applyKey={fleetViewKey} />
         <GoogleVehicleTrackLayer vehicleId={selectedVehicleId} />
 
         {filteredVehicles.map((vehicle) => {

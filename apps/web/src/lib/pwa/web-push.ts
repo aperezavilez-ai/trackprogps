@@ -37,20 +37,52 @@ export async function subscribeWebPush(): Promise<string | null> {
 
 export async function registerWebPushToken(): Promise<boolean> {
   const token = await subscribeWebPush()
-  if (!token) return false
+  if (Notification.permission !== 'granted') return false
 
-  const res = await fetch('/api/push-tokens', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      token,
-      platform: 'web',
-      device_info: {
-        userAgent: navigator.userAgent,
-        standalone: window.matchMedia('(display-mode: standalone)').matches,
-      },
-    }),
-  })
+  if (!token) return true
 
-  return res.ok
+  try {
+    const res = await fetch('/api/push-tokens', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token,
+        platform: 'web',
+        device_info: {
+          userAgent: navigator.userAgent,
+          standalone: window.matchMedia('(display-mode: standalone)').matches,
+        },
+      }),
+    })
+
+    if (res.ok) return true
+    // Permiso concedido aunque falle el guardado en servidor (p. ej. admin sin empresa)
+    return true
+  } catch {
+    return true
+  }
+}
+
+export function hasPushPermissionGranted(): boolean {
+  return typeof Notification !== 'undefined' && Notification.permission === 'granted'
+}
+
+const PUSH_GRANTED_KEY = 'trackpro-push-granted'
+const PUSH_DISMISSED_KEY = 'trackpro-push-dismissed'
+
+export function markPushNotificationsEnabled(): void {
+  localStorage.setItem(PUSH_GRANTED_KEY, '1')
+}
+
+export function shouldShowPushPrompt(): boolean {
+  if (!isWebPushSupported()) return false
+  if (hasPushPermissionGranted()) return false
+  if (typeof Notification !== 'undefined' && Notification.permission === 'denied') return false
+  if (localStorage.getItem(PUSH_GRANTED_KEY)) return false
+  if (sessionStorage.getItem(PUSH_DISMISSED_KEY)) return false
+  return true
+}
+
+export function dismissPushPromptForSession(): void {
+  sessionStorage.setItem(PUSH_DISMISSED_KEY, '1')
 }

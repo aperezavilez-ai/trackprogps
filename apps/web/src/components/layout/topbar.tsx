@@ -118,7 +118,7 @@ export function TopBar({ profile }: TopBarProps) {
                     Configuración
                   </Link>
                   {['super_admin', 'admin_empresa'].includes(profile.role) && (
-                    <Link href="/admin/users" onClick={() => setMenuOpen(false)}
+                    <Link href="/admin" onClick={() => setMenuOpen(false)}
                       className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
                       <Shield className="w-4 h-4 text-gray-400" />
                       Administradores y permisos

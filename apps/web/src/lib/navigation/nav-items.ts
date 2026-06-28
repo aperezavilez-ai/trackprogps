@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 import {
-  MapPin, LayoutDashboard, Truck, Users, Radio,
+  MapPin, LayoutDashboard, Truck, Users, Radio, Smartphone,
   AlertTriangle, MapIcon, BarChart2, Wrench,
   Settings, CreditCard, Clock, Shield,
 } from 'lucide-react'
@@ -19,6 +19,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/map', label: 'Mapa en vivo', icon: MapIcon, section: 'main' },
   { href: '/drivers', label: 'Clientes', icon: Users, section: 'fleet' },
   { href: '/devices', label: 'Dispositivos', icon: Radio, section: 'fleet' },
+  { href: '/mobile', label: 'Móviles', icon: Smartphone, section: 'fleet' },
   { href: '/vehicles', label: 'Vehículos', icon: Truck, section: 'fleet' },
   { href: '/geofences', label: 'Geocercas', icon: MapPin, section: 'fleet' },
   { href: '/alerts', label: 'Alertas', icon: AlertTriangle, section: 'ops', badge: true },
@@ -27,7 +28,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/reports', label: 'Reportes', icon: BarChart2, section: 'ops' },
   { href: '/billing', label: 'Facturación', icon: CreditCard, section: 'account' },
   { href: '/settings', label: 'Configuración', icon: Settings, section: 'account' },
-  { href: '/admin/users', label: 'Administrador', icon: Shield, section: 'account', adminOnly: true },
+  { href: '/admin', label: 'Administrador', icon: Shield, section: 'account', adminOnly: true },
 ]
 
 export const NAV_SECTIONS = [

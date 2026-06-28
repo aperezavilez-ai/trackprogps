@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { LEGAL } from '@/lib/legal/site-legal'
+import { SIM_DEVICE_TERMS_PARAGRAPH } from '@/lib/legal/gps-installation'
 import { TrackProLogo } from '@/components/brand/trackpro-logo'
 
 export const metadata = {
@@ -66,7 +67,17 @@ export default function TerminosPage() {
         </section>
 
         <section className="mb-6 text-sm text-gray-600 leading-relaxed space-y-2">
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">6. Limitación de responsabilidad</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">6. Dispositivos GPS, SIM y conectividad</h2>
+          <p className="text-justify">{SIM_DEVICE_TERMS_PARAGRAPH}</p>
+          <p>
+            <Link href="/legal/instalacion-gps" className="text-orange-600 hover:underline">
+              Guía para instaladores (PDF / imprimir)
+            </Link>
+          </p>
+        </section>
+
+        <section className="mb-6 text-sm text-gray-600 leading-relaxed space-y-2">
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">7. Limitación de responsabilidad</h2>
           <p>
             El servicio se proporciona &quot;tal cual&quot;. No garantizamos precisión absoluta de ubicación,
             continuidad ininterrumpida ni ausencia de errores. {LEGAL.brand} no será responsable por daños
@@ -75,7 +86,7 @@ export default function TerminosPage() {
         </section>
 
         <section className="mb-6 text-sm text-gray-600 leading-relaxed space-y-2">
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">7. Propiedad intelectual</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">8. Propiedad intelectual</h2>
           <p>
             El software, marca, diseño e interfaces son propiedad de {LEGAL.brand} o sus licenciantes.
             Se te otorga una licencia limitada, no exclusiva e intransferible durante la vigencia de tu suscripción.
@@ -83,7 +94,7 @@ export default function TerminosPage() {
         </section>
 
         <section className="mb-6 text-sm text-gray-600 leading-relaxed space-y-2">
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">8. Terminación</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">9. Terminación</h2>
           <p>
             Puedes cancelar tu suscripción conforme a las opciones de facturación. Podemos suspender o
             terminar cuentas por incumplimiento grave, fraude o riesgo de seguridad, previo aviso cuando sea razonable.
@@ -91,7 +102,7 @@ export default function TerminosPage() {
         </section>
 
         <section className="mb-6 text-sm text-gray-600 leading-relaxed space-y-2">
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">9. Ley aplicable</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">10. Ley aplicable</h2>
           <p>
             Estos términos se rigen por las leyes de los Estados Unidos Mexicanos. Las controversias
             se someterán a los tribunales competentes de la Ciudad de México, salvo disposición imperativa en contrario.
@@ -99,7 +110,7 @@ export default function TerminosPage() {
         </section>
 
         <section className="mb-6 text-sm text-gray-600 leading-relaxed">
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">10. Contacto</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">11. Contacto</h2>
           <p>
             {LEGAL.supportEmail} · {LEGAL.contactEmail}
           </p>
@@ -108,6 +119,7 @@ export default function TerminosPage() {
         <div className="mt-10 pt-6 border-t border-gray-200 text-sm text-gray-500 flex flex-wrap gap-4">
           <Link href="/legal/privacidad" className="text-orange-600 hover:underline">Privacidad</Link>
           <Link href="/legal/aviso-legal" className="text-orange-600 hover:underline">Aviso legal</Link>
+          <Link href="/legal/instalacion-gps" className="text-orange-600 hover:underline">Instalación GPS</Link>
           <Link href="/register" className="text-orange-600 hover:underline">Registrarse</Link>
         </div>
       </main>

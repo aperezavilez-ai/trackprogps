@@ -3,16 +3,15 @@
 import { useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Loader2, CheckCircle, User, Users, Building2 } from 'lucide-react'
+import { Loader2, CheckCircle, User, Building2 } from 'lucide-react'
 import { TrackProLogo } from '@/components/brand/trackpro-logo'
-import { ACCOUNT_TYPES } from '@/lib/account-types'
+import { REGISTER_ACCOUNT_TYPES } from '@/lib/account-types'
 import { PublicPricingPlans } from '@/components/auth/public-pricing-plans'
 import { AuthLegalFooter } from '@/components/layout/auth-legal-footer'
 import type { AccountType } from '@gps-saas/types'
 
 const TYPE_ICONS = {
   personal: User,
-  family: Users,
   business: Building2,
 } as const
 
@@ -53,7 +52,7 @@ function RegisterForm() {
   const [registeredPlanName, setRegisteredPlanName] = useState<string | null>(null)
   const [hasPendingCheckout, setHasPendingCheckout] = useState(false)
 
-  const accountConfig = ACCOUNT_TYPES.find(t => t.value === accountType)!
+  const accountConfig = REGISTER_ACCOUNT_TYPES.find(t => t.value === accountType)!
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
@@ -171,8 +170,8 @@ function RegisterForm() {
           >
             {step === 1 && (
               <div className="grid gap-3">
-                {ACCOUNT_TYPES.map(t => {
-                  const Icon = TYPE_ICONS[t.value]
+                {REGISTER_ACCOUNT_TYPES.map(t => {
+                  const Icon = TYPE_ICONS[t.value as keyof typeof TYPE_ICONS]
                   const selected = accountType === t.value
                   return (
                     <button
@@ -289,7 +288,7 @@ function RegisterForm() {
           <div className="mt-6 pt-6 border-t border-gray-100 text-center">
             <p className="text-sm text-gray-500">¿Ya tienes cuenta? <Link href="/login" className="text-orange-600 font-medium hover:text-orange-500">Ingresar</Link></p>
           </div>
-          <AuthLegalFooter variant="light" />
+          <AuthLegalFooter variant="light" supportSource="register" />
         </div>
       </div>
     </div>

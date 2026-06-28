@@ -1,3 +1,4 @@
+import '../lib/tracker/background-location'
 import { useEffect } from 'react'
 import { Stack, router } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
@@ -5,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import * as Notifications from 'expo-notifications'
 import { useAuthStore } from '../stores/auth-store'
+import { useTrackerStore } from '../stores/tracker-store'
 import { supabase } from '../lib/supabase'
 import { validateSession } from '../lib/auth-helpers'
 import { registerForPushNotifications, syncPushTokenToServer } from '../lib/notifications'
@@ -31,6 +33,8 @@ export default function RootLayout() {
   const { setUser, setSession, clear } = useAuthStore()
 
   useEffect(() => {
+    void useTrackerStore.getState().hydrate()
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
@@ -39,6 +43,7 @@ export default function RootLayout() {
         await handlePostLogin()
       } else if (event === 'SIGNED_OUT') {
         clear()
+        useTrackerStore.getState().clear()
         router.replace('/login')
       }
     })

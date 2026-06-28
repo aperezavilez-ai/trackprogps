@@ -10,6 +10,7 @@ import { getInstallPlatform, isInAppBrowser, isSafariBrowser } from '@/lib/pwa/d
 import { IosInstallGuide } from '@/components/pwa/ios-install-guide'
 import { DesktopInstallGuide } from '@/components/pwa/desktop-install-guide'
 import { AndroidInstallGuide } from '@/components/pwa/android-install-guide'
+import { AuthLegalFooter } from '@/components/layout/auth-legal-footer'
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>
@@ -201,6 +202,10 @@ export default function DescargarPageClient() {
             No descarga archivos APK/IPA desde esta página
           </p>
         )}
+
+        <div className="mt-8 max-w-sm mx-auto w-full">
+          <AuthLegalFooter variant="dark" supportSource="descargar" />
+        </div>
       </div>
     </div>
   )

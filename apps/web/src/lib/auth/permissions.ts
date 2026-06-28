@@ -42,7 +42,7 @@ export function isReadOnlyRole(role: string) {
 /** Rutas permitidas por rol (prefijo) */
 const FAMILY_ROUTES = ['/dashboard', '/map', '/vehicles', '/alerts', '/history', '/settings']
 const READONLY_BUSINESS_ROUTES = [
-  ...FAMILY_ROUTES, '/drivers', '/devices', '/reports', '/geofences', '/maintenance',
+  ...FAMILY_ROUTES, '/drivers', '/devices', '/mobile', '/reports', '/geofences', '/maintenance',
 ]
 const OPERATOR_ROUTES = READONLY_BUSINESS_ROUTES
 

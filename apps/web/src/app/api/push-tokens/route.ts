@@ -15,14 +15,11 @@ export async function POST(request: NextRequest) {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('company_id, is_active')
+    .select('company_id, is_active, role')
     .eq('id', user.id)
     .single()
 
-  if (!profile?.company_id) {
-    return NextResponse.json({ error: 'Sin empresa asignada' }, { status: 403 })
-  }
-  if (profile.is_active === false) {
+  if (profile?.is_active === false) {
     return NextResponse.json({ error: 'Cuenta desactivada' }, { status: 403 })
   }
 
@@ -30,6 +27,13 @@ export async function POST(request: NextRequest) {
   const parsed = RegisterTokenSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: 'Validation error', details: parsed.error.flatten() }, { status: 422 })
+  }
+
+  if (!profile?.company_id) {
+    if (profile?.role === 'super_admin') {
+      return NextResponse.json({ data: null, skipped: true }, { status: 201 })
+    }
+    return NextResponse.json({ error: 'Sin empresa asignada' }, { status: 403 })
   }
 
   const { data, error } = await supabase

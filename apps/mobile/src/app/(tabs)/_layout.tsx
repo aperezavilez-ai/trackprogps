@@ -47,6 +47,14 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen
+        name="tracker"
+        options={{
+          title: 'Rastreo',
+          tabBarIcon: ({ color, size }) => <Ionicons name="locate-outline" color={color} size={size} />,
+          headerTitle: 'Mi rastreo GPS',
+        }}
+      />
+      <Tabs.Screen
         name="dashboard"
         options={{
           title: 'Dashboard',

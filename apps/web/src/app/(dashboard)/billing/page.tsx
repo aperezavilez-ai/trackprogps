@@ -1,8 +1,24 @@
+import { Suspense } from 'react'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { BillingClient } from '@/components/billing/billing-client'
 import { isSuperAdmin } from '@/lib/auth/scope'
+import { Loader2 } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
+
+function resolveDefaultTab(
+  searchParams: { tab?: string; checkout?: string; success?: string },
+  platformOnly: boolean,
+) {
+  if (searchParams.tab === 'ingresos') return 'ingresos' as const
+  if (searchParams.tab === 'pagos') return 'pagos' as const
+  if (searchParams.tab === 'suscripcion' || searchParams.checkout === '1' || searchParams.success === '1') {
+    return 'suscripcion' as const
+  }
+  if (searchParams.tab === 'facturas') return 'facturas' as const
+  if (platformOnly) return 'ingresos' as const
+  return 'facturas' as const
+}
 
 export default async function BillingPage({
   searchParams,
@@ -23,27 +39,32 @@ export default async function BillingPage({
     return <div className="p-6 text-gray-500">No tienes permiso para ver esta sección.</div>
   }
 
-  const defaultTab = searchParams.tab === 'pagos' ? 'pagos'
-    : searchParams.tab === 'suscripcion' || searchParams.checkout === '1' || searchParams.success === '1' ? 'suscripcion'
-    : 'facturas'
+  const platformOnly = isSuperAdmin(profile) && !profile.company_id
+  const defaultTab = resolveDefaultTab(searchParams, platformOnly)
 
   const autoCheckout = searchParams.checkout === '1'
 
-  if (isSuperAdmin(profile) && !profile.company_id) {
+  if (platformOnly) {
     return (
       <div className="p-6">
         <div className="mb-6">
           <h1 className="text-2xl font-semibold text-gray-900">Facturación</h1>
           <p className="text-sm text-gray-500 mt-1">Gestión de facturación de la plataforma</p>
         </div>
-        <BillingClient
-          subscription={null}
-          plans={[]}
-          company={null}
-          defaultTab={defaultTab}
-          isPlatformAdmin
-          billingSettings={null}
-        />
+        <Suspense fallback={
+          <div className="flex items-center justify-center py-12 text-gray-400 gap-2">
+            <Loader2 className="w-5 h-5 animate-spin" /> Cargando...
+          </div>
+        }>
+          <BillingClient
+            subscription={null}
+            plans={[]}
+            company={null}
+            defaultTab={defaultTab}
+            isPlatformAdmin
+            billingSettings={null}
+          />
+        </Suspense>
       </div>
     )
   }
@@ -79,15 +100,21 @@ export default async function BillingPage({
           </p>
         )}
       </div>
-      <BillingClient
-        subscription={subscription}
-        plans={plans ?? []}
-        company={company ? { ...company, id: profile.company_id! } : null}
-        defaultTab={defaultTab}
-        billingSettings={billingSettings as Record<string, string> | null}
-        pendingCheckout={pendingCheckout ?? null}
-        autoCheckout={autoCheckout}
-      />
+      <Suspense fallback={
+        <div className="flex items-center justify-center py-12 text-gray-400 gap-2">
+          <Loader2 className="w-5 h-5 animate-spin" /> Cargando...
+        </div>
+      }>
+        <BillingClient
+          subscription={subscription}
+          plans={plans ?? []}
+          company={company ? { ...company, id: profile.company_id! } : null}
+          defaultTab={defaultTab}
+          billingSettings={billingSettings as Record<string, string> | null}
+          pendingCheckout={pendingCheckout ?? null}
+          autoCheckout={autoCheckout}
+        />
+      </Suspense>
     </div>
   )
 }

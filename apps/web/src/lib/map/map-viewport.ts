@@ -60,3 +60,24 @@ export const MEXICO_LEAFLET_BOUNDS: [[number, number], [number, number]] = [
   [MEXICO_BOUNDS.south, MEXICO_BOUNDS.west],
   [MEXICO_BOUNDS.north, MEXICO_BOUNDS.east],
 ]
+
+export interface MexicoMapPadding {
+  top: number
+  bottom: number
+  left: number
+  right: number
+}
+
+/** Pantallas estrechas (móvil / PWA) — el encuadre fijo con zoom 5 recorta norte y sur. */
+export function isMobileMapViewport(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.matchMedia('(max-width: 1023px)').matches
+}
+
+/** Padding para fitBounds — más margen inferior por barra de navegación móvil. */
+export function getMexicoFitPadding(isMobile?: boolean): MexicoMapPadding {
+  const mobile = isMobile ?? isMobileMapViewport()
+  return mobile
+    ? { top: 56, bottom: 80, left: 4, right: 4 }
+    : { top: 40, bottom: 24, left: 24, right: 24 }
+}

@@ -35,7 +35,7 @@ export default async function MapPage() {
       .from('vehicle_positions')
       .select(`
       vehicle_id, company_id, lat, lng, speed, heading, ignition, odometer, recorded_at,
-      vehicle:vehicles(economic_num, plates, brand, model, type, owner_name, group_id, device_id, driver:drivers(full_name), group:vehicle_groups(id, name, color))
+      vehicle:vehicles(economic_num, plates, brand, model, type, owner_name, group_id, device_id, driver:drivers(full_name), group:vehicle_groups(id, name, color), device:gps_devices(source_type, mobile_platform))
     `)
 
     const { data: positions } = profile.company_id
@@ -62,6 +62,7 @@ export default async function MapPage() {
         device_id: string | null
         driver: { full_name: string } | null
         group: { id: string; name: string; color: string } | null
+        device: { source_type: string; mobile_platform: string | null } | null
       } | null
       const isOffline = now - new Date(p.recorded_at).getTime() > OFFLINE_MS
       return {
@@ -77,6 +78,8 @@ export default async function MapPage() {
         group_name:   v?.group?.name ?? null,
         owner_name:   v?.owner_name ?? null,
         driver_name:  v?.driver?.full_name ?? null,
+        device_source: (v?.device?.source_type ?? 'hardware') as LiveVehicle['device_source'],
+        mobile_platform: (v?.device?.mobile_platform ?? null) as LiveVehicle['mobile_platform'],
         device_status: isOffline ? 'no_signal' : p.ignition ? 'online' : 'offline',
         lat:     p.lat, lng: p.lng, speed: p.speed, heading: p.heading,
         ignition: p.ignition, odometer: p.odometer, last_update: p.recorded_at,
@@ -90,7 +93,7 @@ export default async function MapPage() {
     : 0
 
   return (
-    <div className="h-full min-h-[calc(100dvh-8rem)] lg:min-h-0 relative bg-gray-100">
+    <div className="h-[calc(100dvh-3.5rem-4rem)] lg:h-full lg:min-h-0 relative bg-gray-100">
       <MapFilters activeAlerts={activeAlerts} productivity={productivity} />
       <RealtimeMap companyId={profile.company_id ?? 'demo-company-id'} initialVehicles={liveVehicles} />
     </div>

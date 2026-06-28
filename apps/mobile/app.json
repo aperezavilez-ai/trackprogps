@@ -21,7 +21,9 @@
       },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "TrackPro necesita acceder a tu ubicación para mostrar tu posición en el mapa.",
-        "NSLocationAlwaysUsageDescription": "TrackPro usa tu ubicación para rastrear la flota.",
+        "NSLocationAlwaysUsageDescription": "TrackPro usa tu ubicación en segundo plano para rastreo continuo como dispositivo GPS.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "TrackPro necesita ubicación en todo momento para el rastreo móvil.",
+        "UIBackgroundModes": ["location", "fetch", "remote-notification"],
         "CFBundleDisplayName": "TrackPro GPS"
       },
       "associatedDomains": ["applinks:trackprogps.mx"]
@@ -36,6 +38,9 @@
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
         "WAKE_LOCK"
@@ -57,7 +62,10 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "TrackPro necesita acceder a tu ubicación para mostrar tu posición en el mapa."
+          "locationWhenInUsePermission": "TrackPro necesita acceder a tu ubicación para rastreo móvil.",
+          "locationAlwaysAndWhenInUsePermission": "TrackPro rastrea tu ubicación en segundo plano como unidad GPS.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isIosBackgroundLocationEnabled": true
         }
       ]
     ],

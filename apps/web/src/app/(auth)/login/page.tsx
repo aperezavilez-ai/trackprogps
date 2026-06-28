@@ -6,10 +6,9 @@ import Link from 'next/link'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { AuthLegalFooter } from '@/components/layout/auth-legal-footer'
 import { TrackProLogo } from '@/components/brand/trackpro-logo'
-import { Eye, EyeOff, Loader2, User, Lock, QrCode } from 'lucide-react'
+import { Eye, EyeOff, Loader2, User, Lock, Download } from 'lucide-react'
 
 const REMEMBER_KEY = 'trackpro_remember_email'
-const DOWNLOAD_URL = 'https://trackprogps.mx/descargar'
 
 function LoginForm() {
   const searchParams = useSearchParams()
@@ -126,24 +125,13 @@ function LoginForm() {
           <Link href="/login" className="group">
             <TrackProLogo size="lg" className="group-hover:opacity-95 transition" />
           </Link>
-          <div className="flex flex-col items-end gap-2">
-            <Link
-              href="/descargar"
-              className="text-sm font-medium text-white/90 hover:text-orange-300 tracking-wide"
-            >
-              Descargar
-            </Link>
-            <p className="text-[10px] text-white/45 text-right max-w-[120px] leading-tight">
-              iPhone: escanea con Cámara → Safari
-            </p>
-            <Link href="/descargar" title="Escanear para instalar la app">
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=96x96&data=${encodeURIComponent(DOWNLOAD_URL)}`}
-                alt="QR — instalar TrackPro GPS"
-                className="w-[88px] h-[88px] md:w-[96px] md:h-[96px] rounded-lg border border-white/30 bg-white p-1"
-              />
-            </Link>
-          </div>
+          <Link
+            href="/descargar"
+            className="inline-flex items-center gap-2 rounded-lg border border-white/25 bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/15 hover:border-white/35 transition"
+          >
+            <Download className="w-4 h-4" />
+            Descargar app
+          </Link>
         </header>
 
         {/* Contenido — panel derecho */}
@@ -151,15 +139,6 @@ function LoginForm() {
           <div className="w-full max-w-[340px] rounded-lg bg-slate-900/88 border border-white/10 backdrop-blur-md shadow-2xl overflow-hidden">
             {/* Cabecera panel */}
             <div className="relative px-6 pt-8 pb-4 flex flex-col items-center border-b border-white/10">
-              <button
-                type="button"
-                onClick={() => { window.location.href = '/descargar' }}
-                className="absolute top-3 right-3 p-1.5 text-white/50 hover:text-white/80"
-                title="Descargar app"
-                aria-label="Descargar"
-              >
-                <QrCode className="w-5 h-5" />
-              </button>
               <div className="w-16 h-16 rounded-full bg-white/10 border border-white/20 flex items-center justify-center mb-1">
                 <User className="w-8 h-8 text-white/80" />
               </div>
@@ -259,7 +238,7 @@ function LoginForm() {
 
         {/* Footer */}
         <div className="px-5 md:px-10 pb-5">
-          <AuthLegalFooter variant="dark" />
+          <AuthLegalFooter variant="dark" supportSource="login" />
         </div>
       </div>
     </div>

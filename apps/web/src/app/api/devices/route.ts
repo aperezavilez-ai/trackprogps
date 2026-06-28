@@ -1,14 +1,23 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { createSupabaseServerClient, createSupabaseServiceClient } from '@/lib/supabase/server'
 import { z } from 'zod'
+import { registerOrUpdateMobileDevice } from '@/lib/mobile/device-registry'
+import { AdminMobileRegisterSchema } from '@/lib/mobile/schemas'
+import { randomBytes } from 'crypto'
 
-const DeviceSchema = z.object({
+const HardwareDeviceSchema = z.object({
+  source_type: z.literal('hardware').optional(),
   imei:         z.string().length(15).regex(/^\d+$/, 'IMEI must be 15 digits'),
   model:        z.string().min(1).max(50).default('FMC920'),
   firmware_ver: z.string().max(20).nullable().optional(),
   sim_iccid:    z.string().max(30).nullable().optional(),
   phone_num:    z.string().max(20).nullable().optional(),
 })
+
+const DeviceSchema = z.union([
+  HardwareDeviceSchema,
+  AdminMobileRegisterSchema.extend({ source_type: z.literal('mobile') }),
+])
 
 export async function GET(request: NextRequest) {
   const supabase = createSupabaseServerClient()
@@ -19,12 +28,19 @@ export async function GET(request: NextRequest) {
   const page    = parseInt(searchParams.get('page') ?? '1', 10)
   const perPage = parseInt(searchParams.get('per_page') ?? '50', 10)
   const offset  = (page - 1) * perPage
+  const sourceType = searchParams.get('source_type')
 
-  const { data, count, error } = await supabase
+  let query = supabase
     .from('gps_devices')
     .select('*, vehicle:vehicles(economic_num, plates)', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(offset, offset + perPage - 1)
+
+  if (sourceType === 'mobile' || sourceType === 'hardware') {
+    query = query.eq('source_type', sourceType)
+  }
+
+  const { data, count, error } = await query
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ data, count, page, per_page: perPage, total_pages: Math.ceil((count ?? 0) / perPage) })
@@ -44,9 +60,34 @@ export async function POST(request: NextRequest) {
   const parsed = DeviceSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Validation error', details: parsed.error.flatten() }, { status: 422 })
 
+  if ('assigned_user_id' in parsed.data && parsed.data.source_type === 'mobile') {
+    const service = createSupabaseServiceClient()
+    const deviceUid = `ADM-${randomBytes(12).toString('hex')}`
+    try {
+      const result = await registerOrUpdateMobileDevice(service, {
+        companyId: profile.company_id!,
+        userId: parsed.data.assigned_user_id,
+        deviceUid,
+        platform: parsed.data.platform,
+        label: parsed.data.label,
+        trackingIntervalSec: parsed.data.tracking_interval_sec,
+      })
+      const { data: device } = await service
+        .from('gps_devices')
+        .select('*, vehicle:vehicles(economic_num, plates)')
+        .eq('id', result.device_id)
+        .single()
+      return NextResponse.json({ data: device }, { status: 201 })
+    } catch (err) {
+      return NextResponse.json({ error: err instanceof Error ? err.message : 'Error' }, { status: 500 })
+    }
+  }
+
+  const hw = parsed.data as z.infer<typeof HardwareDeviceSchema>
+  const { source_type: _st, ...hwData } = hw
   const { data, error } = await supabase
     .from('gps_devices')
-    .insert({ ...parsed.data, company_id: profile.company_id })
+    .insert({ ...hwData, company_id: profile.company_id, source_type: 'hardware' })
     .select().single()
 
   if (error) {

@@ -18,6 +18,8 @@ import { DemoTour } from '@/components/onboarding/demo-tour'
 import { Suspense } from 'react'
 import { isDemoTourActive } from '@/lib/demo-data'
 import { getAccountPhase } from '@/lib/billing/account-phase'
+import { canAccessSupportInbox } from '@/lib/auth/support-access'
+import { createSupabaseServiceClient } from '@/lib/supabase/server'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = createSupabaseServerClient()
@@ -28,7 +30,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const { data: profile } = await supabase
     .from('users')
-    .select('*, company:companies(name, logo_url, status, trial_ends_at, settings, plan:plans(name, type, features))')
+    .select('*, company:companies(name, logo_url, status, trial_ends_at, settings, email, plan:plans(name, type, features))')
     .eq('id', user.id)
     .single()
 
@@ -43,8 +45,25 @@ export default async function DashboardLayout({ children }: { children: React.Re
     status: string
     trial_ends_at: string | null
     settings: Record<string, unknown> | null
+    email?: string | null
     plan: { name: string; type: string; features: Record<string, unknown> } | null
   } | null
+
+  const showSupportInbox = canAccessSupportInbox({
+    role: profile.role,
+    company_id: profile.company_id,
+    company: company ? { email: company.email, settings: company.settings as { platform_internal?: boolean } | null } : null,
+  })
+
+  let supportNewCount = 0
+  if (showSupportInbox) {
+    const service = createSupabaseServiceClient()
+    const { count } = await service
+      .from('support_tickets')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'nuevo')
+    supportNewCount = count ?? 0
+  }
 
   if (profile.company_id) {
     const { data: sub } = await supabase
@@ -76,7 +95,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <DemoTour />
       </Suspense>
       <div className="flex h-screen bg-gray-50 overflow-hidden">
-        <Sidebar profile={profile} />
+        <Sidebar profile={profile} showSupportInbox={showSupportInbox} supportNewCount={supportNewCount} />
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <TopBar profile={profile} />
           <PushNotificationSetup />

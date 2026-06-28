@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils/cn'
 import { filterNavByRole } from '@/lib/auth/permissions'
 import { NAV_ITEMS, NAV_SECTIONS } from '@/lib/navigation/nav-items'
 import { TrackProLogo } from '@/components/brand/trackpro-logo'
+import { SupportSidebarLink } from '@/components/admin/support-nav-badge'
 
 interface SidebarProps {
   profile: {
@@ -20,9 +21,11 @@ interface SidebarProps {
       plan: { name: string; features: Record<string, boolean> } | null
     } | null
   }
+  showSupportInbox?: boolean
+  supportNewCount?: number
 }
 
-export function Sidebar({ profile }: SidebarProps) {
+export function Sidebar({ profile, showSupportInbox = false, supportNewCount = 0 }: SidebarProps) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -103,6 +106,22 @@ export function Sidebar({ profile }: SidebarProps) {
             </div>
           )
         })}
+
+        {showSupportInbox && (
+          <div className="mb-4 px-2">
+            {!collapsed && (
+              <div className="px-3 py-1 text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+                Plataforma
+              </div>
+            )}
+            <SupportSidebarLink
+              collapsed={collapsed}
+              active={pathname === '/admin/support' || pathname.startsWith('/admin/support/')}
+              onNavigate={() => setMobileOpen(false)}
+              initialCount={supportNewCount}
+            />
+          </div>
+        )}
 
         {/* AI Assistant link */}
         {(features['ai_assistant'] || profile.role === 'super_admin') && (
