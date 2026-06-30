@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Camera, CheckCircle2, Loader2, MapPin, Mic, ShieldCheck, WifiOff } from 'lucide-react'
+import { Camera, CheckCircle2, ExternalLink, Loader2, MapPin, Mic, ShieldCheck, WifiOff } from 'lucide-react'
 import {
   activateBrowserMobileTracking,
   isMobileBrowserPlatform,
@@ -12,6 +12,10 @@ type ActivationState = 'idle' | 'running' | 'ready' | 'partial' | 'login' | 'err
 
 type Props = {
   compact?: boolean
+  deviceId?: string
+  deviceUid?: string
+  title?: string
+  description?: string
   onActivated?: () => void
 }
 
@@ -21,7 +25,14 @@ const PERMISSION_ITEMS: Array<{ key: keyof BrowserPermissionMap; label: string; 
   { key: 'microphone', label: 'Micrófono', icon: Mic },
 ]
 
-export function MobilePermissionSetup({ compact = false, onActivated }: Props) {
+export function MobilePermissionSetup({
+  compact = false,
+  deviceId,
+  deviceUid,
+  title = 'Activar este teléfono',
+  description = 'Autoriza permisos y envia una primera posición para enlazar el móvil.',
+  onActivated,
+}: Props) {
   const [isMobile, setIsMobile] = useState(false)
   const [state, setState] = useState<ActivationState>('idle')
   const [message, setMessage] = useState('')
@@ -31,14 +42,12 @@ export function MobilePermissionSetup({ compact = false, onActivated }: Props) {
     setIsMobile(isMobileBrowserPlatform())
   }, [])
 
-  if (!isMobile) return null
-
   async function activate() {
     setState('running')
     setMessage('Solicitando permisos del teléfono...')
 
     try {
-      const result = await activateBrowserMobileTracking()
+      const result = await activateBrowserMobileTracking({ deviceId, deviceUid })
       setPermissions(result.permissions)
 
       const grantedCore = result.permissions.location && result.permissions.camera && result.permissions.microphone
@@ -76,10 +85,10 @@ export function MobilePermissionSetup({ compact = false, onActivated }: Props) {
         </div>
         <div className="min-w-0 flex-1">
           <div className={compact ? 'text-sm font-semibold text-white' : 'text-sm font-semibold text-gray-900'}>
-            Activar este teléfono
+            {title}
           </div>
           <p className={compact ? 'text-xs text-white/60 mt-1' : 'text-xs text-gray-500 mt-1'}>
-            Autoriza permisos y envia una primera posición para enlazar el móvil.
+            {description}
           </p>
 
           <div className="flex flex-wrap gap-2 mt-3">
@@ -107,17 +116,26 @@ export function MobilePermissionSetup({ compact = false, onActivated }: Props) {
             </div>
           )}
 
-          <button
-            type="button"
-            disabled={state === 'running'}
-            onClick={() => void activate()}
-            className={compact
-              ? 'mt-4 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 py-3 text-sm font-medium text-white hover:bg-orange-400 disabled:opacity-60'
-              : 'mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-orange-600 disabled:opacity-60'}
-          >
-            {state === 'running' ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
-            {state === 'running' ? 'Activando...' : 'Pedir permisos ahora'}
-          </button>
+          {isMobile ? (
+            <button
+              type="button"
+              disabled={state === 'running'}
+              onClick={() => void activate()}
+              className={compact
+                ? 'mt-4 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 py-3 text-sm font-medium text-white hover:bg-orange-400 disabled:opacity-60'
+                : 'mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-orange-600 disabled:opacity-60'}
+            >
+              {state === 'running' ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+              {state === 'running' ? 'Activando...' : 'Pedir permisos ahora'}
+            </button>
+          ) : (
+            <div className={compact
+              ? 'mt-4 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-white/60'
+              : 'mt-4 rounded-xl border border-teal-100 bg-white px-3 py-2 text-xs text-gray-600'}>
+              <ExternalLink className="inline w-3.5 h-3.5 mr-1.5" />
+              Los permisos deben aceptarse desde el iPhone. Abre <span className="font-medium">trackprogps.mx/devices</span> en ese móvil.
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -17,7 +17,12 @@ export type BrowserActivationResult = {
 
 const DEVICE_UID_KEY = 'trackpro_mobile_device_uid'
 
-export function getOrCreateMobileDeviceUid(): string {
+export function getOrCreateMobileDeviceUid(preferredUid?: string): string {
+  if (preferredUid) {
+    localStorage.setItem(DEVICE_UID_KEY, preferredUid)
+    return preferredUid
+  }
+
   const existing = localStorage.getItem(DEVICE_UID_KEY)
   if (existing) return existing
 
@@ -38,8 +43,11 @@ export function getMobileRegisterPlatform(): 'android' | 'ios' {
   return getInstallPlatform() === 'ios' ? 'ios' : 'android'
 }
 
-export async function activateBrowserMobileTracking(): Promise<BrowserActivationResult> {
-  const deviceUid = getOrCreateMobileDeviceUid()
+export async function activateBrowserMobileTracking(options: {
+  deviceId?: string
+  deviceUid?: string
+} = {}): Promise<BrowserActivationResult> {
+  const deviceUid = getOrCreateMobileDeviceUid(options.deviceUid)
   const permissions: BrowserPermissionMap = {
     location: false,
     camera: false,
@@ -56,21 +64,36 @@ export async function activateBrowserMobileTracking(): Promise<BrowserActivation
   permissions.microphone = await requestMediaPermission({ audio: true })
   permissions.notifications = await requestNotificationPermission()
 
-  const registerRes = await fetch('/api/mobile/register', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      device_uid: deviceUid,
-      platform: getMobileRegisterPlatform(),
-      model: getFriendlyDeviceModel(),
-      os_version: navigator.userAgent.slice(0, 30),
-      app_version: 'web-pwa',
-      permissions,
-    }),
-  })
+  let needsLogin = false
+  let registered = Boolean(options.deviceId)
+  if (!options.deviceId) {
+    const registerRes = await fetch('/api/mobile/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        device_uid: deviceUid,
+        platform: getMobileRegisterPlatform(),
+        model: getFriendlyDeviceModel(),
+        os_version: navigator.userAgent.slice(0, 30),
+        app_version: 'web-pwa',
+        permissions,
+      }),
+    })
 
-  const needsLogin = registerRes.status === 401
-  const registered = registerRes.ok
+    needsLogin = registerRes.status === 401
+    registered = registerRes.ok
+  } else {
+    const configRes = await fetch('/api/mobile/config', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        device_id: options.deviceId,
+        config: { tracking_enabled: true },
+      }),
+    })
+    needsLogin = configRes.status === 401
+    registered = configRes.ok
+  }
 
   let telemetrySent = false
   if (registered && position) {
@@ -78,7 +101,7 @@ export async function activateBrowserMobileTracking(): Promise<BrowserActivation
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        device_uid: deviceUid,
+        ...(options.deviceId ? { device_id: options.deviceId } : { device_uid: deviceUid }),
         points: [{
           lat: position.coords.latitude,
           lng: position.coords.longitude,

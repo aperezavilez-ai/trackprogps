@@ -186,7 +186,7 @@ async function createMobileVehicle(
   return vehicle.id
 }
 
-async function ensureMobileSession(
+export async function ensureMobileSession(
   supabase: SupabaseClient,
   deviceId: string,
   userId: string,

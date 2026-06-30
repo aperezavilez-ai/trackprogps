@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Radio, Wifi, WifiOff, Plus, RefreshCw, Loader2, X, Smartphone } from 'lucide-react'
 import { usePermissions } from '@/lib/context/permissions-context'
 import { DEVICE_MODEL_GROUPS, DEFAULT_DEVICE_MODEL } from '@/lib/device-models'
+import { MobilePermissionSetup } from '@/components/mobile/mobile-permission-setup'
 
 interface Device {
   id: string; imei: string; model: string; firmware_ver: string | null
@@ -51,6 +52,7 @@ export default function DevicesPage() {
     d.imei.includes(search) || d.model.toLowerCase().includes(search.toLowerCase()) ||
     (d.vehicle?.plates ?? '').toLowerCase().includes(search.toLowerCase())
   )
+  const pendingMobile = filtered.find(d => d.source_type === 'mobile' && !d.last_seen && d.status !== 'online')
 
   const stats = {
     total:   devices.length,
@@ -102,6 +104,15 @@ export default function DevicesPage() {
           placeholder="Buscar por IMEI, modelo o placas..."
           className="w-full max-w-sm border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
       </div>
+
+      {pendingMobile && (
+        <MobilePermissionSetup
+          deviceId={pendingMobile.id}
+          title="Activar GPS del móvil"
+          description="Abre esta pantalla desde el iPhone registrado, toca el botón y acepta ubicación para enviar la primera posición."
+          onActivated={() => void loadDevices()}
+        />
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>

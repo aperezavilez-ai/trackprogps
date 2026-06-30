@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseServiceClient } from '@/lib/supabase/server'
 import { getApiUser } from '@/lib/auth/get-api-user'
 import { MobileTelemetrySchema } from '@/lib/mobile/schemas'
-import { resolveMobileDevice } from '@/lib/mobile/device-registry'
+import { ensureMobileSession, resolveMobileDevice } from '@/lib/mobile/device-registry'
 import { processMobileTelemetry } from '@/lib/mobile/telemetry-processor'
 import { checkRateLimit, rateLimitResponse } from '@/lib/security/rate-limit'
 import { resolveMobileCompanyId, mobileCompanyErrorResponse } from '@/lib/mobile/resolve-company'
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     .maybeSingle()
 
   if (!session) {
-    return NextResponse.json({ error: 'Sesión móvil revocada' }, { status: 401 })
+    await ensureMobileSession(service, device.deviceId, user.id)
   }
 
   const result = await processMobileTelemetry(service, {
@@ -72,7 +72,9 @@ export async function POST(request: NextRequest) {
   await service
     .from('mobile_sessions')
     .update({ last_seen_at: new Date().toISOString() })
-    .eq('id', session.id)
+    .eq('device_id', device.deviceId)
+    .eq('user_id', user.id)
+    .is('revoked_at', null)
 
   return NextResponse.json({
     data: {
