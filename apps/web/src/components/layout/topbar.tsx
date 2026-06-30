@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { Bell, LogOut, User, ChevronDown, Settings, Shield, Plus, Menu } from 'lucide-react'
+import { Bell, Download, LogOut, User, ChevronDown, Settings, Shield, Plus, Menu, RefreshCw } from 'lucide-react'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 
@@ -76,6 +76,23 @@ export function TopBar({ profile }: TopBarProps) {
             <span className="hidden sm:inline">Nueva geocerca</span>
           </button>
         )}
+        <Link
+          href="/descargar"
+          title="Instalar o descargar app"
+          className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50 px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-medium text-orange-600 hover:bg-orange-100 transition"
+        >
+          <Download className="w-4 h-4" />
+          <span className="hidden xl:inline">Instalar app</span>
+        </Link>
+        <button
+          type="button"
+          title="Actualizar app"
+          onClick={() => window.location.reload()}
+          className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-gray-200 px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-medium text-gray-600 hover:bg-gray-50 transition"
+        >
+          <RefreshCw className="w-4 h-4" />
+          <span className="hidden xl:inline">Actualizar app</span>
+        </button>
         {/* Notifications bell */}
         <button className="relative w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 transition text-gray-500">
           <Bell className="w-4 h-4" />

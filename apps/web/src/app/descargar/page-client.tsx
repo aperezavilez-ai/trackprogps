@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Download, CheckCircle2, Smartphone, Monitor, Globe, RefreshCw } from 'lucide-react'
+import { Download, CheckCircle2, Smartphone, Monitor, Globe } from 'lucide-react'
 import { TrackProLogo } from '@/components/brand/trackpro-logo'
 import { isStandalonePwa, registerServiceWorker } from '@/lib/pwa/register-sw'
 import { getInstallPlatform, isInAppBrowser, isSafariBrowser } from '@/lib/pwa/detect-platform'
@@ -165,6 +165,9 @@ export default function DescargarPageClient() {
               {ready && isIos && (
                 <>
                   <IosInstallGuide inAppBrowser={inApp || needsSafari} />
+                  <p className="mt-4 rounded-xl border border-orange-400/20 bg-orange-500/10 px-3 py-2 text-xs text-orange-100 leading-relaxed">
+                    En iPhone no se descarga ningun archivo. Primero agrega TrackPro a pantalla de inicio; despues cierra Safari y abre la app desde el icono nuevo.
+                  </p>
                   <div className="mt-4 flex flex-col gap-2">
                     <button
                       type="button"
@@ -172,15 +175,7 @@ export default function DescargarPageClient() {
                       className="w-full flex items-center justify-center gap-2 border border-white/15 hover:bg-white/5 text-white font-medium py-3 rounded-xl text-sm transition"
                     >
                       <CheckCircle2 className="w-4 h-4" />
-                      Verificar instalacion
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => window.location.reload()}
-                      className="w-full flex items-center justify-center gap-2 border border-white/10 hover:bg-white/5 text-white/70 font-medium py-3 rounded-xl text-sm transition"
-                    >
-                      <RefreshCw className="w-4 h-4" />
-                      Actualizar pagina
+                      Ya abri desde el icono, verificar
                     </button>
                   </div>
                 </>
@@ -205,14 +200,6 @@ export default function DescargarPageClient() {
                   >
                     Crear cuenta nueva →
                   </Link>
-                  <button
-                    type="button"
-                    onClick={() => window.location.reload()}
-                    className="w-full flex items-center justify-center gap-2 text-sm text-white/45 hover:text-white/70 py-2"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    Actualizar
-                  </button>
                 </div>
               )}
             </>

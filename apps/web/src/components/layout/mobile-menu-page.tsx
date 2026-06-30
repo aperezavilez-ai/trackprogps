@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Bot } from 'lucide-react'
+import { Bot, Download, RefreshCw } from 'lucide-react'
 import { NAV_ITEMS, NAV_SECTIONS } from '@/lib/navigation/nav-items'
 import { filterNavByRole } from '@/lib/auth/permissions'
 import { cn } from '@/lib/utils/cn'
@@ -26,6 +26,24 @@ export function MobileMenuPage({ role }: Props) {
     <div className="p-4 pb-8 max-w-lg mx-auto">
       <h1 className="text-xl font-semibold text-gray-900 mb-1">Menú</h1>
       <p className="text-sm text-gray-500 mb-6">Acceso rápido a todas las secciones</p>
+
+      <div className="grid grid-cols-2 gap-2 mb-6">
+        <Link
+          href="/descargar"
+          className="flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-3 py-3 text-sm font-medium text-white shadow-sm"
+        >
+          <Download className="w-4 h-4" />
+          Instalar app
+        </Link>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm font-medium text-gray-700"
+        >
+          <RefreshCw className="w-4 h-4" />
+          Actualizar app
+        </button>
+      </div>
 
       {NAV_SECTIONS.map(section => {
         const sectionItems = items.filter(i => i.section === section.key)
