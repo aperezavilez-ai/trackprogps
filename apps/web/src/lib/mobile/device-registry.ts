@@ -102,7 +102,7 @@ export async function registerOrUpdateMobileDevice(
       tracking_interval_sec: input.trackingIntervalSec ?? 30,
       tracking_enabled: true,
       mobile_metadata: metadata,
-      status: 'unknown',
+      status: 'offline',
     })
     .select('id, tracking_enabled, tracking_interval_sec')
     .single()

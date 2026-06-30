@@ -24,6 +24,7 @@ const STATUS_STYLES: Record<string, { color: string; bg: string; label: string }
   offline:  { color: '#6B7280', bg: '#F9FAFB', label: 'Desconectado' },
   no_signal:{ color: '#EAB308', bg: '#FEFCE8', label: 'Sin señal' },
   unknown:  { color: '#9CA3AF', bg: '#F3F4F6', label: 'Desconocido' },
+  pending_mobile: { color: '#0D9488', bg: '#F0FDFA', label: 'Pendiente de app' },
 }
 
 export default function DevicesPage() {
@@ -54,7 +55,7 @@ export default function DevicesPage() {
   const stats = {
     total:   devices.length,
     online:  devices.filter(d => d.status === 'online').length,
-    offline: devices.filter(d => d.status === 'offline' || d.status === 'no_signal').length,
+    offline: devices.filter(d => d.status !== 'online').length,
   }
 
   return (
@@ -118,14 +119,17 @@ export default function DevicesPage() {
               {filtered.length === 0 ? (
                 <tr><td colSpan={6} className="text-center py-16 text-gray-400 text-sm">No se encontraron dispositivos</td></tr>
               ) : filtered.map(d => {
-                const cfg = STATUS_STYLES[d.status] ?? STATUS_STYLES['unknown']!
+                const isPendingMobile = d.source_type === 'mobile' && !d.last_seen && d.status !== 'online'
+                const cfg = isPendingMobile
+                  ? STATUS_STYLES['pending_mobile']!
+                  : STATUS_STYLES[d.status] ?? STATUS_STYLES['unknown']!
                 const lastSeen = d.last_seen ? (() => {
                   const s = Math.floor((Date.now() - new Date(d.last_seen).getTime()) / 1000)
                   if (s < 60) return `Hace ${s}s`
                   if (s < 3600) return `Hace ${Math.floor(s / 60)}min`
                   if (s < 86400) return `Hace ${Math.floor(s / 3600)}h`
                   return new Date(d.last_seen).toLocaleDateString('es-MX')
-                })() : 'Nunca'
+                })() : (isPendingMobile ? 'Sin telemetría' : 'Nunca')
 
                 return (
                   <tr key={d.id} className="hover:bg-gray-50">
