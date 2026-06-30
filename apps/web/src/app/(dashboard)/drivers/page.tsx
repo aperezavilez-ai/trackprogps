@@ -3,6 +3,10 @@ import { DriversPageClient } from '@/components/fleet/drivers-page-client'
 import { DEMO_MODE, isDemoTourActive } from '@/lib/demo-data'
 import { normalizeDriverRow, type DriverWithUnits } from '@/lib/fleet/driver-types'
 
+function firstOrNull<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null)
+}
+
 export const dynamic = 'force-dynamic'
 
 const DEMO_DRIVERS: DriverWithUnits[] = [
@@ -36,11 +40,14 @@ export default async function DriversPage({ searchParams }: { searchParams: { pa
 
     const { data: profile } = await supabase
       .from('users')
-      .select('company_id, company:companies(status, settings)')
+      .select('company_id, role, company:companies(status, settings)')
       .eq('id', user.id)
       .single()
 
-    if (isDemoTourActive(profile?.company as { status: string; settings: Record<string, unknown> | null } | null)) {
+    if (!profile) return null
+
+    const company = firstOrNull(profile.company) as { status: string; settings: Record<string, unknown> | null } | null
+    if (isDemoTourActive(company)) {
       drivers = DEMO_DRIVERS
       count = drivers.length
     } else if (profile?.role === 'super_admin' && !profile.company_id) {
@@ -62,6 +69,7 @@ export default async function DriversPage({ searchParams }: { searchParams: { pa
         .order('full_name')
         .range(offset, offset + perPage - 1)
 
+      if (profile.company_id) query = query.eq('company_id', profile.company_id)
       if (search) query = query.or(`full_name.ilike.%${search}%,license_num.ilike.%${search}%,phone.ilike.%${search}%`)
 
       const result = await query

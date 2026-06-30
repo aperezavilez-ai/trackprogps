@@ -2,14 +2,21 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Radio, Wifi, WifiOff, Plus, RefreshCw, Loader2, X } from 'lucide-react'
+import { Radio, Wifi, WifiOff, Plus, RefreshCw, Loader2, X, Smartphone } from 'lucide-react'
 import { usePermissions } from '@/lib/context/permissions-context'
 import { DEVICE_MODEL_GROUPS, DEFAULT_DEVICE_MODEL } from '@/lib/device-models'
 
 interface Device {
   id: string; imei: string; model: string; firmware_ver: string | null
   sim_iccid: string | null; phone_num: string | null; status: string; last_seen: string | null
+  source_type?: string
   vehicle: { economic_num: string; plates: string } | null
+}
+
+interface CompanyOption {
+  id: string
+  name: string
+  account_type: string
 }
 
 const STATUS_STYLES: Record<string, { color: string; bg: string; label: string }> = {
@@ -20,20 +27,24 @@ const STATUS_STYLES: Record<string, { color: string; bg: string; label: string }
 }
 
 export default function DevicesPage() {
-  const { canWriteFleet } = usePermissions()
+  const { canWriteFleet, role, companyId } = usePermissions()
   const [devices, setDevices] = useState<Device[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [search, setSearch]   = useState('')
+  const [filter, setFilter] = useState<'all' | 'hardware' | 'mobile'>('all')
+  const needsCompanyPick = role === 'super_admin' && !companyId
 
   async function loadDevices() {
-    const res  = await fetch('/api/devices')
+    const params = new URLSearchParams()
+    if (filter !== 'all') params.set('source_type', filter)
+    const res  = await fetch(`/api/devices?${params}`)
     const data = await res.json()
     setDevices(data.data ?? [])
     setLoading(false)
   }
 
-  useEffect(() => { void loadDevices() }, [])
+  useEffect(() => { void loadDevices() }, [filter])
 
   const filtered = devices.filter(d =>
     d.imei.includes(search) || d.model.toLowerCase().includes(search.toLowerCase()) ||
@@ -52,7 +63,7 @@ export default function DevicesPage() {
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Dispositivos GPS</h1>
           <p className="text-xs text-gray-400 mt-1">
-            Teltonika (soporte completo), Queclink, Concox y más — protocolo TCP
+            GPS hardware (Teltonika y más) · Móviles de choferes (opcional en plan flota)
           </p>
           <div className="flex gap-4 mt-2 text-sm text-gray-500">
             <span>{stats.total} total</span>
@@ -73,7 +84,18 @@ export default function DevicesPage() {
         </div>
       </div>
 
-      {/* Search */}
+      {/* Filters */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        {(['all', 'hardware', 'mobile'] as const).map(f => (
+          <button key={f} type="button" onClick={() => setFilter(f)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
+              filter === f ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-gray-600 border-gray-200'
+            }`}>
+            {f === 'all' ? 'Todos' : f === 'hardware' ? 'GPS vehículo' : 'Móviles'}
+          </button>
+        ))}
+      </div>
+
       <div className="mb-4">
         <input value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Buscar por IMEI, modelo o placas..."
@@ -109,10 +131,13 @@ export default function DevicesPage() {
                   <tr key={d.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <Link href={`/devices/${d.id}`} className="flex items-center gap-2 group">
-                        <Radio className="w-4 h-4 text-gray-400 group-hover:text-orange-500" />
+                        {d.source_type === 'mobile'
+                          ? <Smartphone className="w-4 h-4 text-teal-500" />
+                          : <Radio className="w-4 h-4 text-gray-400 group-hover:text-orange-500" />}
                         <div>
                           <div className="font-semibold text-gray-900 group-hover:text-orange-500">{d.model}</div>
-                          {d.firmware_ver && <div className="text-xs text-gray-400">FW: {d.firmware_ver}</div>}
+                          {d.source_type === 'mobile' && <div className="text-xs text-teal-600">App móvil</div>}
+                          {d.firmware_ver && d.source_type !== 'mobile' && <div className="text-xs text-gray-400">FW: {d.firmware_ver}</div>}
                         </div>
                       </Link>
                     </td>
@@ -139,27 +164,54 @@ export default function DevicesPage() {
         </div>
       )}
 
-      {showModal && canWriteFleet && <DeviceModal onClose={() => setShowModal(false)} onSave={() => { setShowModal(false); void loadDevices() }} />}
+      {showModal && canWriteFleet && (
+        <DeviceModal
+          needsCompanyPick={needsCompanyPick}
+          onClose={() => setShowModal(false)}
+          onSave={() => { setShowModal(false); void loadDevices() }}
+        />
+      )}
     </div>
   )
 }
 
-function DeviceModal({ onClose, onSave }: { onClose: () => void; onSave: () => void }) {
+function DeviceModal({
+  needsCompanyPick,
+  onClose,
+  onSave,
+}: {
+  needsCompanyPick: boolean
+  onClose: () => void
+  onSave: () => void
+}) {
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
+  const [companies, setCompanies] = useState<CompanyOption[]>([])
+  const [companyId, setCompanyId] = useState('')
   const [form, setForm]       = useState({ imei: '', model: DEFAULT_DEVICE_MODEL, sim_iccid: '', phone_num: '', firmware_ver: '', model_custom: '' })
   const set = (f: string, v: string) => setForm(p => ({ ...p, [f]: v }))
   const isCustomModel = form.model === 'Otro'
 
+  useEffect(() => {
+    if (!needsCompanyPick) return
+    void fetch('/api/admin/companies')
+      .then(r => r.json())
+      .then(json => setCompanies(json.data ?? []))
+  }, [needsCompanyPick])
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault(); setLoading(true); setError('')
     try {
-      const payload = {
+      const payload: Record<string, string> = {
         imei: form.imei,
         model: isCustomModel ? (form.model_custom.trim() || 'Otro') : form.model,
         sim_iccid: form.sim_iccid,
         phone_num: form.phone_num,
         firmware_ver: form.firmware_ver,
+      }
+      if (needsCompanyPick) {
+        if (!companyId) throw new Error('Selecciona la empresa cliente')
+        payload.company_id = companyId
       }
       const res = await fetch('/api/devices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const data = await res.json()
@@ -173,10 +225,23 @@ function DeviceModal({ onClose, onSave }: { onClose: () => void; onSave: () => v
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
         <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-lg font-semibold">Registrar dispositivo GPS</h2>
+          <h2 className="text-lg font-semibold">Registrar GPS en vehículo</h2>
           <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400"><X className="w-5 h-5" /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {needsCompanyPick && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Empresa cliente *</label>
+              <select value={companyId} onChange={e => setCompanyId(e.target.value)} required
+                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
+                <option value="">— Seleccionar —</option>
+                {companies.map(c => (
+                  <option key={c.id} value={c.id}>{c.name} ({c.account_type})</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-400 mt-1">Para rastreo solo móvil, usa la sección Móviles o el alta del cliente en registro.</p>
+            </div>
+          )}
           {[
             { label: 'IMEI (15 dígitos) *', field: 'imei', type: 'text', placeholder: '123456789012345', required: true, maxLength: 15 },
             { label: 'ICCID de SIM', field: 'sim_iccid', type: 'text', placeholder: '8952140...', required: false },

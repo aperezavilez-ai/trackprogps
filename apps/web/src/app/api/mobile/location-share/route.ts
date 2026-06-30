@@ -2,20 +2,20 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createHash, randomBytes } from 'crypto'
 import { createSupabaseServerClient, createSupabaseServiceClient } from '@/lib/supabase/server'
 import { LocationShareSchema } from '@/lib/mobile/schemas'
+import { getMobileCompanyId } from '@/lib/mobile/mobile-context'
+import { mobileCompanyErrorResponse } from '@/lib/mobile/resolve-company'
 
 export async function POST(request: NextRequest) {
   const supabase = createSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('company_id')
-    .eq('id', user.id)
-    .single()
-
-  if (!profile?.company_id) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const service = createSupabaseServiceClient()
+  let companyId: string
+  try {
+    ;({ companyId } = await getMobileCompanyId(supabase, user.id, service))
+  } catch (err) {
+    return mobileCompanyErrorResponse(err)
   }
 
   const body = await request.json()
@@ -24,12 +24,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Validation error', details: parsed.error.flatten() }, { status: 422 })
   }
 
-  const service = createSupabaseServiceClient()
   const { data: device } = await service
     .from('gps_devices')
     .select('id, company_id, vehicles(id)')
     .eq('id', parsed.data.device_id)
-    .eq('company_id', profile.company_id)
+    .eq('company_id', companyId)
     .eq('source_type', 'mobile')
     .maybeSingle()
 
@@ -43,7 +42,7 @@ export async function POST(request: NextRequest) {
   const vehicle = Array.isArray(device.vehicles) ? device.vehicles[0] : device.vehicles
 
   const { error } = await service.from('mobile_location_shares').insert({
-    company_id: profile.company_id,
+    company_id: companyId,
     device_id: device.id,
     vehicle_id: vehicle?.id ?? null,
     created_by: user.id,

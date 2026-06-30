@@ -57,3 +57,50 @@ export async function getPlatformInternalCompanyId(
     .maybeSingle()
   return data?.id ?? null
 }
+
+/** Plan Empresarial en sandbox interno para pruebas móvil (super_admin). */
+export async function ensureSandboxMobilePlan(
+  serviceClient: SupabaseClient,
+  companyId: string,
+): Promise<void> {
+  const { data: plan } = await serviceClient
+    .from('plans')
+    .select('id')
+    .eq('type', 'empresarial')
+    .eq('is_active', true)
+    .maybeSingle()
+
+  if (!plan?.id) return
+
+  await serviceClient
+    .from('companies')
+    .update({ plan_id: plan.id, status: 'active', account_type: 'business' })
+    .eq('id', companyId)
+
+  const { data: sub } = await serviceClient
+    .from('subscriptions')
+    .select('id')
+    .eq('company_id', companyId)
+    .maybeSingle()
+
+  const periodEnd = new Date(Date.now() + 365 * 86400000).toISOString()
+  if (sub?.id) {
+    await serviceClient
+      .from('subscriptions')
+      .update({
+        plan_id: plan.id,
+        status: 'active',
+        current_period_end: periodEnd,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('company_id', companyId)
+  } else {
+    await serviceClient.from('subscriptions').insert({
+      company_id: companyId,
+      plan_id: plan.id,
+      status: 'active',
+      current_period_start: new Date().toISOString(),
+      current_period_end: periodEnd,
+    })
+  }
+}

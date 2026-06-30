@@ -1,7 +1,27 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { User, Company, Plan } from '@gps-saas/types'
+import type { User, Company, Plan, DeviceSourceType, MobilePlatform, MapAssetFilter, VehicleType } from '@gps-saas/types'
 import { MEXICO_DASHBOARD_VIEW } from '@/lib/map/map-viewport'
+
+type MapVehicle = {
+  vehicleId: string
+  deviceId?: string | null
+  lat: number
+  lng: number
+  speed: number
+  heading: number
+  ignition: boolean
+  lastUpdate: string
+  economicNum: string
+  plates: string
+  vehicleType: VehicleType
+  groupId: string | null
+  groupName: string | null
+  ownerName: string | null
+  driverName: string | null
+  deviceSource?: DeviceSourceType
+  mobilePlatform?: MobilePlatform | null
+}
 
 interface AppState {
   user: User | null
@@ -43,38 +63,20 @@ export const useAppStore = create<AppState>()(
 
 // Map store for real-time vehicle positions
 interface MapState {
-  vehicles: Map<string, {
-    vehicleId: string
-    deviceId?: string | null
-    lat: number
-    lng: number
-    speed: number
-    heading: number
-    ignition: boolean
-    lastUpdate: string
-    economicNum: string
-    plates: string
-    vehicleType: string
-    groupId: string | null
-    groupName: string | null
-    ownerName: string | null
-    driverName: string | null
-    deviceSource?: 'hardware' | 'mobile'
-    mobilePlatform?: 'android' | 'ios' | null
-  }>
+  vehicles: Map<string, MapVehicle>
   vehicleGroups: Array<{ id: string; name: string; color: string }>
   selectedVehicleId: string | null
   mapCenter: { lat: number; lng: number }
   mapZoom: number
   filter: 'all' | 'online' | 'offline' | 'moving' | 'stopped'
-  assetFilter: 'all' | 'vehicles' | 'mobile' | 'personnel'
+  assetFilter: MapAssetFilter
   groupFilter: string | 'all'
   mapStyle: 'hybrid' | 'satellite' | 'streets'
 
   setVehicleGroups: (groups: MapState['vehicleGroups']) => void
 
-  updateVehicle: (vehicleId: string, data: Partial<MapState['vehicles'] extends Map<string, infer V> ? V : never>) => void
-  updateVehiclesBatch: (updates: Map<string, Partial<MapState['vehicles'] extends Map<string, infer V> ? V : never>>) => void
+  updateVehicle: (vehicleId: string, data: Partial<MapVehicle>) => void
+  updateVehiclesBatch: (updates: Map<string, Partial<MapVehicle>>) => void
   setSelectedVehicle: (id: string | null) => void
   setMapCenter: (center: { lat: number; lng: number }) => void
   setMapZoom: (zoom: number) => void
@@ -100,8 +102,29 @@ export const useMapStore = create<MapState>()((set, get) => ({
   updateVehicle: (vehicleId, data) => {
     set((state) => {
       const newMap = new Map(state.vehicles)
-      const existing = newMap.get(vehicleId) ?? {}
-      newMap.set(vehicleId, { ...existing, vehicleId, ...data } as typeof existing)
+      const existing = newMap.get(vehicleId)
+      if (!existing) {
+        if (
+          data.lat == null ||
+          data.lng == null ||
+          data.speed == null ||
+          data.heading == null ||
+          data.ignition == null ||
+          data.lastUpdate == null ||
+          data.economicNum == null ||
+          data.plates == null ||
+          data.vehicleType == null ||
+          data.groupId == null ||
+          data.groupName == null ||
+          data.ownerName == null ||
+          data.driverName == null
+        ) {
+          return state
+        }
+        newMap.set(vehicleId, { vehicleId, ...data } as MapVehicle)
+      } else {
+        newMap.set(vehicleId, { ...existing, ...data })
+      }
       return { vehicles: newMap }
     })
   },
@@ -111,8 +134,29 @@ export const useMapStore = create<MapState>()((set, get) => ({
     set((state) => {
       const newMap = new Map(state.vehicles)
       for (const [vehicleId, data] of updates) {
-        const existing = newMap.get(vehicleId) ?? {}
-        newMap.set(vehicleId, { ...existing, vehicleId, ...data } as typeof existing)
+        const existing = newMap.get(vehicleId)
+        if (!existing) {
+          if (
+            data.lat == null ||
+            data.lng == null ||
+            data.speed == null ||
+            data.heading == null ||
+            data.ignition == null ||
+            data.lastUpdate == null ||
+            data.economicNum == null ||
+            data.plates == null ||
+            data.vehicleType == null ||
+            data.groupId == null ||
+            data.groupName == null ||
+            data.ownerName == null ||
+            data.driverName == null
+          ) {
+            continue
+          }
+          newMap.set(vehicleId, { vehicleId, ...data } as MapVehicle)
+        } else {
+          newMap.set(vehicleId, { ...existing, ...data })
+        }
       }
       return { vehicles: newMap }
     })

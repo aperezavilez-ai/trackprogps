@@ -4,6 +4,10 @@ import Link from 'next/link'
 import { Building2, UserPlus, Headphones } from 'lucide-react'
 import { createSupabaseServiceClient } from '@/lib/supabase/server'
 
+function firstOrNull<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null)
+}
+
 export const dynamic = 'force-dynamic'
 
 export default async function AdminPage({
@@ -164,7 +168,7 @@ export default async function AdminPage({
             </thead>
             <tbody className="divide-y divide-gray-50">
               {(companies ?? []).map(company => {
-                const plan = company.plan as { name: string; type: string } | null
+                const plan = firstOrNull(company.plan) as { name: string; type: string } | null
                 const sub  = Array.isArray(company.subscription)
                   ? company.subscription[0]
                   : company.subscription as { status: string; current_period_end: string } | null

@@ -25,14 +25,14 @@ export function checkRateLimit(
   key: string,
   limit: number,
   windowMs: number,
-): { ok: true } | { ok: false; retryAfterSec: number } {
+): { ok: true; remaining: number } | { ok: false; retryAfterSec: number } {
   cleanup()
   const now = Date.now()
   const bucket = buckets.get(key)
 
   if (!bucket || now > bucket.resetAt) {
     buckets.set(key, { count: 1, resetAt: now + windowMs })
-    return { ok: true }
+    return { ok: true, remaining: limit - 1 }
   }
 
   if (bucket.count >= limit) {
@@ -40,7 +40,7 @@ export function checkRateLimit(
   }
 
   bucket.count++
-  return { ok: true }
+  return { ok: true, remaining: limit - bucket.count }
 }
 
 export function rateLimitResponse(retryAfterSec: number) {

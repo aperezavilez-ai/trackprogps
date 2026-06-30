@@ -5,11 +5,13 @@ import { MobileTelemetrySchema } from '@/lib/mobile/schemas'
 import { resolveMobileDevice } from '@/lib/mobile/device-registry'
 import { processMobileTelemetry } from '@/lib/mobile/telemetry-processor'
 import { checkRateLimit, rateLimitResponse } from '@/lib/security/rate-limit'
+import { resolveMobileCompanyId, mobileCompanyErrorResponse } from '@/lib/mobile/resolve-company'
 
 export async function POST(request: NextRequest) {
   const auth = await getApiUser(request)
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { user } = auth
+  const service = createSupabaseServiceClient()
 
   const { data: profile } = await auth.supabase
     .from('users')
@@ -17,8 +19,13 @@ export async function POST(request: NextRequest) {
     .eq('id', user.id)
     .single()
 
-  if (!profile?.company_id) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!profile) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  let companyId: string
+  try {
+    companyId = await resolveMobileCompanyId(profile, service)
+  } catch (err) {
+    return mobileCompanyErrorResponse(err)
   }
 
   const rl = checkRateLimit(`mobile-telemetry:${user.id}`, 120, 60 * 1000)
@@ -30,8 +37,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Validation error', details: parsed.error.flatten() }, { status: 422 })
   }
 
-  const service = createSupabaseServiceClient()
-  const device = await resolveMobileDevice(service, user.id, profile.company_id, {
+  const device = await resolveMobileDevice(service, user.id, companyId, {
     deviceId: parsed.data.device_id,
     deviceUid: parsed.data.device_uid,
   })

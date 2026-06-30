@@ -253,8 +253,8 @@ export function createGoogleVehicleIcon(opts: {
 
   return {
     url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
-    scaledSize: { width: size, height: size },
-    anchor: { x: size / 2, y: size / 2 },
+    scaledSize: new google.maps.Size(size, size),
+    anchor: new google.maps.Point(size / 2, size / 2),
   }
 }
 
@@ -282,7 +282,7 @@ export const FLEET_MAP_STYLES = [
   { featureType: 'poi', stylers: [{ visibility: 'off' }] },
   { featureType: 'poi.business', stylers: [{ visibility: 'off' }] },
   { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-] as const
+]
 
 export function createDevicePinIcon(vehicleType?: VehicleType | string | null) {
   const kind = vehicleTypeToIconKind(vehicleType)

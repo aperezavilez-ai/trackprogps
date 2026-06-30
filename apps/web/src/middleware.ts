@@ -2,6 +2,12 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { canAccessRoute } from '@/lib/auth/permissions'
 
+type SupabaseCookie = {
+  name: string
+  value: string
+  options?: Parameters<NextResponse['cookies']['set']>[2]
+}
+
 const DASHBOARD_PATHS = [
   '/dashboard', '/map', '/vehicles', '/drivers', '/devices', '/mobile',
   '/geofences', '/alerts', '/history', '/maintenance', '/reports',
@@ -23,7 +29,7 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll()
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: SupabaseCookie[]) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           response = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>

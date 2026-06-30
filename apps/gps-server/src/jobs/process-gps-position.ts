@@ -63,16 +63,20 @@ export async function processGpsPosition(
 
   for (const record of records) {
     const io = record.io_elements
+    const position = {
+      lat:      record.lat,
+      lng:      record.lng,
+      speed:    record.speed,
+      ignition: io.ignition ?? false,
+      odometer: io.total_odometer ?? io.odometer ?? 0,
+    } as AlertCheckJob['position']
+    if (typeof io.battery_voltage === 'number') position.batteryVoltage = io.battery_voltage
+    if (typeof io.external_voltage === 'number') position.externalVoltage = io.external_voltage
+
     const alertJob: AlertCheckJob = {
       vehicleId: device.vehicleId,
       companyId: device.companyId,
-      position: {
-        lat:      record.lat,
-        lng:      record.lng,
-        speed:    record.speed,
-        ignition: io.ignition ?? false,
-        odometer: io.total_odometer ?? io.odometer ?? 0,
-      },
+      position,
       previousIgnition: device.prevIgnition,
     }
 

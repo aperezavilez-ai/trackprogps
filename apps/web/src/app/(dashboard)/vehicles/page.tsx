@@ -1,6 +1,18 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { VehiclesPageClient } from '@/components/fleet/vehicles-page-client'
 import { DEMO_MODE, DEMO_VEHICLES_TABLE, isDemoTourActive } from '@/lib/demo-data'
+import type { Vehicle } from '@gps-saas/types'
+
+function firstOrNull<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null)
+}
+
+type VehiclePageRow = Vehicle & {
+  device: { id: string; imei: string; model: string; status: string; last_seen: string | null } | null
+  driver: { id: string; full_name: string; phone: string | null } | null
+  group: { id: string; name: string; color: string } | null
+  position: { vehicle_id: string; lat: number; lng: number; speed: number; ignition: boolean; recorded_at: string } | null
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -34,7 +46,10 @@ export default async function VehiclesPage({
       .eq('id', user.id)
       .single()
 
-    if (isDemoTourActive(profile?.company as { status: string; settings: Record<string, unknown> | null } | null)) {
+    if (!profile) return null
+
+    const company = firstOrNull(profile.company) as { status: string; settings: Record<string, unknown> | null } | null
+    if (isDemoTourActive(company)) {
       vehicles = DEMO_VEHICLES_TABLE
       count = vehicles.length
     } else if (profile.role === 'super_admin' && !profile.company_id) {
@@ -82,8 +97,11 @@ export default async function VehiclesPage({
 
       vehicles = rows.map(v => ({
         ...v,
+        device: firstOrNull(v.device),
+        driver: firstOrNull(v.driver),
+        group: firstOrNull(v.group),
         position: posMap.get(v.id) ?? null,
-      })) as typeof DEMO_VEHICLES_TABLE
+      })) as VehiclePageRow[]
 
       count = result.count ?? 0
     }

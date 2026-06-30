@@ -3,6 +3,16 @@ import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { isSuperAdmin } from '@/lib/auth/scope'
 import { assertPlanFeature } from '@/lib/billing/plan-guard'
 import { reportResponse } from '@/lib/reports/export-report'
+import { firstOrNull } from '@/lib/supabase/normalize'
+
+type KmStats = { vehicle_id: string; km_total: number; max_speed: number; avg_speed: number }
+type IdleStats = { vehicle_id: string; idle_minutes: number; idle_samples: number }
+type ReportVehicleRelation = {
+  economic_num: string
+  plates: string
+  driver: { full_name: string } | { full_name: string }[] | null
+  company: { name: string } | { name: string }[] | null
+}
 
 async function resolveVehicleIds(
   supabase: ReturnType<typeof createSupabaseServerClient>,
@@ -114,15 +124,15 @@ export async function GET(request: NextRequest) {
         })
 
         const statsMap = new Map(
-          (stats ?? []).map((s: { vehicle_id: string; km_total: number; max_speed: number; avg_speed: number }) => [s.vehicle_id, s]),
+          ((stats ?? []) as KmStats[]).map((s) => [s.vehicle_id, s]),
         )
 
         for (const v of vehicleList) {
           const s = statsMap.get(v.id)
           if (!s || s.km_total === 0 && s.max_speed === 0) continue
 
-          const driver  = (v.driver as { full_name: string } | null)?.full_name ?? 'Sin asignar'
-          const company = (v.company as { name: string } | null)?.name ?? ''
+          const driver  = firstOrNull(v.driver as { full_name: string } | { full_name: string }[] | null)?.full_name ?? 'Sin asignar'
+          const company = firstOrNull(v.company as { name: string } | { name: string }[] | null)?.name ?? ''
 
           csvRows.push([
             company, driver,
@@ -151,15 +161,13 @@ export async function GET(request: NextRequest) {
 
       headers = ['Fecha y hora', 'Empresa', 'Cliente', 'Económico', 'Placas', 'Velocidad (km/h)', 'Latitud', 'Longitud', 'Descripción']
       for (const a of alerts ?? []) {
-        const v = a.vehicle as {
-          economic_num: string; plates: string
-          driver: { full_name: string } | null
-          company: { name: string } | null
-        } | null
+        const v = firstOrNull(a.vehicle as ReportVehicleRelation | ReportVehicleRelation[] | null)
+        const driver = firstOrNull(v?.driver)
+        const company = firstOrNull(v?.company)
         csvRows.push([
           new Date(a.created_at).toLocaleString('es-MX'),
-          v?.company?.name ?? '',
-          v?.driver?.full_name ?? 'Sin asignar',
+          company?.name ?? '',
+          driver?.full_name ?? 'Sin asignar',
           v?.economic_num ?? '', v?.plates ?? '',
           String(a.speed ?? ''),
           String(a.lat ?? ''), String(a.lng ?? ''),
@@ -182,15 +190,13 @@ export async function GET(request: NextRequest) {
 
       headers = ['Fecha', 'Empresa', 'Cliente', 'Tipo', 'Severidad', 'Económico', 'Placas', 'Descripción', 'Reconocida']
       for (const a of alerts ?? []) {
-        const v = a.vehicle as {
-          economic_num: string; plates: string
-          driver: { full_name: string } | null
-          company: { name: string } | null
-        } | null
+        const v = firstOrNull(a.vehicle as ReportVehicleRelation | ReportVehicleRelation[] | null)
+        const driver = firstOrNull(v?.driver)
+        const company = firstOrNull(v?.company)
         csvRows.push([
           new Date(a.created_at).toLocaleString('es-MX'),
-          v?.company?.name ?? '',
-          v?.driver?.full_name ?? 'Sin asignar',
+          company?.name ?? '',
+          driver?.full_name ?? 'Sin asignar',
           a.type, a.severity,
           v?.economic_num ?? '', v?.plates ?? '',
           a.message,
@@ -217,16 +223,14 @@ export async function GET(request: NextRequest) {
 
       headers = ['Inicio', 'Fin', 'Empresa', 'Cliente', 'Económico', 'Placas', 'Distancia (km)', 'Duración (min)', 'Vel. prom', 'Vel. máx', 'Completo']
       for (const t of trips ?? []) {
-        const v = t.vehicle as {
-          economic_num: string; plates: string
-          driver: { full_name: string } | null
-          company: { name: string } | null
-        } | null
+        const v = firstOrNull(t.vehicle as ReportVehicleRelation | ReportVehicleRelation[] | null)
+        const driver = firstOrNull(v?.driver)
+        const company = firstOrNull(v?.company)
         csvRows.push([
           new Date(t.started_at).toLocaleString('es-MX'),
           t.ended_at ? new Date(t.ended_at).toLocaleString('es-MX') : 'En curso',
-          v?.company?.name ?? '',
-          v?.driver?.full_name ?? 'Sin asignar',
+          company?.name ?? '',
+          driver?.full_name ?? 'Sin asignar',
           v?.economic_num ?? '', v?.plates ?? '',
           Number(t.distance_km).toFixed(1),
           String(t.duration_min),
@@ -260,14 +264,14 @@ export async function GET(request: NextRequest) {
         })
 
         const statsMap = new Map(
-          (stats ?? []).map((s: { vehicle_id: string; idle_minutes: number; idle_samples: number }) => [s.vehicle_id, s]),
+          ((stats ?? []) as IdleStats[]).map((s) => [s.vehicle_id, s]),
         )
 
         for (const v of vehicleList ?? []) {
           const s = statsMap.get(v.id)
           if (!s) continue
-          const driver  = (v.driver as { full_name: string } | null)?.full_name ?? 'Sin asignar'
-          const company = (v.company as { name: string } | null)?.name ?? ''
+          const driver  = firstOrNull(v.driver as { full_name: string } | { full_name: string }[] | null)?.full_name ?? 'Sin asignar'
+          const company = firstOrNull(v.company as { name: string } | { name: string }[] | null)?.name ?? ''
           csvRows.push([
             company, driver,
             v.economic_num, v.plates,

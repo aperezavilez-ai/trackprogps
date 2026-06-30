@@ -4,11 +4,14 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Save, Loader2 } from 'lucide-react'
 import { AlertRulesPanel } from '@/components/settings/alert-rules-panel'
+import { ApiKeysPanel } from '@/components/settings/api-keys-panel'
+import { WebhooksPanel } from '@/components/settings/webhooks-panel'
+import { AuditLogsPanel } from '@/components/settings/audit-logs-panel'
 import { UsersAdminPanel } from '@/components/admin/users-admin-panel'
 import { VehicleGroupsPanel } from '@/components/fleet/vehicle-groups-panel'
 import { canManageGroups, canManageUsers, canManageBilling } from '@/lib/auth/permissions'
 
-const ALL_TABS = ['Empresa', 'Grupos', 'Facturación CFDI', 'Usuarios', 'Notificaciones', 'Reglas de alerta'] as const
+const ALL_TABS = ['Empresa', 'Grupos', 'Facturación CFDI', 'Usuarios', 'Notificaciones', 'Reglas de alerta', 'API', 'Auditoría'] as const
 type Tab = typeof ALL_TABS[number]
 
 interface Profile {
@@ -22,10 +25,11 @@ interface Profile {
 
 interface TeamMember { id: string; full_name: string; email: string; role: string; is_active: boolean; created_at: string }
 
-export function SettingsClient({ profile, currentUserId }: {
+export function SettingsClient({ profile, currentUserId, hasApiAccess }: {
   profile: Profile | null
   teamMembers?: TeamMember[]
   currentUserId: string
+  hasApiAccess?: boolean
 }) {
   const router = useRouter()
   const role = profile?.role ?? 'operador'
@@ -37,6 +41,8 @@ export function SettingsClient({ profile, currentUserId }: {
     }
     if (t === 'Notificaciones' && !canManageBilling(role)) return false
     if (t === 'Reglas de alerta' && !canManageGroups(role)) return false
+    if (t === 'API' && (!hasApiAccess || !canManageBilling(role))) return false
+    if (t === 'Auditoría' && !canManageBilling(role)) return false
     if (role === 'miembro_familiar') return false
     return true
   })
@@ -81,6 +87,13 @@ export function SettingsClient({ profile, currentUserId }: {
       )}
       {tab === 'Notificaciones' && <NotificationSettings profile={profile} />}
       {tab === 'Reglas de alerta' && <AlertRulesPanel />}
+      {tab === 'API' && (
+        <div className="space-y-6">
+          <ApiKeysPanel />
+          <WebhooksPanel />
+        </div>
+      )}
+      {tab === 'Auditoría' && <AuditLogsPanel />}
     </div>
   )
 }

@@ -20,9 +20,6 @@
     "paths": {
       "@/*": [
         "./src/*"
-      ],
-      "@gps-saas/types": [
-        "./src/types.ts"
       ]
     },
     "noUncheckedIndexedAccess": false,

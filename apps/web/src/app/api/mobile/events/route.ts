@@ -3,20 +3,20 @@ import { createSupabaseServerClient, createSupabaseServiceClient } from '@/lib/s
 import { MobileEventSchema } from '@/lib/mobile/schemas'
 import { resolveMobileDevice } from '@/lib/mobile/device-registry'
 import { processMobileEvent } from '@/lib/mobile/event-processor'
+import { getMobileCompanyId } from '@/lib/mobile/mobile-context'
+import { mobileCompanyErrorResponse } from '@/lib/mobile/resolve-company'
 
 export async function POST(request: NextRequest) {
   const supabase = createSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('company_id, role')
-    .eq('id', user.id)
-    .single()
-
-  if (!profile?.company_id) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const service = createSupabaseServiceClient()
+  let companyId: string
+  try {
+    ;({ companyId } = await getMobileCompanyId(supabase, user.id, service))
+  } catch (err) {
+    return mobileCompanyErrorResponse(err)
   }
 
   const body = await request.json()
@@ -25,8 +25,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Validation error', details: parsed.error.flatten() }, { status: 422 })
   }
 
-  const service = createSupabaseServiceClient()
-  const device = await resolveMobileDevice(service, user.id, profile.company_id, {
+  const device = await resolveMobileDevice(service, user.id, companyId, {
     deviceId: parsed.data.device_id,
     deviceUid: parsed.data.device_uid,
   })

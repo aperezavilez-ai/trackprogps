@@ -13,7 +13,7 @@ export async function GET() {
   const supabase = createSupabaseServerClient()
   const { data } = await supabase
     .from('plans')
-    .select('id, name, type, max_vehicles, max_users, price_monthly, price_yearly')
+    .select('id, name, type, max_vehicles, max_users, max_mobile_devices, price_monthly, price_yearly, features')
     .eq('is_active', true)
     .order('price_monthly')
 

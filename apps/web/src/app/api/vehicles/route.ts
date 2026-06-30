@@ -107,25 +107,14 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // Check plan limits
-  if (profile.role !== 'super_admin') {
-    const { count } = await supabase
-      .from('vehicles')
-      .select('*', { count: 'exact', head: true })
-      .eq('company_id', profile.company_id)
-      .is('deleted_at', null)
-
-    const { data: sub } = await supabase
-      .from('subscriptions')
-      .select('plan:plans(max_vehicles)')
-      .eq('company_id', profile.company_id)
-      .single()
-
-    const plan = sub?.plan as { max_vehicles: number } | null
-    if (plan && (count ?? 0) >= plan.max_vehicles) {
+  // Check plan limits (solo cupo flota GPS / hardware, no móviles)
+  if (profile.role !== 'super_admin' && profile.company_id) {
+    const { getCompanyUsage } = await import('@/lib/billing/plan-guard')
+    const usage = await getCompanyUsage(supabase, profile.company_id)
+    if (usage?.at_vehicle_limit) {
       return NextResponse.json(
-        { error: `Plan limit reached (${plan.max_vehicles} vehicles)` },
-        { status: 402 }
+        { error: `Plan limit reached (${usage.vehicles?.current ?? 0}/${usage.vehicles?.max ?? 0} vehículos GPS)` },
+        { status: 402 },
       )
     }
   }

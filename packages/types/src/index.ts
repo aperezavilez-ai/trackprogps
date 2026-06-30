@@ -16,7 +16,7 @@ export type UserRole =
 
 export type CompanyStatus = 'active' | 'suspended' | 'trial' | 'cancelled' | 'demo'
 
-export type PlanType = 'basico' | 'profesional' | 'empresarial'
+export type PlanType = 'basico' | 'profesional' | 'empresarial' | 'personal_mobile' | 'familia_mobile'
 
 export type AccountType = 'personal' | 'family' | 'business'
 
@@ -122,6 +122,7 @@ export interface Plan {
   type: PlanType
   max_vehicles: number
   max_users: number
+  max_mobile_devices: number
   price_monthly: number
   price_yearly: number
   features: PlanFeatures
@@ -140,6 +141,10 @@ export interface PlanFeatures {
   ai_assistant: boolean
   api_access: boolean
   white_label: boolean
+  /** Plan flota: permite GPS hardware. Plan solo móvil: false */
+  hardware_gps?: boolean
+  /** Móviles incluidos en plan flota (informativo) */
+  mobile_addon_included?: number
 }
 
 // ------------------------------------------------------------

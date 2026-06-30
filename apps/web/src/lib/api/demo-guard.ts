@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { isDemoTourCompany } from '@/lib/billing/account-phase'
 
+function firstOrNull<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null)
+}
+
 export async function assertNotDemoTour(
   supabase: SupabaseClient,
 ): Promise<NextResponse | null> {
@@ -16,7 +20,7 @@ export async function assertNotDemoTour(
     .eq('id', user.id)
     .single()
 
-  const company = profile?.company as { status: string; settings: Record<string, unknown> | null } | null
+  const company = firstOrNull(profile?.company) as { status: string; settings: Record<string, unknown> | null } | null
   if (isDemoTourCompany(company)) {
     return NextResponse.json(
       {

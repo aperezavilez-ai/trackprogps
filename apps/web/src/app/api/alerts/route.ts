@@ -3,6 +3,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { DEMO_ALERTS, isDemoTourActive } from '@/lib/demo-data'
 import { assertNotDemoTour } from '@/lib/api/demo-guard'
 import { canAcknowledgeAlerts } from '@/lib/auth/permissions'
+import { firstOrNull } from '@/lib/supabase/normalize'
 
 export async function GET(request: NextRequest) {
   const supabase = createSupabaseServerClient()
@@ -15,7 +16,8 @@ export async function GET(request: NextRequest) {
     .eq('id', user.id)
     .single()
 
-  if (isDemoTourActive(profile?.company as { status: string; settings: Record<string, unknown> | null } | null)) {
+  const company = firstOrNull(profile?.company as { status: string; settings: Record<string, unknown> | null } | { status: string; settings: Record<string, unknown> | null }[] | null | undefined)
+  if (isDemoTourActive(company)) {
     return NextResponse.json({ data: DEMO_ALERTS, count: DEMO_ALERTS.length, page: 1, per_page: 50, total_pages: 1 })
   }
 

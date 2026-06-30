@@ -48,6 +48,7 @@ export function Sidebar({ profile, showSupportInbox = false, supportNewCount = 0
     if (item.href === '/billing' && !isAdmin) return false
     if ('adminOnly' in item && item.adminOnly && !isAdmin) return false
     if (item.href === '/mobile' && !features['mobile_app'] && profile.role !== 'super_admin') return false
+    if (item.href === '/devices' && features['hardware_gps'] === false && profile.role !== 'super_admin') return false
     if (item.href === '/reports' && !features['reports'] && profile.role !== 'super_admin') return false
     if (item.href === '/maintenance' && !features['maintenance'] && profile.role !== 'super_admin') return false
     return true

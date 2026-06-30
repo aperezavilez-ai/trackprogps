@@ -1,6 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { isDemoTourActive } from '@/lib/demo-data'
 
+function firstOrNull<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null)
+}
+
 export async function getUserCompanyContext(supabase: SupabaseClient, userId: string) {
   const { data: profile } = await supabase
     .from('users')
@@ -8,7 +12,7 @@ export async function getUserCompanyContext(supabase: SupabaseClient, userId: st
     .eq('id', userId)
     .single()
 
-  const company = profile?.company as {
+  const company = firstOrNull(profile?.company) as {
     status: string
     settings: Record<string, unknown> | null
   } | null

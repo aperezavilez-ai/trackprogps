@@ -2,6 +2,10 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 const FULL_ACCESS_ROLES = ['super_admin', 'admin_empresa', 'supervisor'] as const
 
+function firstOrNull<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null)
+}
+
 export function hasFullVehicleAccess(role: string, groupAccessCount: number) {
   return FULL_ACCESS_ROLES.includes(role as typeof FULL_ACCESS_ROLES[number]) || groupAccessCount === 0
 }
@@ -39,7 +43,7 @@ export async function getUserGroupAccessMap(
 
   const map = new Map<string, Array<{ id: string; name: string; color: string }>>()
   for (const row of data ?? []) {
-    const group = row.group as { id: string; name: string; color: string } | null
+    const group = firstOrNull(row.group) as { id: string; name: string; color: string } | null
     if (!group) continue
     const list = map.get(row.user_id) ?? []
     list.push(group)

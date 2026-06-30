@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { canManageBilling } from '@/lib/auth/permissions'
 import { resendFromAlerts } from '@/lib/email/resend-from'
+import { firstOrNull } from '@/lib/supabase/normalize'
 
 export async function POST() {
   const supabase = createSupabaseServerClient()
@@ -23,11 +24,11 @@ export async function POST() {
     return NextResponse.json({ error: 'RESEND_API_KEY no configurada' }, { status: 503 })
   }
 
-  const company = profile.company as {
+  const company = firstOrNull(profile.company as {
     name: string
     email: string
     settings: { notification_email?: string; notification_email_secondary?: string }
-  } | null
+  } | { name: string; email: string; settings: { notification_email?: string; notification_email_secondary?: string } }[] | null)
 
   const recipients = uniqueValidEmails([
     company?.settings?.notification_email,

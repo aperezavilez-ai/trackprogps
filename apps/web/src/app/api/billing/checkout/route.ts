@@ -2,8 +2,9 @@ import { NextResponse, type NextRequest } from 'next/server'
 import Stripe from 'stripe'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { resolvePlanId } from '@/lib/billing/resolve-plan'
+import { firstOrNull } from '@/lib/supabase/normalize'
 
-const stripe = new Stripe(process.env['STRIPE_SECRET_KEY']!, { apiVersion: '2024-06-20' })
+const stripe = new Stripe(process.env['STRIPE_SECRET_KEY']!, { apiVersion: '2024-04-10' })
 
 export async function POST(request: NextRequest) {
   if (!process.env['STRIPE_SECRET_KEY']) {
@@ -23,7 +24,7 @@ export async function POST(request: NextRequest) {
     .eq('id', user.id).single()
   if (!profile?.company_id) return NextResponse.json({ error: 'No company' }, { status: 400 })
 
-  const company = profile.company as { name: string; email: string; settings: Record<string, unknown> } | null
+  const company = firstOrNull(profile.company as { name: string; email: string; settings: Record<string, unknown> } | { name: string; email: string; settings: Record<string, unknown> }[] | null)
   const settings = company?.settings ?? {}
   const pending = settings['pending_checkout'] as { plan_id?: string; billing_period?: 'monthly' | 'yearly' } | undefined
 

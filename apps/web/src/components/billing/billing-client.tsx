@@ -535,105 +535,105 @@ export function BillingClient({
 
           {tab === 'suscripcion' && (
             <>
-              <div className="bg-white border border-gray-200 rounded-2xl p-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center gap-3 mb-1">
+      <div className="bg-white border border-gray-200 rounded-2xl p-6">
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="flex items-center gap-3 mb-1">
                       <h2 className="text-lg font-semibold text-gray-900">Plan {currentPlan?.name ?? 'Básico'}</h2>
-                      <span className={`text-xs px-2.5 py-1 rounded-full border font-medium ${statusConfig.color}`}>
-                        {statusConfig.label}
-                      </span>
-                    </div>
+              <span className={`text-xs px-2.5 py-1 rounded-full border font-medium ${statusConfig.color}`}>
+                {statusConfig.label}
+              </span>
+            </div>
                     {company && <p className="text-sm text-gray-500 mb-1">{company.name}</p>}
-                    {subscription?.current_period_end && (
-                      <p className="text-sm text-gray-500 flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5" />
-                        {subscription.status === 'trialing' ? 'Prueba hasta:' : 'Próxima renovación:'}
-                        {' '}{new Date(subscription.current_period_end).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}
-                      </p>
-                    )}
-                  </div>
-                  {subscription?.stripe_subscription_id && (
-                    <button onClick={handlePortal}
-                      className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-50">
-                      <CreditCard className="w-4 h-4" /> Gestionar pago
-                    </button>
-                  )}
-                </div>
+            {subscription?.current_period_end && (
+              <p className="text-sm text-gray-500 flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5" />
+                {subscription.status === 'trialing' ? 'Prueba hasta:' : 'Próxima renovación:'}
+                {' '}{new Date(subscription.current_period_end).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </p>
+            )}
+          </div>
+          {subscription?.stripe_subscription_id && (
+            <button onClick={handlePortal}
+              className="flex items-center gap-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-50">
+              <CreditCard className="w-4 h-4" /> Gestionar pago
+            </button>
+          )}
+        </div>
 
-                {subscription?.status === 'past_due' && (
-                  <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 flex items-center gap-2 text-sm text-yellow-800">
-                    <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+        {subscription?.status === 'past_due' && (
+          <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 flex items-center gap-2 text-sm text-yellow-800">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
                     Hay un problema con el método de pago. Actualízalo para mantener el acceso.
-                  </div>
-                )}
-              </div>
+          </div>
+        )}
+      </div>
 
               {!isPlatformAdmin && (
                 <>
-                  <div className="flex items-center gap-4">
-                    <span className="text-sm font-medium text-gray-900">Planes disponibles</span>
-                    <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
-                      {(['monthly', 'yearly'] as const).map(b => (
-                        <button key={b} onClick={() => setBilling(b)}
-                          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${billing === b ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
-                          {b === 'monthly' ? 'Mensual' : 'Anual (-20%)'}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+      <div className="flex items-center gap-4">
+        <span className="text-sm font-medium text-gray-900">Planes disponibles</span>
+        <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+          {(['monthly', 'yearly'] as const).map(b => (
+            <button key={b} onClick={() => setBilling(b)}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${billing === b ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
+              {b === 'monthly' ? 'Mensual' : 'Anual (-20%)'}
+            </button>
+          ))}
+        </div>
+      </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {plans.map(plan => {
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {plans.map(plan => {
                       const isCurrent    = plan.id === currentPlan?.id
                       const price        = billing === 'monthly' ? plan.price_monthly : plan.price_yearly / 12
                       const isLoading    = loadingPlan === plan.id
-                      const isEnterprise = plan.type === 'empresarial'
+          const isEnterprise = plan.type === 'empresarial'
 
-                      return (
-                        <div key={plan.id} className={`relative bg-white border rounded-2xl p-6 flex flex-col
+          return (
+            <div key={plan.id} className={`relative bg-white border rounded-2xl p-6 flex flex-col
                           ${isCurrent ? 'border-orange-400 ring-2 ring-orange-100' : isEnterprise ? 'border-purple-200' : 'border-gray-200'}`}>
-                          {isCurrent && (
+              {isCurrent && (
                             <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-orange-500 text-white text-xs px-3 py-1 rounded-full font-medium">
-                              Plan actual
-                            </div>
-                          )}
-                          <div className="mb-4">
-                            <div className="text-lg font-bold text-gray-900">{plan.name}</div>
-                            <div className="flex items-baseline gap-1 mt-2">
-                              <span className="text-3xl font-bold text-gray-900">${price.toLocaleString('es-MX', { maximumFractionDigits: 0 })}</span>
-                              <span className="text-sm text-gray-500">MXN/mes</span>
-                            </div>
-                            <div className="text-sm text-gray-500 mt-2">
-                              Hasta {plan.max_vehicles} vehículos · {plan.max_users} usuarios
-                            </div>
-                          </div>
-                          <div className="flex-1 space-y-2 mb-6">
-                            {Object.entries(FEATURE_LABELS).map(([key, label]) => {
-                              const val = plan.features[key]
-                              const included = val === true || (typeof val === 'number' && val > 0)
-                              return (
-                                <div key={key} className={`flex items-center gap-2 text-sm ${included ? 'text-gray-700' : 'text-gray-300'}`}>
-                                  <CheckCircle className={`w-4 h-4 flex-shrink-0 ${included ? 'text-green-500' : 'text-gray-200'}`} />
-                                  {label}
-                                </div>
-                              )
-                            })}
-                          </div>
-                          <button
-                            onClick={() => !isCurrent && handleUpgrade(plan.id)}
-                            disabled={isCurrent || isLoading}
-                            className={`w-full py-3 rounded-xl text-sm font-medium transition flex items-center justify-center gap-2
-                              ${isCurrent ? 'bg-gray-100 text-gray-400 cursor-default' :
+                  Plan actual
+                </div>
+              )}
+              <div className="mb-4">
+                <div className="text-lg font-bold text-gray-900">{plan.name}</div>
+                <div className="flex items-baseline gap-1 mt-2">
+                  <span className="text-3xl font-bold text-gray-900">${price.toLocaleString('es-MX', { maximumFractionDigits: 0 })}</span>
+                  <span className="text-sm text-gray-500">MXN/mes</span>
+                </div>
+                <div className="text-sm text-gray-500 mt-2">
+                  Hasta {plan.max_vehicles} vehículos · {plan.max_users} usuarios
+                </div>
+              </div>
+              <div className="flex-1 space-y-2 mb-6">
+                {Object.entries(FEATURE_LABELS).map(([key, label]) => {
+                  const val = plan.features[key]
+                  const included = val === true || (typeof val === 'number' && val > 0)
+                  return (
+                    <div key={key} className={`flex items-center gap-2 text-sm ${included ? 'text-gray-700' : 'text-gray-300'}`}>
+                      <CheckCircle className={`w-4 h-4 flex-shrink-0 ${included ? 'text-green-500' : 'text-gray-200'}`} />
+                      {label}
+                    </div>
+                  )
+                })}
+              </div>
+              <button
+                onClick={() => !isCurrent && handleUpgrade(plan.id)}
+                disabled={isCurrent || isLoading}
+                className={`w-full py-3 rounded-xl text-sm font-medium transition flex items-center justify-center gap-2
+                  ${isCurrent ? 'bg-gray-100 text-gray-400 cursor-default' :
                                 isEnterprise ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-orange-500 hover:bg-orange-600 text-white'}`}
-                          >
-                            {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Procesando...</> :
-                             isCurrent ? 'Plan activo' : 'Seleccionar plan'}
-                          </button>
-                        </div>
-                      )
-                    })}
-                  </div>
+              >
+                {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Procesando...</> :
+                 isCurrent ? 'Plan activo' : 'Seleccionar plan'}
+              </button>
+            </div>
+          )
+        })}
+      </div>
                 </>
               )}
             </>

@@ -18,6 +18,10 @@ import { SSR_POSITION_LIMIT } from '@/lib/constants/limits'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
+function firstOrNull<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null)
+}
+
 async function getDashboardData(companyId: string) {
   const supabase = createSupabaseServerClient()
 
@@ -66,7 +70,7 @@ async function getDashboardData(companyId: string) {
   const liveVehicles: LiveVehicle[] = positions.map(p => {
     const lastUpdate = new Date(p.recorded_at).getTime()
     const isOffline  = now - lastUpdate > OFFLINE_THRESHOLD_MS
-    const v = p.vehicle as {
+    const v = firstOrNull(p.vehicle) as {
       economic_num: string; plates: string; brand: string; model: string
       type: string
       owner_name: string | null
@@ -138,7 +142,7 @@ function startOfMonth() {
 export default async function DashboardPage() {
   let stats: DashboardStatsType
   let liveVehicles: LiveVehicle[]
-  let alerts: ReturnType<typeof DEMO_ALERTS>[number][]
+  let alerts: typeof DEMO_ALERTS
   let companyId: string | null
 
   if (DEMO_MODE) {
@@ -159,7 +163,7 @@ export default async function DashboardPage() {
     if (!profile) return null
 
     companyId = profile.company_id
-    const company = profile.company as { status: string; settings: Record<string, unknown> | null } | null
+    const company = firstOrNull(profile.company) as { status: string; settings: Record<string, unknown> | null } | null
     const platformOnly = profile.role === 'super_admin' && !profile.company_id
 
     if (platformOnly) {

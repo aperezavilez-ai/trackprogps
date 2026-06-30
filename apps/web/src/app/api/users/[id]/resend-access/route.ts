@@ -9,6 +9,7 @@ import {
   sendActivationReminderEmail,
   sendPasswordResetEmail,
 } from '@/lib/email/send-invitation'
+import { firstOrNull } from '@/lib/supabase/normalize'
 import { z } from 'zod'
 
 const BodySchema = z.object({
@@ -72,7 +73,7 @@ export async function POST(
   if (!canManage(actor, target)) return NextResponse.json({ error: 'Permisos insuficientes' }, { status: 403 })
 
   const { type } = parsed.data
-  const companyName = (target.company as { name: string } | null)?.name ?? 'TrackPro GPS'
+  const companyName = firstOrNull(target.company as { name: string } | { name: string }[] | null)?.name ?? 'TrackPro GPS'
 
   if (type === 'activation') {
     const redirectTo = getAuthCallbackUrl(ACTIVATE_ACCOUNT_PATH)

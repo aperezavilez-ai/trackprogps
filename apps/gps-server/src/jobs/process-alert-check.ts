@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createSupabaseServiceClient } from '../lib/supabase.js'
 import { LruCache } from '../lib/lru-cache.js'
+import { dispatchWebhooks, alertTypeToWebhookEvent } from '../lib/dispatch-webhook.js'
 import { sendAlertNotifications } from '../notifications/send-alert.js'
 import type { AlertCheckJob, NotificationJob, Queues } from '../queue/queues.js'
 
@@ -14,6 +15,8 @@ type AlertRule = {
 
 const rulesCache = new LruCache<string, { rules: AlertRule[]; cachedAt: number }>(500)
 const RULES_CACHE_TTL_MS = 3 * 60 * 1000
+
+type StateTransition = 'entered' | 'exited' | 'none'
 
 async function getRulesForVehicle(
   supabase: SupabaseClient,
@@ -65,7 +68,15 @@ export async function processAlertCheck(
     switch (rule.type) {
       case 'speed_excess': {
         const limit = (config['speed_limit'] as number) ?? 120
-        if (position.speed > limit) {
+        const transition = await evaluateEventState(supabase, {
+          companyId,
+          vehicleId,
+          ruleId: rule.id,
+          stateKey: 'speed_excess',
+          active: position.speed > limit,
+          snapshot: { speed: position.speed, limit },
+        })
+        if (transition === 'entered') {
           alerts.push({
             type:     'speed_excess',
             severity: position.speed > limit * 1.3 ? 'critical' : 'high',
@@ -79,7 +90,15 @@ export async function processAlertCheck(
       }
 
       case 'ignition_on': {
-        if (position.ignition && previousIgnition === false) {
+        const transition = await evaluateEventState(supabase, {
+          companyId,
+          vehicleId,
+          ruleId: rule.id,
+          stateKey: 'ignition',
+          active: position.ignition,
+          snapshot: { ignition: position.ignition, previousIgnition },
+        })
+        if (transition === 'entered') {
           alerts.push({
             type:     'ignition_on',
             severity: 'low',
@@ -93,7 +112,15 @@ export async function processAlertCheck(
       }
 
       case 'ignition_off': {
-        if (!position.ignition && previousIgnition === true) {
+        const transition = await evaluateEventState(supabase, {
+          companyId,
+          vehicleId,
+          ruleId: rule.id,
+          stateKey: 'ignition',
+          active: position.ignition,
+          snapshot: { ignition: position.ignition, previousIgnition },
+        })
+        if (transition === 'exited') {
           alerts.push({
             type:     'ignition_off',
             severity: 'low',
@@ -107,12 +134,46 @@ export async function processAlertCheck(
       }
 
       case 'unauthorized_movement': {
-        if (position.speed > 5 && !position.ignition) {
+        const transition = await evaluateEventState(supabase, {
+          companyId,
+          vehicleId,
+          ruleId: rule.id,
+          stateKey: 'unauthorized_movement',
+          active: position.speed > 5 && !position.ignition,
+          snapshot: { speed: position.speed, ignition: position.ignition },
+        })
+        if (transition === 'entered') {
           alerts.push({
             type:     'unauthorized_movement',
             severity: 'critical',
             title:    'Movimiento no autorizado',
             message:  `Movimiento detectado a ${position.speed} km/h sin ignición activa`,
+            rule_id:  rule.id as string,
+            channels: rule.channels as string[],
+          })
+        }
+        break
+      }
+
+      case 'battery_low': {
+        const batteryVoltage = position.batteryVoltage ?? position.externalVoltage
+        const minVoltage = (config['battery_voltage_min'] as number | undefined)
+          ?? (config['voltage_min'] as number | undefined)
+          ?? 3700
+        const transition = await evaluateEventState(supabase, {
+          companyId,
+          vehicleId,
+          ruleId: rule.id,
+          stateKey: 'battery_low',
+          active: typeof batteryVoltage === 'number' && batteryVoltage > 0 && batteryVoltage < minVoltage,
+          snapshot: { batteryVoltage, minVoltage },
+        })
+        if (transition === 'entered') {
+          alerts.push({
+            type:     'battery_low',
+            severity: 'medium',
+            title:    'Batería baja',
+            message:  `Voltaje detectado: ${batteryVoltage ?? 0} (mínimo: ${minVoltage})`,
             rule_id:  rule.id as string,
             channels: rule.channels as string[],
           })
@@ -206,6 +267,18 @@ export async function processAlertCheck(
       .single()
 
     if (!error && inserted) {
+      void dispatchWebhooks(supabase, companyId, alertTypeToWebhookEvent(alert.type), {
+        alert_id: inserted.id,
+        vehicle_id: vehicleId,
+        type: alert.type,
+        severity: alert.severity,
+        title: alert.title,
+        message: alert.message,
+        lat: position.lat,
+        lng: position.lng,
+        speed: position.speed,
+      })
+
       await enqueueNotification(queues, supabase, {
         alertId:   inserted.id as string,
         companyId,
@@ -213,6 +286,72 @@ export async function processAlertCheck(
         channels:  alert.channels,
       })
     }
+  }
+}
+
+async function evaluateEventState(
+  supabase: SupabaseClient,
+  opts: {
+    companyId: string
+    vehicleId: string
+    ruleId: string
+    stateKey: string
+    active: boolean
+    snapshot: Record<string, unknown>
+  },
+): Promise<StateTransition> {
+  try {
+    const now = new Date().toISOString()
+    const { data: existing } = await supabase
+      .from('device_event_states')
+      .select('id, state_value')
+      .eq('company_id', opts.companyId)
+      .eq('vehicle_id', opts.vehicleId)
+      .eq('rule_id', opts.ruleId)
+      .eq('state_key', opts.stateKey)
+      .maybeSingle()
+
+    const stateValue = (existing?.state_value ?? {}) as { active?: boolean }
+    const wasActive = stateValue.active === true
+    const transition: StateTransition = opts.active === wasActive
+      ? 'none'
+      : opts.active
+        ? 'entered'
+        : 'exited'
+
+    const nextState = {
+      active: opts.active,
+      ...opts.snapshot,
+    }
+
+    if (existing?.id) {
+      await supabase
+        .from('device_event_states')
+        .update({
+          state_value: nextState,
+          last_evaluated_at: now,
+          last_changed_at: transition === 'none' ? undefined : now,
+        })
+        .eq('id', existing.id)
+    } else {
+      await supabase
+        .from('device_event_states')
+        .insert({
+          company_id: opts.companyId,
+          vehicle_id: opts.vehicleId,
+          rule_id: opts.ruleId,
+          state_key: opts.stateKey,
+          state_value: nextState,
+          entered_at: now,
+          last_changed_at: now,
+          last_evaluated_at: now,
+        })
+    }
+
+    return transition
+  } catch (err) {
+    console.warn('[Alert] Event state unavailable, falling back to stateless evaluation:', err instanceof Error ? err.message : err)
+    return opts.active ? 'entered' : 'none'
   }
 }
 

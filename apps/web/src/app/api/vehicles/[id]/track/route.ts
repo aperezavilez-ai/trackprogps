@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { parseFuelFromRawIo, estimateFuelLiters, type FuelVehicleContext } from '@/lib/map/fuel-utils'
+import { firstOrNull } from '@/lib/supabase/normalize'
 
 const MAX_HOURS = 24
 const DEFAULT_HOURS = 6
@@ -95,9 +96,9 @@ export async function GET(
   const fuel = parseFuelFromRawIo(livePos?.raw_io as Record<string, unknown> | null)
   const fuelLitersEst = estimateFuelLiters(distanceKm, fuelCtx)
 
-  const driver = vehicle.driver as { full_name: string; phone: string | null } | null
-  const group = vehicle.group as { name: string } | null
-  const device = vehicle.device as { id: string } | null
+  const driver = firstOrNull(vehicle.driver as { full_name: string; phone: string | null } | { full_name: string; phone: string | null }[] | null)
+  const group = firstOrNull(vehicle.group as { name: string } | { name: string }[] | null)
+  const device = firstOrNull(vehicle.device as { id: string } | { id: string }[] | null)
 
   return NextResponse.json({
     data: {

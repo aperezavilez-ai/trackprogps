@@ -45,6 +45,8 @@ export interface AlertCheckJob {
     speed: number
     ignition: boolean
     odometer: number
+    batteryVoltage?: number
+    externalVoltage?: number
   }
   previousIgnition?: boolean
 }

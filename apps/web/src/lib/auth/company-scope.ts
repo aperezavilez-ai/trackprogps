@@ -1,6 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { isDemoTourActive } from '@/lib/demo-data'
 
+function firstOrNull<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null)
+}
+
 export interface CompanyScope {
   userId: string
   role: string
@@ -22,7 +26,7 @@ export async function getCompanyScope(supabase: SupabaseClient): Promise<Company
 
   if (!profile) return null
 
-  const company = profile.company as { status: string; settings: Record<string, unknown> | null } | null
+  const company = firstOrNull(profile.company) as { status: string; settings: Record<string, unknown> | null } | null
   const platformOnly = profile.role === 'super_admin' && !profile.company_id
 
   return {

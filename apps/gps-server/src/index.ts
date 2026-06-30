@@ -20,6 +20,7 @@ import {
   getDefaultTcpProtocolAdapter,
   getProtocolAdapter,
 } from './protocols/registry.js'
+import { recordRawIngestPacket } from './lib/raw-ingest.js'
 
 loadEnv({ path: join(dirname(fileURLToPath(import.meta.url)), '../../../.env') })
 
@@ -70,6 +71,19 @@ const server = net.createServer((socket) => {
           return
         }
 
+        const rawHandshake = conn.buffer.subarray(0, handshake.bytesConsumed)
+        recordRawIngestPacket({
+          imei: handshake.imei,
+          protocolAdapterKey: adapter.id,
+          remoteAddress: socket.remoteAddress ?? null,
+          payload: rawHandshake,
+          parseStatus: 'identified',
+          payloadJson: {
+            phase: 'handshake',
+            metadata: handshake.metadata ?? null,
+          },
+        })
+
         setProtocolId(connId, adapter.id)
         setImei(connId, handshake.imei)
         conn.buffer = conn.buffer.subarray(handshake.bytesConsumed)
@@ -91,8 +105,20 @@ const server = net.createServer((socket) => {
           return
         }
 
+        const rawPacket = conn.buffer.subarray(0, packet.bytesConsumed)
         conn.buffer = conn.buffer.subarray(packet.bytesConsumed)
         if (packet.response) socket.write(packet.response)
+        recordRawIngestPacket({
+          imei: conn.imei,
+          protocolAdapterKey: adapter.id,
+          remoteAddress: socket.remoteAddress ?? null,
+          payload: rawPacket,
+          parseStatus: 'parsed',
+          payloadJson: {
+            record_count: packet.recordCount,
+            metadata: packet.metadata ?? null,
+          },
+        })
 
         const jobData = {
           imei: conn.imei,

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { isSuperAdmin } from '@/lib/auth/scope'
+import { firstOrNull } from '@/lib/supabase/normalize'
 
 export async function GET(request: NextRequest) {
   const supabase = createSupabaseServerClient()
@@ -76,15 +77,12 @@ export async function GET(request: NextRequest) {
       vehicles_count: vehicles.length,
       active_vehicles: activeVehicles.length,
       gps_devices: withGps.length,
-      vehicles: vehicles.map((v: {
-        id: string; economic_num: string; plates: string; status: string
-        device: { id: string; imei: string; status: string } | null
-      }) => ({
+      vehicles: vehicles.map((v) => ({
         id: v.id,
         economic_num: v.economic_num,
         plates: v.plates,
         status: v.status,
-        device: v.device,
+        device: firstOrNull(v.device as { id: string; imei: string; status: string } | { id: string; imei: string; status: string }[] | null),
       })),
     }
   })

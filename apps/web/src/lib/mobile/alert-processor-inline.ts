@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { dispatchWebhooks, alertTypeToWebhookEvent } from '@/lib/webhooks/dispatch'
 
 type AlertJob = {
   vehicleId: string
@@ -132,7 +133,7 @@ export async function processMobileAlertsInline(
   }
 
   for (const alert of alerts) {
-    await supabase.from('alerts').insert({
+    const { data: inserted } = await supabase.from('alerts').insert({
       company_id: companyId,
       vehicle_id: vehicleId,
       rule_id: alert.rule_id,
@@ -145,6 +146,20 @@ export async function processMobileAlertsInline(
       lng: position.lng,
       speed: position.speed,
       payload: { source: 'mobile_app', position },
-    })
+    }).select('id').single()
+
+    if (inserted?.id) {
+      void dispatchWebhooks(supabase, companyId, alertTypeToWebhookEvent(alert.type), {
+        alert_id: inserted.id,
+        vehicle_id: vehicleId,
+        type: alert.type,
+        severity: alert.severity,
+        title: alert.title,
+        message: alert.message,
+        lat: position.lat,
+        lng: position.lng,
+        speed: position.speed,
+      })
+    }
   }
 }

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { AlertTriangle, CreditCard, LogOut } from 'lucide-react'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { firstOrNull } from '@/lib/supabase/normalize'
 
 export default async function SuspendedPage() {
   const supabase = createSupabaseServerClient()
@@ -12,7 +13,7 @@ export default async function SuspendedPage() {
     .eq('id', user.id)
     .single() : { data: null }
 
-  const company = (profile?.company as { name: string; email: string } | null)
+  const company = firstOrNull(profile?.company as { name: string; email: string } | { name: string; email: string }[] | null | undefined)
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">

@@ -3,6 +3,8 @@ import { createSupabaseServerClient, createSupabaseServiceClient } from '@/lib/s
 import { MobileConfigSchema } from '@/lib/mobile/schemas'
 import { resolveMobileDevice } from '@/lib/mobile/device-registry'
 import { MOBILE_TRACKING_INTERVALS } from '@/lib/mobile/constants'
+import { getMobileCompanyId } from '@/lib/mobile/mobile-context'
+import { mobileCompanyErrorResponse } from '@/lib/mobile/resolve-company'
 
 export async function GET(request: NextRequest) {
   const supabase = createSupabaseServerClient()
@@ -13,18 +15,15 @@ export async function GET(request: NextRequest) {
   const deviceId = searchParams.get('device_id')
   const deviceUid = searchParams.get('device_uid')
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('company_id, role')
-    .eq('id', user.id)
-    .single()
-
-  if (!profile?.company_id) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const service = createSupabaseServiceClient()
+  let companyId: string
+  try {
+    ;({ companyId } = await getMobileCompanyId(supabase, user.id, service))
+  } catch (err) {
+    return mobileCompanyErrorResponse(err)
   }
 
-  const service = createSupabaseServiceClient()
-  const device = await resolveMobileDevice(service, user.id, profile.company_id, {
+  const device = await resolveMobileDevice(service, user.id, companyId, {
     deviceId: deviceId ?? undefined,
     deviceUid: deviceUid ?? undefined,
   })
@@ -68,12 +67,17 @@ export async function PATCH(request: NextRequest) {
     .eq('id', user.id)
     .single()
 
-  if (!profile?.company_id) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  if (!profile) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const service = createSupabaseServiceClient()
-  const device = await resolveMobileDevice(service, user.id, profile.company_id, {
+  let companyId: string
+  try {
+    ;({ companyId } = await getMobileCompanyId(supabase, user.id, service))
+  } catch (err) {
+    return mobileCompanyErrorResponse(err)
+  }
+
+  const device = await resolveMobileDevice(service, user.id, companyId, {
     deviceId: body.device_id,
     deviceUid: body.device_uid,
   })

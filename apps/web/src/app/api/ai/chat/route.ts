@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { sanitizeIlikeSearch } from '@/lib/security/sanitize-search'
+import { firstOrNull } from '@/lib/supabase/normalize'
 
 const anthropic = new Anthropic({
   apiKey: process.env['ANTHROPIC_API_KEY'],
@@ -106,7 +107,7 @@ export async function POST(request: NextRequest) {
     .eq('company_id', profile.company_id)
     .single()
 
-  const features = (sub?.plan as { features: { ai_assistant: boolean } } | null)?.features
+  const features = firstOrNull(sub?.plan as { features: { ai_assistant: boolean } } | { features: { ai_assistant: boolean } }[] | null | undefined)?.features
   if (!features?.ai_assistant && profile.role !== 'super_admin') {
     return NextResponse.json(
       { error: 'AI assistant is not available on your current plan' },
@@ -140,18 +141,19 @@ export async function POST(request: NextRequest) {
         const now = Date.now()
         const summary = data.map(p => {
           const isOnline = (now - new Date(p.recorded_at).getTime()) < 5 * 60 * 1000
-          const v = p.vehicle as {
+          const v = firstOrNull(p.vehicle as {
             economic_num: string
             plates: string
             brand: string
             model: string
-            driver: { full_name: string } | null
-          } | null
+            driver: { full_name: string } | { full_name: string }[] | null
+          } | { economic_num: string; plates: string; brand: string; model: string; driver: { full_name: string } | { full_name: string }[] | null }[] | null)
+          const driver = firstOrNull(v?.driver)
           return {
             economico: v?.economic_num ?? 'N/A',
             placas:    v?.plates ?? 'N/A',
             estado:    !isOnline ? 'sin señal' : !p.ignition ? 'apagado' : p.speed > 2 ? `en movimiento (${p.speed}km/h)` : 'detenido',
-            conductor: v?.driver?.full_name ?? 'sin asignar',
+            conductor: driver?.full_name ?? 'sin asignar',
             lat:       p.lat,
             lng:       p.lng,
           }
@@ -194,7 +196,7 @@ export async function POST(request: NextRequest) {
           .single()
 
         if (!data) return `No se encontró vehículo con identificador: ${input.identifier}`
-        const v = data.vehicle as { economic_num: string; plates: string; brand: string; model: string } | null
+        const v = firstOrNull(data.vehicle as { economic_num: string; plates: string; brand: string; model: string } | { economic_num: string; plates: string; brand: string; model: string }[] | null)
         return `Vehículo ${v?.economic_num} (${v?.plates}) — ${v?.brand} ${v?.model}
 Ubicación: lat ${data.lat}, lng ${data.lng}
 Velocidad: ${data.speed} km/h | Ignición: ${data.ignition ? 'encendida' : 'apagada'}
@@ -217,7 +219,7 @@ Velocidad: ${data.speed} km/h | Ignición: ${data.ignition ? 'encendida' : 'apag
         // Group by vehicle and calculate delta odometer
         const byVehicle = new Map<string, { first: number; last: number; name: string }>()
         for (const p of data) {
-          const v = p.vehicle as { economic_num: string; plates: string } | null
+          const v = firstOrNull(p.vehicle as { economic_num: string; plates: string } | { economic_num: string; plates: string }[] | null)
           const name = v ? `${v.economic_num} (${v.plates})` : p.vehicle_id
           const existing = byVehicle.get(p.vehicle_id)
           if (!existing) {

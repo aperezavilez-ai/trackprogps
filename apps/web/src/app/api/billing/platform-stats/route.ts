@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { isSuperAdmin } from '@/lib/auth/scope'
+import { firstOrNull } from '@/lib/supabase/normalize'
 
 export async function GET() {
   const supabase = createSupabaseServerClient()
@@ -9,7 +10,7 @@ export async function GET() {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('role')
+    .select('role, company_id')
     .eq('id', user.id)
     .single()
 
@@ -42,13 +43,13 @@ export async function GET() {
   const withStripe = rows.filter(s => s.stripe_subscription_id)
 
   const estimatedMrr = paying.reduce((sum, sub) => {
-    const plan = sub.plan as { price_monthly?: number } | null
+    const plan = firstOrNull(sub.plan as { price_monthly?: number } | { price_monthly?: number }[] | null)
     return sum + (plan?.price_monthly ?? 0)
   }, 0)
 
   const byPlan: Record<string, { count: number; mrr: number }> = {}
   for (const sub of paying) {
-    const plan = sub.plan as { name?: string; price_monthly?: number } | null
+    const plan = firstOrNull(sub.plan as { name?: string; price_monthly?: number } | { name?: string; price_monthly?: number }[] | null)
     const key = plan?.name ?? 'Sin plan'
     if (!byPlan[key]) byPlan[key] = { count: 0, mrr: 0 }
     byPlan[key].count += 1
@@ -56,8 +57,8 @@ export async function GET() {
   }
 
   const companies = paying.map(sub => {
-    const company = sub.company as { id: string; name: string; email: string; status: string } | null
-    const plan = sub.plan as { name: string; price_monthly: number } | null
+    const company = firstOrNull(sub.company as { id: string; name: string; email: string; status: string } | { id: string; name: string; email: string; status: string }[] | null)
+    const plan = firstOrNull(sub.plan as { name: string; price_monthly: number } | { name: string; price_monthly: number }[] | null)
     return {
       company_id: company?.id ?? '',
       company_name: company?.name ?? '—',

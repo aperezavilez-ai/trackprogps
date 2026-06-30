@@ -160,7 +160,8 @@ export function DeviceDetailClient({ deviceId, canCommand, mapsApiKey = '' }: Pr
   }
 
   const status = STATUS_LABELS[device.status] ?? STATUS_LABELS['unknown']!
-  const rawPos = (device.vehicle as (DeviceDetail['vehicle'] & { position?: DeviceDetail['vehicle']['position'] | DeviceDetail['vehicle']['position'][] }) | null)?.position
+  type VehiclePosition = NonNullable<DeviceDetail['vehicle']>['position']
+  const rawPos = device.vehicle?.position as VehiclePosition | VehiclePosition[] | null | undefined
   const pos = Array.isArray(rawPos) ? (rawPos[0] ?? null) : (rawPos ?? null)
   const vehicle = device.vehicle
   const historyHref = vehicle

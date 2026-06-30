@@ -4,9 +4,12 @@ import { z } from 'zod'
 import { registerOrUpdateMobileDevice } from '@/lib/mobile/device-registry'
 import { AdminMobileRegisterSchema } from '@/lib/mobile/schemas'
 import { randomBytes } from 'crypto'
+import { resolveTargetCompanyId } from '@/lib/billing/company-context'
+import { assertHardwareDeviceLimit, assertMobileDeviceLimit } from '@/lib/billing/plan-guard'
 
 const HardwareDeviceSchema = z.object({
   source_type: z.literal('hardware').optional(),
+  company_id: z.string().uuid().optional(),
   imei:         z.string().length(15).regex(/^\d+$/, 'IMEI must be 15 digits'),
   model:        z.string().min(1).max(50).default('FMC920'),
   firmware_ver: z.string().max(20).nullable().optional(),
@@ -16,7 +19,10 @@ const HardwareDeviceSchema = z.object({
 
 const DeviceSchema = z.union([
   HardwareDeviceSchema,
-  AdminMobileRegisterSchema.extend({ source_type: z.literal('mobile') }),
+  AdminMobileRegisterSchema.extend({
+    source_type: z.literal('mobile'),
+    company_id: z.string().uuid().optional(),
+  }),
 ])
 
 export async function GET(request: NextRequest) {
@@ -29,6 +35,7 @@ export async function GET(request: NextRequest) {
   const perPage = parseInt(searchParams.get('per_page') ?? '50', 10)
   const offset  = (page - 1) * perPage
   const sourceType = searchParams.get('source_type')
+  const companyId = searchParams.get('company_id')
 
   let query = supabase
     .from('gps_devices')
@@ -38,6 +45,10 @@ export async function GET(request: NextRequest) {
 
   if (sourceType === 'mobile' || sourceType === 'hardware') {
     query = query.eq('source_type', sourceType)
+  }
+
+  if (companyId) {
+    query = query.eq('company_id', companyId)
   }
 
   const { data, count, error } = await query
@@ -60,12 +71,20 @@ export async function POST(request: NextRequest) {
   const parsed = DeviceSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Validation error', details: parsed.error.flatten() }, { status: 422 })
 
+  const bodyCompanyId = 'company_id' in parsed.data ? parsed.data.company_id : undefined
+  const resolved = await resolveTargetCompanyId(supabase, profile, bodyCompanyId)
+  if (resolved instanceof NextResponse) return resolved
+  const { companyId } = resolved
+
   if ('assigned_user_id' in parsed.data && parsed.data.source_type === 'mobile') {
+    const mobileBlock = await assertMobileDeviceLimit(supabase, companyId, profile.role)
+    if (mobileBlock) return mobileBlock
+
     const service = createSupabaseServiceClient()
     const deviceUid = `ADM-${randomBytes(12).toString('hex')}`
     try {
       const result = await registerOrUpdateMobileDevice(service, {
-        companyId: profile.company_id!,
+        companyId,
         userId: parsed.data.assigned_user_id,
         deviceUid,
         platform: parsed.data.platform,
@@ -83,11 +102,15 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  const hwBlock = await assertHardwareDeviceLimit(supabase, companyId, profile.role)
+  if (hwBlock) return hwBlock
+
   const hw = parsed.data as z.infer<typeof HardwareDeviceSchema>
-  const { source_type: _st, ...hwData } = hw
-  const { data, error } = await supabase
+  const { source_type: _st, company_id: _cid, ...hwData } = hw
+  const service = createSupabaseServiceClient()
+  const { data, error } = await service
     .from('gps_devices')
-    .insert({ ...hwData, company_id: profile.company_id, source_type: 'hardware' })
+    .insert({ ...hwData, company_id: companyId, source_type: 'hardware' })
     .select().single()
 
   if (error) {

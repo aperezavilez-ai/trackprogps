@@ -8,6 +8,10 @@ import { SSR_POSITION_LIMIT } from '@/lib/constants/limits'
 
 export const dynamic = 'force-dynamic'
 
+function firstOrNull<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null)
+}
+
 export default async function MapPage() {
   const supabase = createSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -20,7 +24,7 @@ export default async function MapPage() {
     .single()
   if (!profile) redirect('/login')
 
-  const company = profile.company as { status: string; settings: Record<string, unknown> | null } | null
+  const company = firstOrNull(profile.company) as { status: string; settings: Record<string, unknown> | null } | null
   const platformOnly = profile.role === 'super_admin' && !profile.company_id
   let liveVehicles: LiveVehicle[] = []
   let activeAlerts = 0
@@ -55,7 +59,7 @@ export default async function MapPage() {
     const OFFLINE_MS = 5 * 60 * 1000
 
     liveVehicles = (positions ?? []).map(p => {
-      const v = p.vehicle as {
+      const v = firstOrNull(p.vehicle) as {
         economic_num: string; plates: string; brand: string; model: string
         type: string
         owner_name: string | null
@@ -63,8 +67,9 @@ export default async function MapPage() {
         device_id: string | null
         driver: { full_name: string } | null
         group: { id: string; name: string; color: string } | null
-        device: { source_type: string; mobile_platform: string | null } | null
+        device: { source_type: string; mobile_platform: string | null } | { source_type: string; mobile_platform: string | null }[] | null
       } | null
+      const device = firstOrNull(v?.device)
       const isOffline = now - new Date(p.recorded_at).getTime() > OFFLINE_MS
       return {
         vehicle_id:   p.vehicle_id,
@@ -79,8 +84,8 @@ export default async function MapPage() {
         group_name:   v?.group?.name ?? null,
         owner_name:   v?.owner_name ?? null,
         driver_name:  v?.driver?.full_name ?? null,
-        device_source: (v?.device?.source_type ?? 'hardware') as LiveVehicle['device_source'],
-        mobile_platform: (v?.device?.mobile_platform ?? null) as LiveVehicle['mobile_platform'],
+        device_source: (device?.source_type ?? 'hardware') as LiveVehicle['device_source'],
+        mobile_platform: (device?.mobile_platform ?? null) as LiveVehicle['mobile_platform'],
         device_status: isOffline ? 'no_signal' : p.ignition ? 'online' : 'offline',
         lat:     p.lat, lng: p.lng, speed: p.speed, heading: p.heading,
         ignition: p.ignition, odometer: p.odometer, last_update: p.recorded_at,

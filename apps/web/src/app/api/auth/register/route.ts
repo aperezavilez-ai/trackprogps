@@ -31,15 +31,32 @@ export async function POST(request: NextRequest) {
   const { accountType, companyName, companyEmail, companyPhone, fullName, email, password, planId, billingPeriod } = parsed.data
   const supabase = createSupabaseServiceClient()
 
-  // 1. Get default plan (Básico)
+  // 1. Plan según tipo de cuenta (Modelo C híbrido)
+  const planTypeByAccount: Record<string, string> = {
+    personal: 'personal_mobile',
+    family: 'familia_mobile',
+    business: 'basico',
+  }
+  const planType = planTypeByAccount[accountType] ?? 'basico'
+
   const { data: plan } = await supabase
     .from('plans')
     .select('id')
-    .eq('type', 'basico')
+    .eq('type', planType)
     .eq('is_active', true)
-    .single()
+    .maybeSingle()
 
-  if (!plan) return NextResponse.json({ error: 'No se encontró plan disponible' }, { status: 500 })
+  const { data: fallbackPlan } = plan
+    ? { data: plan }
+    : await supabase
+        .from('plans')
+        .select('id')
+        .eq('type', 'basico')
+        .eq('is_active', true)
+        .single()
+
+  const selectedPlan = plan ?? fallbackPlan
+  if (!selectedPlan) return NextResponse.json({ error: 'No se encontró plan disponible' }, { status: 500 })
 
   // 2. Create company — modo demostración (sin trial)
   const settings: Record<string, unknown> = {
@@ -64,7 +81,7 @@ export async function POST(request: NextRequest) {
     name:          companyName,
     email:         companyEmail,
     phone:         companyPhone ?? null,
-    plan_id:       plan.id,
+    plan_id:       selectedPlan.id,
     status:        'demo' as const,
     account_type:  accountType,
     trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
@@ -88,11 +105,14 @@ export async function POST(request: NextRequest) {
   if (companyError) {
     return NextResponse.json({ error: 'Error al crear empresa: ' + companyError.message }, { status: 500 })
   }
+  if (!company) {
+    return NextResponse.json({ error: 'Error al crear empresa' }, { status: 500 })
+  }
 
   // 3. Subscription placeholder (se activa al pagar en Stripe)
   await supabase.from('subscriptions').insert({
     company_id:            company.id,
-    plan_id:               plan.id,
+    plan_id:               selectedPlan.id,
     status:                'cancelled',
     current_period_start:  new Date().toISOString(),
     current_period_end:    null,

@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseServerClient, createSupabaseServiceClient } from '@/lib/supabase/server'
+import { getMobileCompanyId } from '@/lib/mobile/mobile-context'
+import { mobileCompanyErrorResponse } from '@/lib/mobile/resolve-company'
 
 export async function POST(request: NextRequest) {
   const supabase = createSupabaseServerClient()
@@ -22,6 +24,13 @@ export async function POST(request: NextRequest) {
   }
 
   const service = createSupabaseServiceClient()
+  let companyId: string
+  try {
+    ;({ companyId } = await getMobileCompanyId(supabase, user.id, service))
+  } catch (err) {
+    return mobileCompanyErrorResponse(err)
+  }
+
   const now = new Date().toISOString()
 
   await service
@@ -34,7 +43,7 @@ export async function POST(request: NextRequest) {
     .from('gps_devices')
     .update({ tracking_enabled: false, updated_at: now })
     .eq('id', device_id)
-    .eq('company_id', profile.company_id ?? undefined)
+    .eq('company_id', companyId)
 
   return NextResponse.json({ success: true })
 }

@@ -99,7 +99,7 @@ function GoogleMapContent({
 
   const [camera, setCamera] = useState({
     center: MEXICO_DASHBOARD_VIEW.center,
-    zoom: MEXICO_DASHBOARD_VIEW.zoom,
+    zoom: Number(MEXICO_DASHBOARD_VIEW.zoom),
   })
   const [fleetViewKey, setFleetViewKey] = useState(0)
   const prevSelectedRef = useRef<string | null>(null)
@@ -243,7 +243,7 @@ function GoogleMapContent({
         disableDefaultUI={false}
         mapTypeControl
         mapTypeControlOptions={{ mapTypeIds: ['hybrid', 'satellite', 'roadmap'] }}
-        styles={[...FLEET_MAP_STYLES]}
+        styles={FLEET_MAP_STYLES}
         onCameraChanged={(ev) => {
           const { center, zoom } = ev.detail
           setCamera({ center, zoom })

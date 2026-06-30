@@ -20,6 +20,13 @@ interface AlertsData {
   low:      number
 }
 
+const SEVERITY_LABELS = {
+  critical: 'Crítica',
+  high: 'Alta',
+  medium: 'Media',
+  low: 'Baja',
+} as const
+
 export function AlertsChart({ companyId }: AlertsChartProps) {
   const [data, setData]     = useState<AlertsData[]>([])
   const [loading, setLoading] = useState(true)
@@ -125,7 +132,7 @@ export function AlertsChart({ companyId }: AlertsChartProps) {
             />
             <Legend
               wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }}
-              formatter={(value) => ({ critical: 'Crítica', high: 'Alta', medium: 'Media', low: 'Baja' }[value] ?? value)}
+              formatter={(value) => SEVERITY_LABELS[value as keyof typeof SEVERITY_LABELS] ?? String(value)}
             />
             <Area type="monotone" dataKey="critical" stroke="#EF4444" fill="url(#colorCritical)" strokeWidth={2} />
             <Area type="monotone" dataKey="high"     stroke="#F97316" fill="url(#colorHigh)"     strokeWidth={2} />

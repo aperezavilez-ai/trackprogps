@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseServerClient, createSupabaseServiceClient } from '@/lib/supabase/server'
+import { firstOrNull } from '@/lib/supabase/normalize'
 import { z } from 'zod'
 
 const COMMAND_MAP: Record<string, string> = {
@@ -71,7 +72,7 @@ export async function POST(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const vehicle = device.vehicle as { id: string } | null
+  const vehicle = firstOrNull(device.vehicle as { id: string } | { id: string }[] | null)
 
   // Safety: no immobilize while moving
   if (command_type === 'immobilize' && vehicle?.id) {

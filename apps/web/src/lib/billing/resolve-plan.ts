@@ -4,6 +4,9 @@ const FALLBACK_TYPE_MAP: Record<string, string> = {
   basico: 'basico',
   pro: 'profesional',
   empresa: 'empresarial',
+  personal_mobile: 'personal_mobile',
+  familia_mobile: 'familia_mobile',
+  mobile: 'personal_mobile',
 }
 
 export async function resolvePlanId(

@@ -16,29 +16,39 @@ export function PlanLimitBanner({ companyId }: PlanLimitBannerProps) {
   const vehiclePct = usage.vehicles.max > 0
     ? (usage.vehicles.current / usage.vehicles.max) * 100
     : 0
+  const mobileMax = usage.mobile_devices?.max ?? 0
+  const mobileCurrent = usage.mobile_devices?.current ?? 0
+  const mobilePct = mobileMax > 0 ? (mobileCurrent / mobileMax) * 100 : 0
   const userPct = usage.users.max > 0
     ? (usage.users.current / usage.users.max) * 100
     : 0
 
   const atVehicleLimit = usage.at_vehicle_limit
+  const atMobileLimit = usage.at_mobile_limit ?? false
   const atUserLimit = usage.at_user_limit
-  const showVehicle = vehiclePct >= 80
+  const showVehicle = usage.vehicles.max > 0 && vehiclePct >= 80
+  const showMobile = mobileMax > 0 && mobilePct >= 80
   const showUser = userPct >= 80
 
-  if (!showVehicle && !showUser) return null
+  if (!showVehicle && !showMobile && !showUser) return null
 
-  const critical = atVehicleLimit || atUserLimit
+  const critical = atVehicleLimit || atMobileLimit || atUserLimit
   const messages: string[] = []
 
   if (showVehicle) {
     messages.push(atVehicleLimit
-      ? `Vehículos: ${usage.vehicles.current}/${usage.vehicles.max} (límite alcanzado)`
-      : `Vehículos: ${Math.round(vehiclePct)}% del límite (${usage.vehicles.current}/${usage.vehicles.max})`)
+      ? `GPS vehículo: ${usage.vehicles.current}/${usage.vehicles.max} (límite)`
+      : `GPS vehículo: ${Math.round(vehiclePct)}% (${usage.vehicles.current}/${usage.vehicles.max})`)
+  }
+  if (showMobile) {
+    messages.push(atMobileLimit
+      ? `Móviles: ${mobileCurrent}/${mobileMax} (límite)`
+      : `Móviles: ${Math.round(mobilePct)}% (${mobileCurrent}/${mobileMax})`)
   }
   if (showUser) {
     messages.push(atUserLimit
-      ? `Usuarios: ${usage.users.current}/${usage.users.max} (límite alcanzado)`
-      : `Usuarios: ${Math.round(userPct)}% del límite (${usage.users.current}/${usage.users.max})`)
+      ? `Usuarios: ${usage.users.current}/${usage.users.max} (límite)`
+      : `Usuarios: ${Math.round(userPct)}% (${usage.users.current}/${usage.users.max})`)
   }
 
   return (

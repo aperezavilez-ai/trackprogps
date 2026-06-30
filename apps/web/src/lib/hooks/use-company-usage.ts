@@ -5,10 +5,13 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
 interface CompanyUsage {
   vehicles:         { current: number; max: number }
+  mobile_devices?:  { current: number; max: number }
   users:            { current: number; max: number }
   features:         Record<string, boolean | number>
   at_vehicle_limit: boolean
+  at_mobile_limit?: boolean
   at_user_limit:    boolean
+  mobile_only_plan?: boolean
 }
 
 export function useCompanyUsage(companyId: string) {

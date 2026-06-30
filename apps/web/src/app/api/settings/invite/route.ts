@@ -5,6 +5,7 @@ import { sendInvitationEmail } from '@/lib/email/send-invitation'
 import { ensurePlatformInternalCompany, isInternalTeamRole } from '@/lib/auth/platform-team'
 import { ACTIVATE_ACCOUNT_PATH, getAuthCallbackUrl } from '@/lib/auth/access-links'
 import { assertUserLimit } from '@/lib/billing/plan-guard'
+import { firstOrNull } from '@/lib/supabase/normalize'
 import { z } from 'zod'
 
 const InviteSchema = z.object({
@@ -189,7 +190,7 @@ export async function POST(request: NextRequest) {
   const companyName = scope === 'internal'
     ? 'TrackPro GPS'
     : (targetCompany?.name
-      ?? (profile.company as { name: string } | null)?.name
+      ?? firstOrNull(profile.company as { name: string } | { name: string }[] | null)?.name
       ?? 'TrackPro GPS')
 
   const emailSent = await sendInvitationEmail({
