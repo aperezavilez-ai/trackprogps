@@ -11,6 +11,7 @@ import { IosInstallGuide } from '@/components/pwa/ios-install-guide'
 import { DesktopInstallGuide } from '@/components/pwa/desktop-install-guide'
 import { AndroidInstallGuide } from '@/components/pwa/android-install-guide'
 import { AuthLegalFooter } from '@/components/layout/auth-legal-footer'
+import { MobilePermissionSetup } from '@/components/mobile/mobile-permission-setup'
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>
@@ -142,6 +143,12 @@ export default function DescargarPageClient() {
 
               {status && (
                 <p className="text-xs text-orange-200/90 text-center mb-4">{status}</p>
+              )}
+
+              {ready && !isDesktop && (
+                <div className="mb-4">
+                  <MobilePermissionSetup compact />
+                </div>
               )}
 
               {ready && isIos && (

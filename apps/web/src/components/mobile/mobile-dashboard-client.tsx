@@ -6,6 +6,7 @@ import {
   Smartphone, Battery, Wifi, WifiOff, MapPin, User, RefreshCw, Loader2, Power,
 } from 'lucide-react'
 import { usePermissions } from '@/lib/context/permissions-context'
+import { MobilePermissionSetup } from './mobile-permission-setup'
 
 interface MobileDevice {
   id: string
@@ -102,6 +103,8 @@ export function MobileDashboardClient() {
           <RefreshCw className="w-4 h-4" />
         </button>
       </div>
+
+      <MobilePermissionSetup onActivated={() => void load()} />
 
       {devices.length === 0 ? (
         <div className="bg-white border border-gray-200 rounded-2xl p-12 text-center">
