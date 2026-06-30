@@ -31,6 +31,7 @@ export function createRedisConnection(): RedisConnection {
 
 export interface GpsPositionJob {
   imei: string
+  protocolId?: string
   records: TeltonikaRecord[]
   receivedAt: string
 }

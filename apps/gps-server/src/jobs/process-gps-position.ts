@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { TeltonikaRecord } from '@gps-saas/types'
 import { createSupabaseServiceClient } from '../lib/supabase.js'
+import { batchUpsertPositions } from '../lib/batch-positions.js'
 import { LruCache } from '../lib/lru-cache.js'
 import type { AlertCheckJob, GpsPositionJob, Queues } from '../queue/queues.js'
 import { processAlertCheck } from './process-alert-check.js'
@@ -21,17 +21,18 @@ export async function processGpsPosition(
   queues: Queues,
   supabase: SupabaseClient = createSupabaseServiceClient(),
 ): Promise<void> {
-  const { imei, records, receivedAt } = data
+  const { imei, protocolId, records, receivedAt } = data
   const device = await lookupDevice(supabase, imei)
   if (!device) {
+    await upsertProvisioningCandidate(supabase, imei, protocolId, records[0])
     const masked = imei.length > 4 ? `***${imei.slice(-4)}` : '****'
-    console.warn(`[GPS Worker] Unknown IMEI: ${masked} — skipping`)
+    console.warn(`[GPS Worker] Unknown IMEI: ${masked} - provisioning candidate recorded`)
     return
   }
 
-  for (const record of records) {
+  const positions = records.map(record => {
     const io = record.io_elements
-    const position = {
+    return {
       vehicle_id:  device.vehicleId,
       company_id:  device.companyId,
       device_id:   device.deviceId,
@@ -45,25 +46,23 @@ export async function processGpsPosition(
       gsm_signal:  io.gsm_signal ?? 0,
       battery_lvl: io.battery_voltage ?? 0,
       satellites:  record.satellites,
-      raw_io:      io,
+      raw_io:      io as Record<string, unknown>,
       recorded_at: new Date(record.timestamp as string | Date).toISOString(),
       server_at:   receivedAt,
     }
+  })
 
-    const { error: upsertError } = await supabase
-      .from('vehicle_positions')
-      .upsert({ ...position, id: undefined }, { onConflict: 'vehicle_id', ignoreDuplicates: false })
-
-    if (upsertError) {
-      console.error('[GPS Worker] Upsert error:', upsertError.message)
-      throw upsertError
+  if (positions.length > 0) {
+    try {
+      await batchUpsertPositions(supabase, positions)
+    } catch (err) {
+      console.error('[GPS Worker] Batch upsert error:', err instanceof Error ? err.message : err)
+      throw err
     }
+  }
 
-    const { error: histError } = await supabase.from('position_history').insert(position)
-    if (histError) {
-      console.error('[GPS Worker] History insert error:', histError.message)
-    }
-
+  for (const record of records) {
+    const io = record.io_elements
     const alertJob: AlertCheckJob = {
       vehicleId: device.vehicleId,
       companyId: device.companyId,
@@ -131,4 +130,53 @@ async function lookupDevice(
 
   deviceCache.set(imei, entry)
   return entry
+}
+
+async function upsertProvisioningCandidate(
+  supabase: SupabaseClient,
+  imei: string,
+  adapterKey: string | undefined,
+  firstRecord: GpsPositionJob['records'][number] | undefined,
+): Promise<void> {
+  try {
+    let protocolId: string | null = null
+    if (adapterKey) {
+      const { data: protocol } = await supabase
+        .from('gps_protocols')
+        .select('id')
+        .eq('adapter_key', adapterKey)
+        .maybeSingle()
+
+      protocolId = (protocol?.id as string | undefined) ?? null
+    }
+
+    const samplePayload: Record<string, unknown> = {
+      adapter_key: adapterKey ?? null,
+      last_record: firstRecord
+        ? {
+            recorded_at: new Date(firstRecord.timestamp as string | Date).toISOString(),
+            lat: firstRecord.lat,
+            lng: firstRecord.lng,
+            speed: firstRecord.speed,
+            io_elements: firstRecord.io_elements,
+          }
+        : null,
+    }
+
+    const row: Record<string, unknown> = {
+      imei,
+      source_type: 'hardware',
+      status: protocolId ? 'detected' : 'pending_autodetect',
+      confidence: protocolId ? 90 : 25,
+      last_seen_at: new Date().toISOString(),
+      sample_payload: samplePayload,
+    }
+    if (protocolId) row['protocol_id'] = protocolId
+
+    await supabase
+      .from('gps_provisioning_candidates')
+      .upsert(row, { onConflict: 'imei' })
+  } catch (err) {
+    console.warn('[GPS Worker] Unable to record provisioning candidate:', err instanceof Error ? err.message : err)
+  }
 }

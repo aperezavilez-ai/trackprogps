@@ -4,7 +4,7 @@
 
 import { createSupabaseServiceClient } from './lib/supabase.js'
 import { getConnectionByImei } from './connections.js'
-import { sendCommandToSocket } from './codecs/teltonika-commands.js'
+import { getDefaultTcpProtocolAdapter, getProtocolAdapter } from './protocols/registry.js'
 
 const POLL_INTERVAL_MS = 3_000
 
@@ -54,7 +54,8 @@ export function startCommandPoller(): void {
           continue
         }
 
-        const sent = sendCommandToSocket(conn.socket, cmd.command_text)
+        const adapter = getProtocolAdapter(conn.protocolId) ?? getDefaultTcpProtocolAdapter()
+        const sent = adapter.sendCommand?.(conn.socket, cmd.command_text) ?? false
         if (sent) {
           await supabase.from('device_commands').update({
             status: 'sent',

@@ -6,16 +6,20 @@ import { config as loadEnv } from 'dotenv'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import net from 'node:net'
-import { TeltonikaDecoder } from './codecs/teltonika.js'
 import { createRedisConnection, createQueues } from './queue/queues.js'
 import { createGpsWorker } from './queue/gps-worker.js'
 import { createAlertWorker } from './queue/alert-worker.js'
 import { createNotificationWorker } from './queue/notification-worker.js'
 import {
-  registerConnection, getConnState, setImei, removeConnection, getConnectionCount,
+  registerConnection, getConnState, setImei, setProtocolId, removeConnection, getConnectionCount,
 } from './connections.js'
 import { startCommandPoller } from './command-poller.js'
 import { processGpsPosition } from './jobs/process-gps-position.js'
+import {
+  detectTcpProtocolAdapter,
+  getDefaultTcpProtocolAdapter,
+  getProtocolAdapter,
+} from './protocols/registry.js'
 
 loadEnv({ path: join(dirname(fileURLToPath(import.meta.url)), '../../../.env') })
 
@@ -56,8 +60,9 @@ const server = net.createServer((socket) => {
 
     try {
       if (!conn.imei) {
-        const imei = TeltonikaDecoder.parseIMEI(conn.buffer)
-        if (!imei) {
+        const adapter = detectTcpProtocolAdapter(conn.buffer)
+        const handshake = adapter?.parseHandshake(conn.buffer) ?? null
+        if (!adapter || !handshake) {
           if (conn.buffer.length > 50) {
             console.warn(`[GPS] Invalid IMEI from ${connId}, closing`)
             socket.destroy()
@@ -65,13 +70,19 @@ const server = net.createServer((socket) => {
           return
         }
 
-        setImei(connId, imei)
-        conn.buffer = Buffer.alloc(0)
-        socket.write(Buffer.from([0x01]))
-        console.log(`[GPS] Device identified: IMEI=${imei} from ${connId}`)
+        setProtocolId(connId, adapter.id)
+        setImei(connId, handshake.imei)
+        conn.buffer = conn.buffer.subarray(handshake.bytesConsumed)
+        if (handshake.response) socket.write(handshake.response)
+        console.log(`[GPS] Device identified: IMEI=${handshake.imei} protocol=${adapter.id} from ${connId}`)
 
       } else {
-        const packet = TeltonikaDecoder.parseDataPacket(conn.buffer)
+        const adapter = getProtocolAdapter(conn.protocolId) ?? getDefaultTcpProtocolAdapter()
+        const packet = adapter.parseDataPacket(conn.buffer, {
+          imei: conn.imei,
+          connId,
+          protocolId: adapter.id,
+        })
         if (!packet) {
           if (conn.buffer.length > 65536) {
             console.error(`[GPS] Buffer overflow for ${connId}, closing`)
@@ -80,14 +91,12 @@ const server = net.createServer((socket) => {
           return
         }
 
-        conn.buffer = Buffer.alloc(0)
-
-        const ack = Buffer.alloc(4)
-        ack.writeUInt32BE(packet.recordCount, 0)
-        socket.write(ack)
+        conn.buffer = conn.buffer.subarray(packet.bytesConsumed)
+        if (packet.response) socket.write(packet.response)
 
         const jobData = {
           imei: conn.imei,
+          protocolId: adapter.id,
           records: packet.records,
           receivedAt: new Date().toISOString(),
         }

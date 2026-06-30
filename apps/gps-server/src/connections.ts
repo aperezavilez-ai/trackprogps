@@ -8,6 +8,7 @@ export interface DeviceConnection {
   socket: net.Socket
   imei: string
   connId: string
+  protocolId?: string
   connectedAt: Date
 }
 
@@ -26,7 +27,30 @@ export function setImei(connId: string, imei: string) {
   const conn = byConnId.get(connId)
   if (!conn) return
   conn.imei = imei
-  byImei.set(imei, { socket: conn.socket, imei, connId, connectedAt: conn.connectedAt })
+  const activeConn: DeviceConnection = {
+    socket: conn.socket,
+    imei,
+    connId,
+    connectedAt: conn.connectedAt,
+  }
+  if (conn.protocolId) activeConn.protocolId = conn.protocolId
+  byImei.set(imei, activeConn)
+}
+
+export function setProtocolId(connId: string, protocolId: string) {
+  const conn = byConnId.get(connId)
+  if (!conn) return
+  conn.protocolId = protocolId
+
+  if (conn.imei) {
+    byImei.set(conn.imei, {
+      socket: conn.socket,
+      imei: conn.imei,
+      connId,
+      protocolId,
+      connectedAt: conn.connectedAt,
+    })
+  }
 }
 
 export function removeConnection(connId: string) {
