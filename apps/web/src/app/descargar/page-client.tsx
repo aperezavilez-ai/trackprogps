@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Download, CheckCircle2, Smartphone, Monitor, Globe } from 'lucide-react'
+import { Download, CheckCircle2, Smartphone, Monitor, Globe, RefreshCw } from 'lucide-react'
 import { TrackProLogo } from '@/components/brand/trackpro-logo'
 import { isStandalonePwa, registerServiceWorker } from '@/lib/pwa/register-sw'
 import { getInstallPlatform, isInAppBrowser, isSafariBrowser } from '@/lib/pwa/detect-platform'
@@ -27,8 +27,6 @@ declare global {
 
 export default function DescargarPageClient() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const skipAnimation = searchParams.get('installed') === '1'
   const platform = getInstallPlatform()
   const isIos = platform === 'ios'
   const isAndroid = platform === 'android'
@@ -37,13 +35,13 @@ export default function DescargarPageClient() {
   const needsSafari = isIos && !isSafariBrowser()
 
   const [ready, setReady] = useState(false)
-  const [done, setDone] = useState(skipAnimation)
+  const [done, setDone] = useState(false)
   const [canInstall, setCanInstall] = useState(false)
   const [installing, setInstalling] = useState(false)
   const [status, setStatus] = useState('')
   const deferredRef = useRef<BeforeInstallPromptEvent | null>(null)
 
-  const finishInstall = useCallback(() => {
+  const continueToApp = useCallback(() => {
     setDone(true)
     setInstalling(false)
     localStorage.setItem('trackpro_pwa_installed', '1')
@@ -54,11 +52,21 @@ export default function DescargarPageClient() {
     }, 1500)
   }, [router])
 
+  const verifyIosInstall = useCallback(() => {
+    if (isStandalonePwa()) {
+      continueToApp()
+      return
+    }
+
+    setInstalling(false)
+    setStatus('Todavia estas en Safari. Despues de anadir TrackPro a pantalla de inicio, abre la app desde el icono y vuelve a tocar verificar.')
+  }, [continueToApp])
+
   useEffect(() => {
     void registerServiceWorker().finally(() => setReady(true))
 
     if (isStandalonePwa()) {
-      finishInstall()
+      continueToApp()
       return
     }
 
@@ -69,7 +77,7 @@ export default function DescargarPageClient() {
     }
     window.addEventListener('beforeinstallprompt', onBip)
     return () => window.removeEventListener('beforeinstallprompt', onBip)
-  }, [finishInstall])
+  }, [continueToApp])
 
   async function handleInstall() {
     if (!deferredRef.current) {
@@ -83,7 +91,7 @@ export default function DescargarPageClient() {
       const choice = await deferredRef.current.userChoice
       if (choice.outcome === 'accepted') {
         setStatus('¡App instalada!')
-        finishInstall()
+        continueToApp()
       } else {
         setInstalling(false)
         setStatus('Instalación cancelada. Puedes usar TrackPro en el navegador.')
@@ -160,11 +168,19 @@ export default function DescargarPageClient() {
                   <div className="mt-4 flex flex-col gap-2">
                     <button
                       type="button"
-                      onClick={finishInstall}
+                      onClick={verifyIosInstall}
                       className="w-full flex items-center justify-center gap-2 border border-white/15 hover:bg-white/5 text-white font-medium py-3 rounded-xl text-sm transition"
                     >
                       <CheckCircle2 className="w-4 h-4" />
-                      Ya la instalé — continuar
+                      Verificar instalacion
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => window.location.reload()}
+                      className="w-full flex items-center justify-center gap-2 border border-white/10 hover:bg-white/5 text-white/70 font-medium py-3 rounded-xl text-sm transition"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      Actualizar pagina
                     </button>
                   </div>
                 </>
@@ -189,6 +205,14 @@ export default function DescargarPageClient() {
                   >
                     Crear cuenta nueva →
                   </Link>
+                  <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    className="w-full flex items-center justify-center gap-2 text-sm text-white/45 hover:text-white/70 py-2"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Actualizar
+                  </button>
                 </div>
               )}
             </>

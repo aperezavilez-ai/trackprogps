@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Camera, CheckCircle2, ExternalLink, Loader2, MapPin, Mic, ShieldCheck, WifiOff } from 'lucide-react'
+import { Camera, CheckCircle2, ExternalLink, Loader2, MapPin, Mic, RefreshCw, ShieldCheck, WifiOff } from 'lucide-react'
 import {
   activateBrowserMobileTracking,
   isMobileBrowserPlatform,
@@ -25,6 +25,21 @@ const PERMISSION_ITEMS: Array<{ key: keyof BrowserPermissionMap; label: string; 
   { key: 'microphone', label: 'Micrófono', icon: Mic },
 ]
 
+const ACTIVATION_STORAGE_KEY = 'trackpro_mobile_activation'
+
+type StoredActivation = {
+  permissions?: BrowserPermissionMap
+  registered?: boolean
+  telemetrySent?: boolean
+  updated_at?: string
+}
+
+function getActivationStorageKey(deviceId?: string, deviceUid?: string) {
+  if (deviceId) return `${ACTIVATION_STORAGE_KEY}:device:${deviceId}`
+  if (deviceUid) return `${ACTIVATION_STORAGE_KEY}:uid:${deviceUid}`
+  return ACTIVATION_STORAGE_KEY
+}
+
 export function MobilePermissionSetup({
   compact = false,
   deviceId,
@@ -37,10 +52,39 @@ export function MobilePermissionSetup({
   const [state, setState] = useState<ActivationState>('idle')
   const [message, setMessage] = useState('')
   const [permissions, setPermissions] = useState<BrowserPermissionMap | null>(null)
+  const activationKey = getActivationStorageKey(deviceId, deviceUid)
 
   useEffect(() => {
     setIsMobile(isMobileBrowserPlatform())
-  }, [])
+    try {
+      const stored = localStorage.getItem(activationKey)
+      const fallback = localStorage.getItem('trackpro_mobile_permissions')
+      const parsed = JSON.parse(stored ?? fallback ?? 'null') as StoredActivation | null
+
+      if (parsed?.permissions) {
+        setPermissions(parsed.permissions)
+      }
+
+      if (parsed?.registered && parsed?.telemetrySent) {
+        setState('ready')
+        setMessage('Movil activado. Permisos guardados y primera ubicacion enviada.')
+      }
+    } catch {
+      // Ignore stale local activation data.
+    }
+  }, [activationKey])
+
+  function persistActivation(result: { permissions: BrowserPermissionMap; registered: boolean; telemetrySent: boolean }) {
+    localStorage.setItem(activationKey, JSON.stringify({
+      ...result,
+      updated_at: new Date().toISOString(),
+    }))
+  }
+
+  function refreshStatus() {
+    setMessage('Estado actualizado. Si el servidor ya recibio ubicacion, el movil aparecera en linea.')
+    onActivated?.()
+  }
 
   async function activate() {
     setState('running')
@@ -58,6 +102,11 @@ export function MobilePermissionSetup({
       }
 
       if (result.registered && result.telemetrySent) {
+        persistActivation({
+          permissions: result.permissions,
+          registered: result.registered,
+          telemetrySent: result.telemetrySent,
+        })
         setState('ready')
         setMessage('Móvil activado y primera ubicación enviada.')
         onActivated?.()
@@ -116,7 +165,18 @@ export function MobilePermissionSetup({
             </div>
           )}
 
-          {isMobile ? (
+          {state === 'ready' ? (
+            <button
+              type="button"
+              onClick={refreshStatus}
+              className={compact
+                ? 'mt-4 w-full inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm font-medium text-white/80 hover:bg-white/5'
+                : 'mt-4 inline-flex items-center justify-center gap-2 rounded-xl border border-teal-200 bg-white px-4 py-2.5 text-sm font-medium text-teal-700 hover:bg-teal-50'}
+            >
+              <RefreshCw className="w-4 h-4" />
+              Actualizar estado
+            </button>
+          ) : isMobile ? (
             <button
               type="button"
               disabled={state === 'running'}
