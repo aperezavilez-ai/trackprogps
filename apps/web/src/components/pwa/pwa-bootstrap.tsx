@@ -1,11 +1,17 @@
 'use client'
 
 import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { registerServiceWorker } from '@/lib/pwa/register-sw'
 import { resumeBrowserMobileTelemetry } from '@/lib/mobile/browser-activation'
 
 export function PwaBootstrap() {
+  const router = useRouter()
+
   useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | undefined
+    let removeControllerChange: (() => void) | undefined
+
     resumeBrowserMobileTelemetry()
 
     registerServiceWorker()
@@ -27,17 +33,19 @@ export function PwaBootstrap() {
         const onControllerChange = () => {
           if (sessionStorage.getItem('trackpro-sw-reloaded') === '1') return
           sessionStorage.setItem('trackpro-sw-reloaded', '1')
-          window.location.reload()
+          router.refresh()
         }
         navigator.serviceWorker.addEventListener('controllerchange', onControllerChange)
+        removeControllerChange = () => navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange)
 
-        const interval = setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000)
-        return () => {
-          clearInterval(interval)
-          navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange)
-        }
+        interval = setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000)
       })
       .catch(() => {})
-  }, [])
+
+    return () => {
+      if (interval) clearInterval(interval)
+      removeControllerChange?.()
+    }
+  }, [router])
   return null
 }

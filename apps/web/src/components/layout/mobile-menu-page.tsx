@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { Bot, Download, RefreshCw } from 'lucide-react'
 import { NAV_ITEMS, NAV_SECTIONS } from '@/lib/navigation/nav-items'
 import { filterNavByRole } from '@/lib/auth/permissions'
@@ -13,6 +13,7 @@ interface Props {
 
 export function MobileMenuPage({ role }: Props) {
   const pathname = usePathname()
+  const router = useRouter()
   const isAdmin = ['super_admin', 'admin_empresa'].includes(role)
 
   const items = NAV_ITEMS.filter(item => {
@@ -37,7 +38,7 @@ export function MobileMenuPage({ role }: Props) {
         </Link>
         <button
           type="button"
-          onClick={() => window.location.reload()}
+          onClick={() => router.refresh()}
           className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm font-medium text-gray-700"
         >
           <RefreshCw className="w-4 h-4" />

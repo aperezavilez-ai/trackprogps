@@ -105,7 +105,7 @@ export function TopBar({ profile }: TopBarProps) {
         <button
           type="button"
           title="Actualizar app"
-          onClick={() => window.location.reload()}
+          onClick={() => router.refresh()}
           className="hidden sm:inline-flex items-center justify-center gap-1.5 rounded-xl border border-gray-200 px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-medium text-gray-600 hover:bg-gray-50 transition"
         >
           <RefreshCw className="w-4 h-4" />

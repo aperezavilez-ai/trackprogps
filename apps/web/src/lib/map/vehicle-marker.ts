@@ -280,11 +280,25 @@ export function createGoogleVehicleIcon(opts: {
     opts.selected,
   )
 
-  return {
+  const icon: {
+    url: string
+    scaledSize?: google.maps.Size
+    anchor?: google.maps.Point
+  } = {
     url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
-    scaledSize: new google.maps.Size(size, size),
-    anchor: new google.maps.Point(size / 2, size / 2),
   }
+
+  const maps = globalThis.google?.maps
+
+  if (typeof maps?.Size === 'function') {
+    icon.scaledSize = new maps.Size(size, size)
+  }
+
+  if (typeof maps?.Point === 'function') {
+    icon.anchor = new maps.Point(size / 2, size / 2)
+  }
+
+  return icon
 }
 
 /** HTML para AdvancedMarker de Google Maps */
