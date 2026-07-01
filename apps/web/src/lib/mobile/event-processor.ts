@@ -38,6 +38,7 @@ export async function processMobileEvent(
   let alertId: string | undefined
 
   if (input.eventType === 'sos' && input.lat != null && input.lng != null) {
+    const emergencyRouting = await getDeviceEmergencyRouting(supabase, input.deviceId)
     const { data: alert } = await supabase
       .from('alerts')
       .insert({
@@ -50,7 +51,12 @@ export async function processMobileEvent(
         lat: input.lat,
         lng: input.lng,
         speed: 0,
-        payload: { ...input.payload, mobile_event_id: event.id, source: 'mobile_sos' },
+        payload: {
+          ...input.payload,
+          mobile_event_id: event.id,
+          source: 'mobile_sos',
+          ...emergencyRouting,
+        },
       })
       .select('id')
       .single()
@@ -80,4 +86,23 @@ export async function processMobileEvent(
   }
 
   return { event_id: event.id, alert_id: alertId }
+}
+
+async function getDeviceEmergencyRouting(
+  supabase: SupabaseClient,
+  deviceId: string,
+): Promise<Record<string, unknown>> {
+  const { data } = await supabase
+    .from('gps_devices')
+    .select('source_type, mobile_metadata, protocol_metadata')
+    .eq('id', deviceId)
+    .maybeSingle()
+
+  const metadata = data?.source_type === 'mobile' ? data.mobile_metadata : data?.protocol_metadata
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return {}
+
+  return {
+    responsible_contact: (metadata as Record<string, unknown>).responsible_contact ?? null,
+    emergency_contacts: (metadata as Record<string, unknown>).emergency_contacts ?? [],
+  }
 }

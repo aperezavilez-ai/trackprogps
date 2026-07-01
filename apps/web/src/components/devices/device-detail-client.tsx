@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic'
 import {
   ArrowLeft, Radio, Wifi, WifiOff, MapPin, Gauge, Zap, Battery,
   Signal, Satellite, Clock, Lock, Unlock, RefreshCw, RotateCcw,
-  Loader2, AlertTriangle, User, Truck, History, Bell, Mic,
+  Loader2, AlertTriangle, User, Truck, History, Bell, Mic, Phone, Mail,
 } from 'lucide-react'
 
 const DeviceMap = dynamic(() => import('./device-map').then(m => m.DeviceMap), {
@@ -28,6 +28,9 @@ interface DeviceDetail {
   phone_num: string | null
   status: string
   last_seen: string | null
+  source_type?: string
+  mobile_metadata?: Record<string, unknown> | null
+  protocol_metadata?: Record<string, unknown> | null
   company: { id: string; name: string } | null
   vehicle: {
     id: string
@@ -64,6 +67,11 @@ interface VehicleAlert {
   message: string
   created_at: string
   acknowledged_at: string | null
+}
+
+type ContactInfo = {
+  responsible?: { name?: string; phone?: string; email?: string }
+  emergency?: { name?: string; phone?: string; email?: string; relationship?: string }
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -164,6 +172,7 @@ export function DeviceDetailClient({ deviceId, canCommand, mapsApiKey = '' }: Pr
   const rawPos = device.vehicle?.position as VehiclePosition | VehiclePosition[] | null | undefined
   const pos = Array.isArray(rawPos) ? (rawPos[0] ?? null) : (rawPos ?? null)
   const vehicle = device.vehicle
+  const contactInfo = getDeviceContactInfo(device)
   const historyHref = vehicle
     ? pos
       ? `/history?vehicle_id=${vehicle.id}&lat=${pos.lat}&lng=${pos.lng}`
@@ -329,6 +338,55 @@ export function DeviceDetailClient({ deviceId, canCommand, mapsApiKey = '' }: Pr
             </div>
           )}
 
+          {(contactInfo.responsible || contactInfo.emergency) && (
+            <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-4">
+              <h2 className="text-sm font-semibold text-gray-900">Responsable y emergencia</h2>
+              {contactInfo.responsible && (
+                <div className="space-y-1 text-sm">
+                  <div className="flex items-center gap-2 font-medium text-gray-900">
+                    <User className="w-4 h-4 text-gray-400" />
+                    {contactInfo.responsible.name ?? 'Responsable'}
+                  </div>
+                  {contactInfo.responsible.phone && (
+                    <div className="flex items-center gap-2 text-gray-500">
+                      <Phone className="w-4 h-4 text-gray-300" />
+                      {contactInfo.responsible.phone}
+                    </div>
+                  )}
+                  {contactInfo.responsible.email && (
+                    <div className="flex items-center gap-2 text-gray-500 break-all">
+                      <Mail className="w-4 h-4 text-gray-300" />
+                      {contactInfo.responsible.email}
+                    </div>
+                  )}
+                </div>
+              )}
+              {contactInfo.emergency && (
+                <div className="space-y-1 text-sm pt-3 border-t border-gray-100">
+                  <div className="flex items-center gap-2 font-medium text-red-700">
+                    <AlertTriangle className="w-4 h-4 text-red-500" />
+                    {contactInfo.emergency.name ?? 'Contacto de emergencia'}
+                  </div>
+                  {contactInfo.emergency.relationship && (
+                    <div className="text-xs text-gray-400 pl-6">{contactInfo.emergency.relationship}</div>
+                  )}
+                  {contactInfo.emergency.phone && (
+                    <div className="flex items-center gap-2 text-gray-500">
+                      <Phone className="w-4 h-4 text-gray-300" />
+                      {contactInfo.emergency.phone}
+                    </div>
+                  )}
+                  {contactInfo.emergency.email && (
+                    <div className="flex items-center gap-2 text-gray-500 break-all">
+                      <Mail className="w-4 h-4 text-gray-300" />
+                      {contactInfo.emergency.email}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Comandos remotos */}
           {canCommand && (
             <details className="bg-white border border-gray-200 rounded-2xl group" open>
@@ -439,4 +497,29 @@ export function DeviceDetailClient({ deviceId, canCommand, mapsApiKey = '' }: Pr
       </div>
     </div>
   )
+}
+
+function getDeviceContactInfo(device: DeviceDetail): ContactInfo {
+  const metadata = device.source_type === 'mobile' ? device.mobile_metadata : device.protocol_metadata
+  if (!metadata || typeof metadata !== 'object') return {}
+
+  const responsible = readContactObject(metadata.responsible_contact)
+  const emergencyContacts = metadata.emergency_contacts
+  const firstEmergency = Array.isArray(emergencyContacts) ? readContactObject(emergencyContacts[0]) : undefined
+
+  return {
+    responsible,
+    emergency: firstEmergency,
+  }
+}
+
+function readContactObject(value: unknown): ContactInfo['emergency'] {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined
+  const contact = value as Record<string, unknown>
+  return {
+    name: typeof contact.name === 'string' ? contact.name : undefined,
+    phone: typeof contact.phone === 'string' ? contact.phone : undefined,
+    email: typeof contact.email === 'string' ? contact.email : undefined,
+    relationship: typeof contact.relationship === 'string' ? contact.relationship : undefined,
+  }
 }

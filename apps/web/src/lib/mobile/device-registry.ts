@@ -14,6 +14,22 @@ type RegisterInput = {
   permissions?: Record<string, boolean>
   trackingIntervalSec?: number
   label?: string
+  responsibleContact?: DeviceResponsibleContact
+  emergencyContacts?: DeviceEmergencyContact[]
+}
+
+export type DeviceResponsibleContact = {
+  name: string
+  phone: string
+  email?: string | null
+}
+
+export type DeviceEmergencyContact = {
+  name: string
+  phone: string
+  email?: string | null
+  relationship?: string | null
+  priority?: number
 }
 
 export type RegisteredMobileDevice = {
@@ -32,21 +48,27 @@ export async function registerOrUpdateMobileDevice(
   const imei = mobileImeiFromUid(input.deviceUid)
   const modelLabel = input.platform === 'ios' ? 'iPhone' : 'Android'
   const deviceModel = input.model ?? modelLabel
+  const now = new Date().toISOString()
+
+  const { data: existing } = await supabase
+    .from('gps_devices')
+    .select('id, tracking_enabled, tracking_interval_sec, mobile_metadata, vehicles(id)')
+    .eq('mobile_device_uid', input.deviceUid)
+    .maybeSingle()
+
+  const existingMetadata = isPlainObject(existing?.mobile_metadata) ? existing.mobile_metadata : {}
   const metadata = {
+    ...existingMetadata,
     brand: input.brand ?? null,
     model: input.model ?? null,
     os_version: input.osVersion ?? null,
     app_version: input.appVersion ?? null,
     push_token: input.pushToken ?? null,
     permissions: input.permissions ?? {},
-    updated_at: new Date().toISOString(),
+    responsible_contact: input.responsibleContact ?? existingMetadata.responsible_contact ?? null,
+    emergency_contacts: input.emergencyContacts ?? existingMetadata.emergency_contacts ?? [],
+    updated_at: now,
   }
-
-  const { data: existing } = await supabase
-    .from('gps_devices')
-    .select('id, tracking_enabled, tracking_interval_sec, vehicles(id)')
-    .eq('mobile_device_uid', input.deviceUid)
-    .maybeSingle()
 
   if (existing) {
     await supabase
@@ -57,7 +79,7 @@ export async function registerOrUpdateMobileDevice(
         mobile_metadata: metadata,
         model: deviceModel,
         firmware_ver: input.osVersion ?? null,
-        updated_at: new Date().toISOString(),
+        updated_at: now,
       })
       .eq('id', existing.id)
 
@@ -130,6 +152,10 @@ export async function registerOrUpdateMobileDevice(
     tracking_interval_sec: device.tracking_interval_sec,
     is_new: true,
   }
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
 
 async function createMobileVehicle(

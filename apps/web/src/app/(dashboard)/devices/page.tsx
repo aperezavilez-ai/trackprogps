@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
   Radio, Wifi, WifiOff, Plus, RefreshCw, Loader2, X, Smartphone,
-  Server, Router, ClipboardList, Cpu, ShieldCheck, User,
+  Server, Router, ClipboardList, Cpu, ShieldCheck, User, Phone, Mail,
 } from 'lucide-react'
 import { usePermissions } from '@/lib/context/permissions-context'
 import { MobilePermissionSetup } from '@/components/mobile/mobile-permission-setup'
@@ -13,6 +13,8 @@ interface Device {
   id: string; imei: string; model: string; firmware_ver: string | null
   sim_iccid: string | null; phone_num: string | null; status: string; last_seen: string | null
   source_type?: string
+  mobile_metadata?: Record<string, unknown> | null
+  protocol_metadata?: Record<string, unknown> | null
   vehicle: { economic_num: string; plates: string } | null
 }
 
@@ -29,7 +31,22 @@ interface UserOption {
   role: string
 }
 
+type ContactForm = {
+  responsible_name: string
+  responsible_email: string
+  responsible_phone: string
+  emergency_name: string
+  emergency_phone: string
+  emergency_email: string
+  emergency_relationship: string
+}
+
 type DeviceSetupMode = 'hardware' | 'mobile'
+
+type ContactSummary = {
+  responsible?: string
+  emergency?: string
+}
 
 type DeviceSetupProfile = {
   id: string
@@ -237,6 +254,7 @@ export default function DevicesPage() {
                 const cfg = isPendingMobile
                   ? STATUS_STYLES['pending_mobile']!
                   : STATUS_STYLES[d.status] ?? STATUS_STYLES['unknown']!
+                const contact = getDeviceContactSummary(d)
                 const lastSeen = d.last_seen ? (() => {
                   const s = Math.floor((Date.now() - new Date(d.last_seen).getTime()) / 1000)
                   if (s < 60) return `Hace ${s}s`
@@ -256,6 +274,12 @@ export default function DevicesPage() {
                           <div className="font-semibold text-gray-900 group-hover:text-orange-500">{d.model}</div>
                           {d.source_type === 'mobile' && <div className="text-xs text-teal-600">App móvil</div>}
                           {d.firmware_ver && d.source_type !== 'mobile' && <div className="text-xs text-gray-400">FW: {d.firmware_ver}</div>}
+                          {(contact.responsible || contact.emergency) && (
+                            <div className="mt-1 text-xs text-gray-500">
+                              {contact.responsible && <div>Resp: {contact.responsible}</div>}
+                              {contact.emergency && <div>Emerg: {contact.emergency}</div>}
+                            </div>
+                          )}
                           {d.source_type === 'mobile' && d.status !== 'online' && (
                             <span className="mt-1 inline-flex text-xs font-medium text-orange-600">
                               Reactivar GPS desde el enlace superior
@@ -297,6 +321,26 @@ export default function DevicesPage() {
       )}
     </div>
   )
+}
+
+function getDeviceContactSummary(device: Device): ContactSummary {
+  const metadata = device.source_type === 'mobile' ? device.mobile_metadata : device.protocol_metadata
+  if (!metadata || typeof metadata !== 'object') return {}
+
+  const responsible = metadata.responsible_contact
+  const emergencyContacts = metadata.emergency_contacts
+  const firstEmergency = Array.isArray(emergencyContacts) ? emergencyContacts[0] : null
+
+  return {
+    responsible: readContactName(responsible),
+    emergency: readContactName(firstEmergency),
+  }
+}
+
+function readContactName(value: unknown): string | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined
+  const name = (value as { name?: unknown }).name
+  return typeof name === 'string' && name.trim() ? name.trim() : undefined
 }
 
 function DeviceModal({
@@ -341,6 +385,15 @@ function DeviceModal({
     label: '',
     tracking_interval_sec: '30',
   })
+  const [contacts, setContacts] = useState<ContactForm>({
+    responsible_name: '',
+    responsible_email: '',
+    responsible_phone: '',
+    emergency_name: '',
+    emergency_phone: '',
+    emergency_email: '',
+    emergency_relationship: 'Contacto de emergencia',
+  })
 
   const selectedProfile = DEVICE_SETUP_PROFILES.find(p => p.id === hardware.profileId) ?? DEVICE_SETUP_PROFILES[0]!
   const isCustomModel = hardware.model === 'Otro'
@@ -356,6 +409,45 @@ function DeviceModal({
 
   const setHw = (field: keyof typeof hardware, value: string) => setHardware(prev => ({ ...prev, [field]: value }))
   const setMobileField = (field: keyof typeof mobile, value: string) => setMobile(prev => ({ ...prev, [field]: value }))
+  const setContactField = (field: keyof ContactForm, value: string) => setContacts(prev => ({ ...prev, [field]: value }))
+
+  function handleAssignedUserChange(userId: string) {
+    setMobileField('assigned_user_id', userId)
+    const selectedUser = users.find(user => user.id === userId)
+    if (!selectedUser) return
+    setContacts(prev => ({
+      ...prev,
+      responsible_name: prev.responsible_name || selectedUser.full_name,
+      responsible_email: prev.responsible_email || selectedUser.email,
+    }))
+  }
+
+  function buildContactPayload() {
+    const responsibleName = contacts.responsible_name.trim()
+    const responsiblePhone = contacts.responsible_phone.trim()
+    const emergencyName = contacts.emergency_name.trim()
+    const emergencyPhone = contacts.emergency_phone.trim()
+
+    if (!responsibleName) throw new Error('Escribe el nombre del responsable')
+    if (!responsiblePhone) throw new Error('Escribe el celular del responsable')
+    if (!emergencyName) throw new Error('Escribe el contacto de emergencia')
+    if (!emergencyPhone) throw new Error('Escribe el celular del contacto de emergencia')
+
+    return {
+      responsible_contact: {
+        name: responsibleName,
+        phone: responsiblePhone,
+        email: contacts.responsible_email.trim() || null,
+      },
+      emergency_contacts: [{
+        name: emergencyName,
+        phone: emergencyPhone,
+        email: contacts.emergency_email.trim() || null,
+        relationship: contacts.emergency_relationship.trim() || null,
+        priority: 1,
+      }],
+    }
+  }
 
   useEffect(() => {
     if (!needsCompanyPick) return
@@ -398,6 +490,7 @@ function DeviceModal({
       if (needsCompanyPick && !companyId) throw new Error('Selecciona la empresa cliente')
 
       let payload: Record<string, unknown>
+      const contactPayload = buildContactPayload()
       if (mode === 'mobile') {
         if (!mobile.assigned_user_id) throw new Error('Selecciona el usuario que usara este telefono')
         payload = {
@@ -406,6 +499,7 @@ function DeviceModal({
           platform: mobile.platform,
           label: mobile.label.trim() || undefined,
           tracking_interval_sec: Number(mobile.tracking_interval_sec) || 30,
+          ...contactPayload,
         }
       } else {
         const finalModel = isCustomModel ? hardware.model_custom.trim() : hardware.model
@@ -432,6 +526,7 @@ function DeviceModal({
             report_interval_sec: Number(hardware.report_interval_sec) || 30,
             install_notes: hardware.install_notes.trim() || null,
             command_preview: hardwareCommands,
+            ...contactPayload,
             configured_at: new Date().toISOString(),
           },
         }
@@ -626,7 +721,7 @@ function DeviceModal({
                     <TextField label="Nombre visible" value={mobile.label} onChange={v => setMobileField('label', v)} placeholder="Telefono de Juan" />
                     <div className="sm:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">Usuario asignado *</label>
-                      <select value={mobile.assigned_user_id} onChange={e => setMobileField('assigned_user_id', e.target.value)} required
+                      <select value={mobile.assigned_user_id} onChange={e => handleAssignedUserChange(e.target.value)} required
                         className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
                         <option value="">{needsCompanyPick && !companyId ? 'Selecciona primero una empresa' : 'Seleccionar usuario'}</option>
                         {users.map(user => (
@@ -652,6 +747,49 @@ function DeviceModal({
                 </section>
               </div>
             )}
+
+            <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-4">
+                <ShieldCheck className="w-4 h-4 text-slate-600" />
+                Responsable y emergencia
+              </div>
+              <div className="grid gap-6 lg:grid-cols-2">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    <User className="w-4 h-4" />
+                    Persona responsable
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="sm:col-span-2">
+                      <TextField label="Nombre responsable *" value={contacts.responsible_name} onChange={v => setContactField('responsible_name', v)} placeholder="Luis Alfonso Perez Avilez" required />
+                    </div>
+                    <TextField label="Celular responsable *" value={contacts.responsible_phone} onChange={v => setContactField('responsible_phone', v)} placeholder="6674912221" required />
+                    <TextField label="Correo responsable" value={contacts.responsible_email} onChange={v => setContactField('responsible_email', v)} placeholder="correo del admin" type="email" />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    <Phone className="w-4 h-4" />
+                    Contacto de emergencia
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="sm:col-span-2">
+                      <TextField label="Nombre emergencia *" value={contacts.emergency_name} onChange={v => setContactField('emergency_name', v)} placeholder="Carolina Banuelos Angulo" required />
+                    </div>
+                    <TextField label="Celular emergencia *" value={contacts.emergency_phone} onChange={v => setContactField('emergency_phone', v)} placeholder="6674157137" required />
+                    <TextField label="Correo emergencia" value={contacts.emergency_email} onChange={v => setContactField('emergency_email', v)} placeholder="cabaan2014@gmail.com" type="email" />
+                    <div className="sm:col-span-2">
+                      <TextField label="Relacion" value={contacts.emergency_relationship} onChange={v => setContactField('emergency_relationship', v)} placeholder="Familiar, supervisor, seguridad..." />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 flex items-start gap-2 rounded-xl border border-white bg-white/80 px-3 py-2 text-xs text-gray-500">
+                <Mail className="w-4 h-4 shrink-0 text-gray-400" />
+                Estos datos quedan ligados al dispositivo para alertas de panico, seguimiento operativo y soporte.
+              </div>
+            </section>
 
             {error && <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">{error}</div>}
           </div>

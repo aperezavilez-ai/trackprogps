@@ -91,6 +91,8 @@ export async function POST(request: NextRequest) {
         platform: parsed.data.platform,
         label: parsed.data.label,
         trackingIntervalSec: parsed.data.tracking_interval_sec,
+        responsibleContact: parsed.data.responsible_contact,
+        emergencyContacts: parsed.data.emergency_contacts,
       })
       const { data: device } = await service
         .from('gps_devices')

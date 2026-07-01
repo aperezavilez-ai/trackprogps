@@ -1,5 +1,19 @@
 import { z } from 'zod'
 
+export const EmergencyContactSchema = z.object({
+  name: z.string().min(1).max(120),
+  phone: z.string().min(7).max(30),
+  email: z.string().email().max(160).nullable().optional(),
+  relationship: z.string().max(60).nullable().optional(),
+  priority: z.number().int().min(1).max(5).optional(),
+})
+
+export const ResponsibleContactSchema = z.object({
+  name: z.string().min(1).max(120),
+  phone: z.string().min(7).max(30),
+  email: z.string().email().max(160).nullable().optional(),
+})
+
 export const MobileRegisterSchema = z.object({
   device_uid: z.string().min(8).max(64),
   platform: z.enum(['android', 'ios']),
@@ -86,6 +100,8 @@ export const AdminMobileRegisterSchema = z.object({
   platform: z.enum(['android', 'ios']),
   label: z.string().min(1).max(40).optional(),
   tracking_interval_sec: z.number().int().min(5).max(3600).default(30),
+  responsible_contact: ResponsibleContactSchema.optional(),
+  emergency_contacts: z.array(EmergencyContactSchema).max(5).optional(),
 })
 
 export type MobileTelemetryPoint = z.infer<typeof MobileTelemetryPointSchema>
