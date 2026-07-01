@@ -15,6 +15,7 @@ const HardwareDeviceSchema = z.object({
   firmware_ver: z.string().max(20).nullable().optional(),
   sim_iccid:    z.string().max(30).nullable().optional(),
   phone_num:    z.string().max(20).nullable().optional(),
+  protocol_metadata: z.record(z.unknown()).optional(),
 })
 
 const DeviceSchema = z.union([
@@ -110,7 +111,12 @@ export async function POST(request: NextRequest) {
   const service = createSupabaseServiceClient()
   const { data, error } = await service
     .from('gps_devices')
-    .insert({ ...hwData, company_id: companyId, source_type: 'hardware' })
+    .insert({
+      ...hwData,
+      protocol_metadata: hwData.protocol_metadata ?? {},
+      company_id: companyId,
+      source_type: 'hardware',
+    })
     .select().single()
 
   if (error) {

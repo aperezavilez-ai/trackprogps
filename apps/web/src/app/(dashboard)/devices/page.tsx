@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Radio, Wifi, WifiOff, Plus, RefreshCw, Loader2, X, Smartphone } from 'lucide-react'
+import {
+  Radio, Wifi, WifiOff, Plus, RefreshCw, Loader2, X, Smartphone,
+  Server, Router, ClipboardList, Cpu, ShieldCheck, User,
+} from 'lucide-react'
 import { usePermissions } from '@/lib/context/permissions-context'
-import { DEVICE_MODEL_GROUPS, DEFAULT_DEVICE_MODEL } from '@/lib/device-models'
 import { MobilePermissionSetup } from '@/components/mobile/mobile-permission-setup'
 
 interface Device {
@@ -19,6 +21,106 @@ interface CompanyOption {
   name: string
   account_type: string
 }
+
+interface UserOption {
+  id: string
+  full_name: string
+  email: string
+  role: string
+}
+
+type DeviceSetupMode = 'hardware' | 'mobile'
+
+type DeviceSetupProfile = {
+  id: string
+  label: string
+  manufacturer: string
+  protocol: string
+  transport: 'tcp' | 'udp' | 'http'
+  defaultPort: string
+  defaultModel: string
+  models: string[]
+  summary: string
+  commands: (input: {
+    host: string
+    port: string
+    apn: string
+    apnUser: string
+    apnPass: string
+    reportIntervalSec: string
+  }) => string[]
+}
+
+const TRACKPRO_GPS_HOST = 'trackpro-gps-server.fly.dev'
+const TRACKPRO_GPS_PORT = '5000'
+
+const DEVICE_SETUP_PROFILES: DeviceSetupProfile[] = [
+  {
+    id: 'teltonika-codec8',
+    label: 'Teltonika FMB / FMC / FMM',
+    manufacturer: 'Teltonika',
+    protocol: 'Codec 8/8E',
+    transport: 'tcp',
+    defaultPort: TRACKPRO_GPS_PORT,
+    defaultModel: 'FMC920',
+    models: ['FMC920', 'FMB920', 'FMB120', 'FMB130', 'FMC130', 'FMM920', 'FMM130', 'FMB640', 'FMC640', 'Otro'],
+    summary: 'Soporte completo: posicion, ignicion, eventos, comandos y telemetria TCP.',
+    commands: ({ host, port, apn, apnUser, apnPass, reportIntervalSec }) => [
+      `APN: ${apn || 'apn.operador'}${apnUser ? ` / ${apnUser}` : ''}${apnPass ? ` / ${apnPass}` : ''}`,
+      `Servidor: ${host}, puerto ${port}, TCP`,
+      `Periodo sugerido: ${reportIntervalSec || '30'} segundos`,
+    ],
+  },
+  {
+    id: 'protrack-gt06',
+    label: 'Protrack / Concox GT06',
+    manufacturer: 'Protrack / Concox',
+    protocol: 'GT06',
+    transport: 'tcp',
+    defaultPort: TRACKPRO_GPS_PORT,
+    defaultModel: 'GT06N',
+    models: ['GT06', 'GT06N', 'GT06E', 'GT710', 'GT800', 'JM-VL03', 'Otro'],
+    summary: 'Alta para equipos economicos que se configuran por SMS con APN, IP/dominio y puerto.',
+    commands: ({ host, port, apn, apnUser, apnPass, reportIntervalSec }) => [
+      `APN,${apn || 'apn.operador'}${apnUser ? `,${apnUser}` : ''}${apnPass ? `,${apnPass}` : ''}#`,
+      `SERVER,1,${host},${port},0#`,
+      `TIMER,${reportIntervalSec || '30'}#`,
+    ],
+  },
+  {
+    id: 'queclink',
+    label: 'Queclink GV / GL',
+    manufacturer: 'Queclink',
+    protocol: 'Queclink ASCII',
+    transport: 'tcp',
+    defaultPort: TRACKPRO_GPS_PORT,
+    defaultModel: 'GV55',
+    models: ['GV20', 'GV55', 'GV55W', 'GV75', 'GV500', 'GV600', 'GL300', 'GL320', 'Otro'],
+    summary: 'Registro e inventario con parametros de red listos para validar integracion.',
+    commands: ({ host, port, apn, reportIntervalSec }) => [
+      `APN: ${apn || 'apn.operador'}`,
+      `Servidor primario: ${host}:${port}`,
+      `Reporte: cada ${reportIntervalSec || '30'} segundos`,
+    ],
+  },
+  {
+    id: 'generic',
+    label: 'Otro GPS TCP/UDP',
+    manufacturer: 'Otra marca',
+    protocol: 'Pendiente de validar',
+    transport: 'tcp',
+    defaultPort: TRACKPRO_GPS_PORT,
+    defaultModel: 'Otro',
+    models: ['Sinotrack ST-901', 'Sinotrack ST-906', 'Coban TK103', 'Coban TK303', 'Ruptela FM-Eco4', 'CalAmp LMU-3030', 'Otro'],
+    summary: 'Captura completa para equipos que requieren APN, host, puerto, transporte o IP fija.',
+    commands: ({ host, port, apn, reportIntervalSec }) => [
+      `APN: ${apn || 'apn.operador'}`,
+      `Host/IP destino: ${host}`,
+      `Puerto destino: ${port}`,
+      `Frecuencia: ${reportIntervalSec || '30'} segundos`,
+    ],
+  },
+]
 
 const STATUS_STYLES: Record<string, { color: string; bg: string; label: string }> = {
   online:   { color: '#22C55E', bg: '#F0FDF4', label: 'En línea' },
@@ -188,6 +290,7 @@ export default function DevicesPage() {
       {showModal && canWriteFleet && (
         <DeviceModal
           needsCompanyPick={needsCompanyPick}
+          currentCompanyId={companyId}
           onClose={() => setShowModal(false)}
           onSave={() => { setShowModal(false); void loadDevices() }}
         />
@@ -198,20 +301,61 @@ export default function DevicesPage() {
 
 function DeviceModal({
   needsCompanyPick,
+  currentCompanyId,
   onClose,
   onSave,
 }: {
   needsCompanyPick: boolean
+  currentCompanyId?: string | null
   onClose: () => void
   onSave: () => void
 }) {
   const [loading, setLoading] = useState(false)
-  const [error, setError]     = useState('')
+  const [error, setError] = useState('')
   const [companies, setCompanies] = useState<CompanyOption[]>([])
+  const [users, setUsers] = useState<UserOption[]>([])
   const [companyId, setCompanyId] = useState('')
-  const [form, setForm]       = useState({ imei: '', model: DEFAULT_DEVICE_MODEL, sim_iccid: '', phone_num: '', firmware_ver: '', model_custom: '' })
-  const set = (f: string, v: string) => setForm(p => ({ ...p, [f]: v }))
-  const isCustomModel = form.model === 'Otro'
+  const [mode, setMode] = useState<DeviceSetupMode>('hardware')
+  const [hardware, setHardware] = useState({
+    profileId: DEVICE_SETUP_PROFILES[0]!.id,
+    imei: '',
+    model: DEVICE_SETUP_PROFILES[0]!.defaultModel,
+    model_custom: '',
+    sim_iccid: '',
+    phone_num: '',
+    firmware_ver: '',
+    server_host: TRACKPRO_GPS_HOST,
+    server_port: TRACKPRO_GPS_PORT,
+    transport: DEVICE_SETUP_PROFILES[0]!.transport,
+    apn: '',
+    apn_user: '',
+    apn_pass: '',
+    ip_mode: 'dynamic',
+    static_ip: '',
+    report_interval_sec: '30',
+    install_notes: '',
+  })
+  const [mobile, setMobile] = useState({
+    platform: 'android' as 'android' | 'ios',
+    assigned_user_id: '',
+    label: '',
+    tracking_interval_sec: '30',
+  })
+
+  const selectedProfile = DEVICE_SETUP_PROFILES.find(p => p.id === hardware.profileId) ?? DEVICE_SETUP_PROFILES[0]!
+  const isCustomModel = hardware.model === 'Otro'
+  const targetCompanyId = needsCompanyPick ? companyId : (currentCompanyId ?? '')
+  const hardwareCommands = selectedProfile.commands({
+    host: hardware.server_host,
+    port: hardware.server_port,
+    apn: hardware.apn,
+    apnUser: hardware.apn_user,
+    apnPass: hardware.apn_pass,
+    reportIntervalSec: hardware.report_interval_sec,
+  })
+
+  const setHw = (field: keyof typeof hardware, value: string) => setHardware(prev => ({ ...prev, [field]: value }))
+  const setMobileField = (field: keyof typeof mobile, value: string) => setMobile(prev => ({ ...prev, [field]: value }))
 
   useEffect(() => {
     if (!needsCompanyPick) return
@@ -220,97 +364,354 @@ function DeviceModal({
       .then(json => setCompanies(json.data ?? []))
   }, [needsCompanyPick])
 
+  useEffect(() => {
+    if (mode !== 'mobile') return
+    if (needsCompanyPick && !companyId) {
+      setUsers([])
+      setMobile(prev => ({ ...prev, assigned_user_id: '' }))
+      return
+    }
+    const query = targetCompanyId ? `?company_id=${targetCompanyId}` : ''
+    void fetch(`/api/users${query}`)
+      .then(r => r.json())
+      .then(json => setUsers(json.data ?? []))
+      .catch(() => setUsers([]))
+  }, [mode, needsCompanyPick, companyId, targetCompanyId])
+
+  function selectProfile(profileId: string) {
+    const profile = DEVICE_SETUP_PROFILES.find(p => p.id === profileId) ?? DEVICE_SETUP_PROFILES[0]!
+    setHardware(prev => ({
+      ...prev,
+      profileId: profile.id,
+      model: profile.defaultModel,
+      model_custom: '',
+      server_port: profile.defaultPort,
+      transport: profile.transport,
+    }))
+  }
+
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault(); setLoading(true); setError('')
+    e.preventDefault()
+    setLoading(true)
+    setError('')
     try {
-      const payload: Record<string, string> = {
-        imei: form.imei,
-        model: isCustomModel ? (form.model_custom.trim() || 'Otro') : form.model,
-        sim_iccid: form.sim_iccid,
-        phone_num: form.phone_num,
-        firmware_ver: form.firmware_ver,
+      if (needsCompanyPick && !companyId) throw new Error('Selecciona la empresa cliente')
+
+      let payload: Record<string, unknown>
+      if (mode === 'mobile') {
+        if (!mobile.assigned_user_id) throw new Error('Selecciona el usuario que usara este telefono')
+        payload = {
+          source_type: 'mobile',
+          assigned_user_id: mobile.assigned_user_id,
+          platform: mobile.platform,
+          label: mobile.label.trim() || undefined,
+          tracking_interval_sec: Number(mobile.tracking_interval_sec) || 30,
+        }
+      } else {
+        const finalModel = isCustomModel ? hardware.model_custom.trim() : hardware.model
+        if (!finalModel) throw new Error('Escribe el modelo del GPS')
+        payload = {
+          source_type: 'hardware',
+          imei: hardware.imei.trim(),
+          model: finalModel,
+          sim_iccid: hardware.sim_iccid.trim() || null,
+          phone_num: hardware.phone_num.trim() || null,
+          firmware_ver: hardware.firmware_ver.trim() || null,
+          protocol_metadata: {
+            setup_profile: selectedProfile.id,
+            manufacturer: selectedProfile.manufacturer,
+            protocol: selectedProfile.protocol,
+            transport: hardware.transport,
+            server_host: hardware.server_host.trim(),
+            server_port: Number(hardware.server_port) || Number(selectedProfile.defaultPort),
+            ip_mode: hardware.ip_mode,
+            static_ip: hardware.ip_mode === 'static' ? hardware.static_ip.trim() || null : null,
+            apn: hardware.apn.trim() || null,
+            apn_user: hardware.apn_user.trim() || null,
+            apn_pass: hardware.apn_pass.trim() || null,
+            report_interval_sec: Number(hardware.report_interval_sec) || 30,
+            install_notes: hardware.install_notes.trim() || null,
+            command_preview: hardwareCommands,
+            configured_at: new Date().toISOString(),
+          },
+        }
       }
-      if (needsCompanyPick) {
-        if (!companyId) throw new Error('Selecciona la empresa cliente')
-        payload.company_id = companyId
-      }
-      const res = await fetch('/api/devices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+
+      if (needsCompanyPick) payload.company_id = companyId
+      const res = await fetch('/api/devices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Error')
       onSave()
-    } catch (err) { setError(err instanceof Error ? err.message : 'Error') }
-    finally { setLoading(false) }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-lg font-semibold">Registrar GPS en vehículo</h2>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400"><X className="w-5 h-5" /></button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {needsCompanyPick && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Empresa cliente *</label>
-              <select value={companyId} onChange={e => setCompanyId(e.target.value)} required
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
-                <option value="">— Seleccionar —</option>
-                {companies.map(c => (
-                  <option key={c.id} value={c.id}>{c.name} ({c.account_type})</option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-400 mt-1">Para rastreo solo móvil, usa la sección Móviles o el alta del cliente en registro.</p>
-            </div>
-          )}
-          {[
-            { label: 'IMEI (15 dígitos) *', field: 'imei', type: 'text', placeholder: '123456789012345', required: true, maxLength: 15 },
-            { label: 'ICCID de SIM', field: 'sim_iccid', type: 'text', placeholder: '8952140...', required: false },
-            { label: 'Número de teléfono SIM', field: 'phone_num', type: 'text', placeholder: '+52 55 ...', required: false },
-            { label: 'Versión de firmware', field: 'firmware_ver', type: 'text', placeholder: '03.27.07.Rev.07', required: false },
-          ].map(({ label, field, placeholder, required, maxLength }) => (
-            <div key={field}>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
-              <input value={(form as Record<string, string>)[field]} onChange={e => set(field, e.target.value)}
-                placeholder={placeholder} required={required} maxLength={maxLength}
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 font-mono" />
-            </div>
-          ))}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/50">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92dvh] overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between px-6 py-5 border-b">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Modelo *</label>
-            <select value={form.model} onChange={e => set('model', e.target.value)} required
-              className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
-              {DEVICE_MODEL_GROUPS.map(group => (
-                <optgroup key={group.label} label={group.label}>
-                  {group.models.map(m => (
-                    <option key={`${group.label}-${m}`} value={m}>{m}</option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-            {isCustomModel && (
-              <input
-                value={form.model_custom}
-                onChange={e => set('model_custom', e.target.value)}
-                placeholder="Escribe el modelo exacto"
-                required
-                className="mt-2 w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
-              />
-            )}
-            <p className="mt-1.5 text-xs text-gray-400">
-              Teltonika FMB/FMC/FMM tienen soporte completo (posición, comandos, micrófono). Otros marcas: consulta compatibilidad.
-            </p>
+            <h2 className="text-lg font-semibold text-gray-900">Registrar dispositivo TrackProGPS</h2>
+            <p className="text-sm text-gray-500 mt-1">Alta guiada para GPS vehicular, Protrack, Teltonika, otras marcas y moviles.</p>
           </div>
-          {error && <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">{error}</div>}
-          <div className="flex gap-3">
-            <button type="button" onClick={onClose} className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-xl text-sm font-medium hover:bg-gray-50">Cancelar</button>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400" aria-label="Cerrar"><X className="w-5 h-5" /></button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+          <div className="p-6 space-y-6">
+            {needsCompanyPick && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Empresa cliente *</label>
+                <select value={companyId} onChange={e => setCompanyId(e.target.value)} required
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
+                  <option value="">Seleccionar empresa</option>
+                  {companies.map(c => (
+                    <option key={c.id} value={c.id}>{c.name} ({c.account_type})</option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-400 mt-1">La empresa define donde quedara asignado el GPS o movil.</p>
+              </div>
+            )}
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <button type="button" onClick={() => setMode('hardware')}
+                className={`text-left rounded-2xl border p-4 transition ${mode === 'hardware' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${mode === 'hardware' ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                    <Radio className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-gray-900">GPS vehicular</div>
+                    <div className="text-xs text-gray-500">IMEI, SIM, APN, host/IP, puerto y comandos.</div>
+                  </div>
+                </div>
+              </button>
+              <button type="button" onClick={() => setMode('mobile')}
+                className={`text-left rounded-2xl border p-4 transition ${mode === 'mobile' ? 'border-teal-500 bg-teal-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${mode === 'mobile' ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                    <Smartphone className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-gray-900">Movil Android / iOS</div>
+                    <div className="text-xs text-gray-500">Usuario, plataforma, permisos y enlace de activacion.</div>
+                  </div>
+                </div>
+              </button>
+            </div>
+
+            {mode === 'hardware' ? (
+              <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+                <section className="space-y-4">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                    <Cpu className="w-4 h-4 text-orange-500" />
+                    Identificacion del equipo
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Marca / perfil de configuracion *</label>
+                    <select value={hardware.profileId} onChange={e => selectProfile(e.target.value)}
+                      className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
+                      {DEVICE_SETUP_PROFILES.map(profile => (
+                        <option key={profile.id} value={profile.id}>{profile.label}</option>
+                      ))}
+                    </select>
+                    <p className="mt-1.5 text-xs text-gray-500">{selectedProfile.summary}</p>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <TextField label="IMEI (15 digitos) *" value={hardware.imei} onChange={v => setHw('imei', v)} placeholder="123456789012345" required maxLength={15} mono />
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Modelo *</label>
+                      <select value={hardware.model} onChange={e => setHw('model', e.target.value)} required
+                        className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        {selectedProfile.models.map(model => <option key={model} value={model}>{model}</option>)}
+                      </select>
+                      {isCustomModel && (
+                        <input value={hardware.model_custom} onChange={e => setHw('model_custom', e.target.value)}
+                          placeholder="Modelo exacto" required
+                          className="mt-2 w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
+                      )}
+                    </div>
+                    <TextField label="ICCID de SIM" value={hardware.sim_iccid} onChange={v => setHw('sim_iccid', v)} placeholder="8952140..." mono />
+                    <TextField label="Telefono SIM" value={hardware.phone_num} onChange={v => setHw('phone_num', v)} placeholder="+52 55 ..." />
+                    <TextField label="Firmware" value={hardware.firmware_ver} onChange={v => setHw('firmware_ver', v)} placeholder="03.27.07.Rev.07" />
+                    <TextField label="Intervalo de reporte (seg)" value={hardware.report_interval_sec} onChange={v => setHw('report_interval_sec', v)} placeholder="30" type="number" min={5} />
+                  </div>
+                </section>
+
+                <section className="space-y-4">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                    <Server className="w-4 h-4 text-orange-500" />
+                    Red, IP y servidor
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <TextField label="Servidor / dominio TrackPro *" value={hardware.server_host} onChange={v => setHw('server_host', v)} placeholder={TRACKPRO_GPS_HOST} required />
+                    <TextField label="Puerto *" value={hardware.server_port} onChange={v => setHw('server_port', v)} placeholder="5000" type="number" min={1} required />
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Transporte</label>
+                      <select value={hardware.transport} onChange={e => setHw('transport', e.target.value)}
+                        className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        <option value="tcp">TCP</option>
+                        <option value="udp">UDP</option>
+                        <option value="http">HTTP</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">IP del SIM</label>
+                      <select value={hardware.ip_mode} onChange={e => setHw('ip_mode', e.target.value)}
+                        className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        <option value="dynamic">Dinamica / no aplica</option>
+                        <option value="static">IP fija empresarial</option>
+                      </select>
+                    </div>
+                    {hardware.ip_mode === 'static' && (
+                      <TextField label="IP fija del SIM" value={hardware.static_ip} onChange={v => setHw('static_ip', v)} placeholder="187.000.000.000" />
+                    )}
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <TextField label="APN" value={hardware.apn} onChange={v => setHw('apn', v)} placeholder="internet.itelcel.com" />
+                    <TextField label="Usuario APN" value={hardware.apn_user} onChange={v => setHw('apn_user', v)} placeholder="webgprs" />
+                    <TextField label="Password APN" value={hardware.apn_pass} onChange={v => setHw('apn_pass', v)} placeholder="webgprs2002" />
+                  </div>
+
+                  <div className="rounded-2xl border border-orange-100 bg-orange-50 p-4">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-orange-900 mb-3">
+                      <ClipboardList className="w-4 h-4" />
+                      Guia rapida para configurar
+                    </div>
+                    <div className="space-y-2">
+                      {hardwareCommands.map((cmd, index) => (
+                        <div key={`${cmd}-${index}`} className="rounded-lg bg-white/80 border border-orange-100 px-3 py-2 font-mono text-xs text-gray-700">
+                          {cmd}
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-xs text-orange-800">
+                      La IP del GPS normalmente no se asigna aqui: se configura el equipo para reportar a este host y puerto. Usa IP fija solo si el SIM empresarial la incluye.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Notas de instalacion</label>
+                    <textarea value={hardware.install_notes} onChange={e => setHw('install_notes', e.target.value)}
+                      placeholder="Ubicacion del equipo, operador SIM, observaciones de instalacion..."
+                      className="w-full min-h-20 border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
+                  </div>
+                </section>
+              </div>
+            ) : (
+              <div className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
+                <section className="space-y-4">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                    <Smartphone className="w-4 h-4 text-teal-600" />
+                    Movil a activar
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Plataforma *</label>
+                      <select value={mobile.platform} onChange={e => setMobileField('platform', e.target.value)}
+                        className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                        <option value="android">Android</option>
+                        <option value="ios">iPhone / iOS</option>
+                      </select>
+                    </div>
+                    <TextField label="Nombre visible" value={mobile.label} onChange={v => setMobileField('label', v)} placeholder="Telefono de Juan" />
+                    <div className="sm:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Usuario asignado *</label>
+                      <select value={mobile.assigned_user_id} onChange={e => setMobileField('assigned_user_id', e.target.value)} required
+                        className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                        <option value="">{needsCompanyPick && !companyId ? 'Selecciona primero una empresa' : 'Seleccionar usuario'}</option>
+                        {users.map(user => (
+                          <option key={user.id} value={user.id}>{user.full_name} - {user.email}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <TextField label="Intervalo de rastreo (seg)" value={mobile.tracking_interval_sec} onChange={v => setMobileField('tracking_interval_sec', v)} placeholder="30" type="number" min={5} />
+                  </div>
+                </section>
+
+                <section className="rounded-2xl border border-teal-100 bg-teal-50 p-4 h-fit">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-teal-900 mb-3">
+                    <ShieldCheck className="w-4 h-4" />
+                    Flujo de activacion
+                  </div>
+                  <div className="space-y-3 text-sm text-teal-900">
+                    <StepLine icon={<User className="w-4 h-4" />} text="Se crea el movil ligado al usuario seleccionado." />
+                    <StepLine icon={<Smartphone className="w-4 h-4" />} text="El usuario abre /descargar en ese telefono e inicia sesion." />
+                    <StepLine icon={<Router className="w-4 h-4" />} text="TrackPro solicita ubicacion y permisos internos una sola vez." />
+                    <StepLine icon={<Wifi className="w-4 h-4" />} text="La primera telemetria lo mostrara en mapa como movil/persona." />
+                  </div>
+                </section>
+              </div>
+            )}
+
+            {error && <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">{error}</div>}
+          </div>
+
+          <div className="border-t bg-white px-6 py-4 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <button type="button" onClick={onClose} className="sm:w-40 border border-gray-300 text-gray-700 py-3 rounded-xl text-sm font-medium hover:bg-gray-50">Cancelar</button>
             <button type="submit" disabled={loading}
-              className="flex-1 bg-orange-500 text-white py-3 rounded-xl text-sm font-medium hover:bg-orange-600 disabled:opacity-60 flex items-center justify-center gap-2">
-              {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Registrando...</> : 'Registrar'}
+              className={`sm:w-48 text-white py-3 rounded-xl text-sm font-medium disabled:opacity-60 flex items-center justify-center gap-2 ${mode === 'mobile' ? 'bg-teal-600 hover:bg-teal-700' : 'bg-orange-500 hover:bg-orange-600'}`}>
+              {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Registrando...</> : mode === 'mobile' ? 'Preparar movil' : 'Registrar GPS'}
             </button>
           </div>
         </form>
       </div>
+    </div>
+  )
+}
+
+function TextField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  required,
+  maxLength,
+  type = 'text',
+  min,
+  mono = false,
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  placeholder?: string
+  required?: boolean
+  maxLength?: number
+  type?: string
+  min?: number
+  mono?: boolean
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
+      <input
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        required={required}
+        maxLength={maxLength}
+        type={type}
+        min={min}
+        className={`w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 ${mono ? 'font-mono' : ''}`}
+      />
+    </div>
+  )
+}
+
+function StepLine({ icon, text }: { icon: React.ReactNode; text: string }) {
+  return (
+    <div className="flex items-start gap-2">
+      <span className="mt-0.5 text-teal-700">{icon}</span>
+      <span>{text}</span>
     </div>
   )
 }
