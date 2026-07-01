@@ -61,6 +61,8 @@ export function LeafletRealtimeMap({ companyId, initialVehicles }: LeafletRealti
         economicNum: v.economic_num,
         plates:      v.plates,
         vehicleType: v.vehicle_type,
+        deviceSource: v.device_source ?? 'hardware',
+        mobilePlatform: v.mobile_platform ?? null,
         groupId:     v.group_id ?? null,
         groupName:   v.group_name ?? null,
         ownerName:   v.owner_name ?? null,

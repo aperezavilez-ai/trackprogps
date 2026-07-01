@@ -113,11 +113,7 @@ export const useMapStore = create<MapState>()((set, get) => ({
           data.lastUpdate == null ||
           data.economicNum == null ||
           data.plates == null ||
-          data.vehicleType == null ||
-          data.groupId == null ||
-          data.groupName == null ||
-          data.ownerName == null ||
-          data.driverName == null
+          data.vehicleType == null
         ) {
           return state
         }
@@ -145,11 +141,7 @@ export const useMapStore = create<MapState>()((set, get) => ({
             data.lastUpdate == null ||
             data.economicNum == null ||
             data.plates == null ||
-            data.vehicleType == null ||
-            data.groupId == null ||
-            data.groupName == null ||
-            data.ownerName == null ||
-            data.driverName == null
+            data.vehicleType == null
           ) {
             continue
           }
