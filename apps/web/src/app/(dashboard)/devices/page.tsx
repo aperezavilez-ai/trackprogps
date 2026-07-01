@@ -52,7 +52,7 @@ export default function DevicesPage() {
     d.imei.includes(search) || d.model.toLowerCase().includes(search.toLowerCase()) ||
     (d.vehicle?.plates ?? '').toLowerCase().includes(search.toLowerCase())
   )
-  const pendingMobile = filtered.find(d => d.source_type === 'mobile' && !d.last_seen && d.status !== 'online')
+  const mobileNeedingActivation = filtered.find(d => d.source_type === 'mobile' && d.status !== 'online')
 
   const stats = {
     total:   devices.length,
@@ -105,12 +105,12 @@ export default function DevicesPage() {
           className="w-full max-w-sm border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
       </div>
 
-      {pendingMobile && (
+      {mobileNeedingActivation && (
         <MobilePermissionSetup
-          deviceId={pendingMobile.id}
-          activationHref={`/descargar?device_id=${pendingMobile.id}`}
-          title="Autorizar app del movil"
-          description="Desde el telefono asignado abre el enlace de activacion y toca Autorizar app."
+          deviceId={mobileNeedingActivation.id}
+          activationHref={`/descargar?device_id=${mobileNeedingActivation.id}`}
+          title="Reactivar GPS del movil"
+          description="Abre el enlace en el telefono asignado y toca Autorizar app para volver a enviarlo en vivo."
           onActivated={() => void loadDevices()}
         />
       )}
@@ -154,6 +154,11 @@ export default function DevicesPage() {
                           <div className="font-semibold text-gray-900 group-hover:text-orange-500">{d.model}</div>
                           {d.source_type === 'mobile' && <div className="text-xs text-teal-600">App móvil</div>}
                           {d.firmware_ver && d.source_type !== 'mobile' && <div className="text-xs text-gray-400">FW: {d.firmware_ver}</div>}
+                          {d.source_type === 'mobile' && d.status !== 'online' && (
+                            <span className="mt-1 inline-flex text-xs font-medium text-orange-600">
+                              Reactivar GPS desde el enlace superior
+                            </span>
+                          )}
                         </div>
                       </Link>
                     </td>

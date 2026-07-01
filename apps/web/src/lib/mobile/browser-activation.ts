@@ -29,6 +29,7 @@ type ActiveMobileTracking = {
 declare global {
   interface Window {
     __trackproMobileTelemetryTimer?: number
+    __trackproMobileTelemetryWatchId?: number
   }
 }
 
@@ -144,10 +145,12 @@ export async function activateBrowserMobileTracking(options: {
   }))
 
   if (registered && telemetrySent) {
-    startBrowserMobileTelemetry({
+    await startBrowserMobileTelemetry({
       deviceId: resolvedDeviceId,
       deviceUid,
       intervalSec: trackingIntervalSec,
+    }, {
+      initialPosition: position ?? undefined,
     })
   }
 
@@ -171,19 +174,26 @@ export function resumeBrowserMobileTelemetry() {
     if (!stored) return
     const parsed = JSON.parse(stored) as ActiveMobileTracking
     if (!parsed.deviceId && !parsed.deviceUid) return
-    startBrowserMobileTelemetry(parsed)
+    void startBrowserMobileTelemetry(parsed, { auto: true })
   } catch {
     localStorage.removeItem(ACTIVE_TRACKING_KEY)
   }
 }
 
-function startBrowserMobileTelemetry(input: {
+async function startBrowserMobileTelemetry(input: {
   deviceId?: string
   deviceUid: string
   intervalSec?: number
-}) {
+}, options: { auto?: boolean; initialPosition?: GeolocationPosition } = {}) {
   if (typeof window === 'undefined') return
   if (!isMobileBrowserPlatform()) return
+
+  const permission = await getLocationPermissionState()
+  if (options.auto && permission === 'prompt') return
+  if (permission === 'denied') {
+    stopBrowserMobileTelemetry()
+    return
+  }
 
   const intervalSec = Math.max(input.intervalSec ?? 30, 5)
   const active: ActiveMobileTracking = {
@@ -196,30 +206,72 @@ function startBrowserMobileTelemetry(input: {
 
   if (window.__trackproMobileTelemetryTimer) {
     window.clearInterval(window.__trackproMobileTelemetryTimer)
+    window.__trackproMobileTelemetryTimer = undefined
+  }
+  if (window.__trackproMobileTelemetryWatchId != null && 'geolocation' in navigator) {
+    navigator.geolocation.clearWatch(window.__trackproMobileTelemetryWatchId)
+    window.__trackproMobileTelemetryWatchId = undefined
   }
 
-  const tick = async () => {
-    try {
-      const permission = await getLocationPermissionState()
-      if (permission && permission !== 'granted') {
-        stopBrowserMobileTelemetry()
-        return
-      }
+  let latestPosition = options.initialPosition
+  let lastSentAt = latestPosition ? Date.now() : 0
+  let sending = false
 
-      const position = await requestLocation()
-      const result = await sendMobileTelemetryPoint(position, input)
-      if (result.ok && result.trackingIntervalSec && result.trackingIntervalSec !== intervalSec) {
-        startBrowserMobileTelemetry({ ...input, intervalSec: result.trackingIntervalSec })
-      }
-    } catch {
-      // Keep the loop alive; the next foreground tick may succeed.
+  const sendPosition = async (position: GeolocationPosition, recordedAt = new Date(position.timestamp).toISOString()) => {
+    if (sending) return
+    sending = true
+    const result = await sendMobileTelemetryPoint(position, input, recordedAt)
+      .catch((): { ok: boolean; trackingIntervalSec?: number } => ({ ok: false }))
+    sending = false
+    lastSentAt = Date.now()
+
+    if (result.ok && result.trackingIntervalSec && result.trackingIntervalSec !== intervalSec) {
+      await startBrowserMobileTelemetry(
+        { ...input, intervalSec: result.trackingIntervalSec },
+        { ...options, initialPosition: position },
+      )
     }
   }
 
-  void tick()
+  if ('geolocation' in navigator && navigator.geolocation.watchPosition) {
+    window.__trackproMobileTelemetryWatchId = navigator.geolocation.watchPosition(
+      (position) => {
+        latestPosition = position
+        if (Date.now() - lastSentAt >= intervalSec * 1000) {
+          void sendPosition(position)
+        }
+      },
+      (error) => {
+        if (error.code === error.PERMISSION_DENIED) stopBrowserMobileTelemetry()
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: Math.max(15_000, intervalSec * 1000),
+        timeout: 30_000,
+      },
+    )
+  }
 
-  window.__trackproMobileTelemetryTimer = window.setInterval(() => {
-    void tick()
+  window.__trackproMobileTelemetryTimer = window.setInterval(async () => {
+    const currentPermission = await getLocationPermissionState()
+    if (currentPermission === 'denied') {
+      stopBrowserMobileTelemetry()
+      return
+    }
+
+    if (latestPosition) {
+      void sendPosition(latestPosition, new Date().toISOString())
+      return
+    }
+
+    if (currentPermission === 'prompt') return
+
+    requestLocation()
+      .then((position) => {
+        latestPosition = position
+        void sendPosition(position)
+      })
+      .catch(() => {})
   }, intervalSec * 1000)
 }
 
@@ -228,6 +280,10 @@ function stopBrowserMobileTelemetry() {
   if (window.__trackproMobileTelemetryTimer) {
     window.clearInterval(window.__trackproMobileTelemetryTimer)
     window.__trackproMobileTelemetryTimer = undefined
+  }
+  if (window.__trackproMobileTelemetryWatchId != null && 'geolocation' in navigator) {
+    navigator.geolocation.clearWatch(window.__trackproMobileTelemetryWatchId)
+    window.__trackproMobileTelemetryWatchId = undefined
   }
   localStorage.removeItem(ACTIVE_TRACKING_KEY)
 }
@@ -245,6 +301,7 @@ async function getLocationPermissionState(): Promise<PermissionState | null> {
 async function sendMobileTelemetryPoint(
   position: GeolocationPosition,
   ids: { deviceId?: string; deviceUid: string },
+  recordedAt = new Date(position.timestamp).toISOString(),
 ): Promise<{ ok: boolean; trackingIntervalSec?: number }> {
   const telemetryRes = await fetch('/api/mobile/telemetry', {
     method: 'POST',
@@ -258,7 +315,7 @@ async function sendMobileTelemetryPoint(
         heading: position.coords.heading ?? 0,
         altitude: position.coords.altitude,
         accuracy: position.coords.accuracy,
-        recorded_at: new Date(position.timestamp).toISOString(),
+        recorded_at: recordedAt,
         gps_enabled: true,
         internet_available: navigator.onLine,
         connection_type: getConnectionType(),

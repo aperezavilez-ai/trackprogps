@@ -57,8 +57,7 @@ export function MobilePermissionSetup({
       const parsed = JSON.parse(stored ?? fallback ?? 'null') as StoredActivation | null
 
       if (parsed?.registered && parsed?.telemetrySent) {
-        setState('ready')
-        setMessage('Autorizacion lista.')
+        setMessage('Autorizacion previa detectada. Toca Autorizar app para reactivar el rastreo.')
       }
     } catch {
       // Ignore stale local activation data.
@@ -70,11 +69,6 @@ export function MobilePermissionSetup({
       ...result,
       updated_at: new Date().toISOString(),
     }))
-  }
-
-  function refreshStatus() {
-    setMessage('Estado actualizado.')
-    onActivated?.()
   }
 
   async function activate() {
@@ -139,13 +133,13 @@ export function MobilePermissionSetup({
           {state === 'ready' ? (
             <button
               type="button"
-              onClick={refreshStatus}
+              onClick={() => void activate()}
               className={compact
                 ? 'mt-4 w-full inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm font-medium text-white/80 hover:bg-white/5'
                 : 'mt-4 inline-flex items-center justify-center gap-2 rounded-xl border border-teal-200 bg-white px-4 py-2.5 text-sm font-medium text-teal-700 hover:bg-teal-50'}
             >
               <RefreshCw className="w-4 h-4" />
-              Continuar
+              Reactivar rastreo
             </button>
           ) : isMobile ? (
             <button
