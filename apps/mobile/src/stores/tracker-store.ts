@@ -4,7 +4,16 @@ import type { TrackerDevice } from '../lib/tracker/types'
 
 const STORAGE_KEY = 'trackpro_tracker_state'
 
-interface TrackerState {
+type StoredTrackerState = {
+  deviceId: string | null
+  deviceUid: string | null
+  vehicleId: string | null
+  trackingEnabled: boolean
+  trackingIntervalSec: number
+  lastSync: string | null
+}
+
+export interface TrackerState {
   deviceId: string | null
   deviceUid: string | null
   vehicleId: string | null
@@ -25,6 +34,27 @@ interface TrackerState {
   clear: () => void
 }
 
+function snapshotTrackerState(s: TrackerState): StoredTrackerState {
+  return {
+    deviceId: s.deviceId,
+    deviceUid: s.deviceUid,
+    vehicleId: s.vehicleId,
+    trackingEnabled: s.trackingEnabled,
+    trackingIntervalSec: s.trackingIntervalSec,
+    lastSync: s.lastSync,
+  }
+}
+
+export async function getStoredTrackerState(): Promise<StoredTrackerState | null> {
+  const raw = await AsyncStorage.getItem(STORAGE_KEY)
+  if (!raw) return null
+  try {
+    return JSON.parse(raw) as StoredTrackerState
+  } catch {
+    return null
+  }
+}
+
 export const useTrackerStore = create<TrackerState>((set, get) => ({
   deviceId: null,
   deviceUid: null,
@@ -36,24 +66,12 @@ export const useTrackerStore = create<TrackerState>((set, get) => ({
   isRegistering: false,
 
   hydrate: async () => {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY)
-    if (!raw) return
-    try {
-      const data = JSON.parse(raw)
-      set(data)
-    } catch { /* ignore */ }
+    const data = await getStoredTrackerState()
+    if (data) set(data)
   },
 
   persist: async () => {
-    const s = get()
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({
-      deviceId: s.deviceId,
-      deviceUid: s.deviceUid,
-      vehicleId: s.vehicleId,
-      trackingEnabled: s.trackingEnabled,
-      trackingIntervalSec: s.trackingIntervalSec,
-      lastSync: s.lastSync,
-    }))
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(snapshotTrackerState(get())))
   },
 
   setDevice: (d, deviceUid) => {
@@ -69,7 +87,7 @@ export const useTrackerStore = create<TrackerState>((set, get) => ({
 
   setTrackingEnabled: (v) => { set({ trackingEnabled: v }); void get().persist() },
   setTrackingInterval: (sec) => { set({ trackingIntervalSec: sec }); void get().persist() },
-  setLastSync: (iso) => set({ lastSync: iso }),
+  setLastSync: (iso) => { set({ lastSync: iso }); void get().persist() },
   setLastError: (msg) => set({ lastError: msg }),
   setRegistering: (v) => set({ isRegistering: v }),
 

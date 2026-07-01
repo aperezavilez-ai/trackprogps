@@ -6,8 +6,8 @@ import Constants from 'expo-constants'
 import { Platform } from 'react-native'
 import { TRACKING_TASK, type TelemetryPointPayload } from './types'
 import { sendTelemetry } from './api'
-import { enqueueOfflinePoints } from './offline-queue'
-import { useTrackerStore } from '../../stores/tracker-store'
+import { drainOfflineQueue, enqueueOfflinePoints } from './offline-queue'
+import { getStoredTrackerState, useTrackerStore } from '../../stores/tracker-store'
 
 function inferActivity(speed: number): TelemetryPointPayload['activity'] {
   if (speed <= 1) return 'still'
@@ -56,18 +56,19 @@ TaskManager.defineTask(TRACKING_TASK, async ({ data, error }) => {
   const locations = (data as { locations?: Location.LocationObject[] })?.locations
   if (!locations?.length) return
 
-  const state = useTrackerStore.getState()
-  if (!state.deviceId || !state.deviceUid || !state.trackingEnabled) return
+  const store = useTrackerStore.getState()
+  const stored = store.deviceId && store.deviceUid ? store : await getStoredTrackerState()
+  if (!stored?.deviceId || !stored.deviceUid || !stored.trackingEnabled) return
 
   const points = await Promise.all(locations.map(buildPoint))
 
   try {
-    await sendTelemetry(state.deviceId, state.deviceUid, points)
-    state.setLastSync(new Date().toISOString())
-    state.setLastError(null)
+    await sendTelemetry(stored.deviceId, stored.deviceUid, points)
+    store.setLastSync(new Date().toISOString())
+    store.setLastError(null)
   } catch (err) {
     await enqueueOfflinePoints(points)
-    state.setLastError(err instanceof Error ? err.message : 'Error de sync')
+    store.setLastError(err instanceof Error ? err.message : 'Error de sync')
   }
 })
 
@@ -93,16 +94,23 @@ export async function startBackgroundTracking(intervalSec: number): Promise<void
     await Location.stopLocationUpdatesAsync(TRACKING_TASK)
   }
 
+  const distanceInterval = Platform.OS === 'ios'
+    ? (intervalSec <= 10 ? 0 : 1)
+    : (intervalSec <= 10 ? 5 : 15)
+
   await Location.startLocationUpdatesAsync(TRACKING_TASK, {
     accuracy: Location.Accuracy.BestForNavigation,
     timeInterval: intervalSec * 1000,
-    distanceInterval: intervalSec <= 10 ? 5 : 15,
+    distanceInterval,
+    deferredUpdatesDistance: 0,
     deferredUpdatesInterval: intervalSec * 1000,
+    activityType: Location.ActivityType.AutomotiveNavigation,
     showsBackgroundLocationIndicator: true,
     foregroundService: Platform.OS === 'android' ? {
       notificationTitle: 'TrackProGPS',
       notificationBody: 'Rastreo activo en segundo plano',
       notificationColor: '#2563EB',
+      killServiceOnDestroy: false,
     } : undefined,
     pausesUpdatesAutomatically: false,
   })
@@ -130,7 +138,6 @@ export function getDeviceInfo() {
 }
 
 export async function syncOfflineQueue(deviceId: string, deviceUid: string): Promise<number> {
-  const { drainOfflineQueue } = await import('./offline-queue')
   const points = await drainOfflineQueue()
   if (!points.length) return 0
   const batchSize = 50

@@ -15,6 +15,10 @@ interface Alert {
   vehicle: { economic_num: string } | null
 }
 
+type AlertRow = Omit<Alert, 'vehicle'> & {
+  vehicle: { economic_num: string } | { economic_num: string }[] | null
+}
+
 export default function DashboardScreen() {
   const profile = useAuthStore(s => s.profile)
   const showReports = profile ? canViewReports(profile.role) : true
@@ -31,7 +35,7 @@ export default function DashboardScreen() {
       .select('company_id, company:companies(name)').eq('id', user.id).single()
     if (!profile) return
 
-    const company = profile.company as { name: string } | null
+    const company = Array.isArray(profile.company) ? profile.company[0] : profile.company
     setCompanyName(company?.name ?? '')
 
     const now = Date.now()
@@ -52,8 +56,13 @@ export default function DashboardScreen() {
       else stopped++
     }
 
-    setStats({ total: positions?.length ?? 0, moving, stopped, offline, alerts: alerts?.length ?? 0 })
-    setRecentAlerts(alerts as Alert[] ?? [])
+    const normalizedAlerts = ((alerts ?? []) as AlertRow[]).map(alert => ({
+      ...alert,
+      vehicle: Array.isArray(alert.vehicle) ? alert.vehicle[0] ?? null : alert.vehicle,
+    }))
+
+    setStats({ total: positions?.length ?? 0, moving, stopped, offline, alerts: normalizedAlerts.length })
+    setRecentAlerts(normalizedAlerts)
   }
 
   useEffect(() => { void loadData() }, [])

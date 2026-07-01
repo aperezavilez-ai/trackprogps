@@ -14,6 +14,11 @@ interface VehicleItem {
   } | null
 }
 
+type VehicleRow = Omit<VehicleItem, 'driver' | 'position'> & {
+  driver: { full_name: string } | { full_name: string }[] | null
+  position: VehicleItem['position'] | NonNullable<VehicleItem['position']>[] | null
+}
+
 const VEHICLE_EMOJIS: Record<string, string> = {
   truck: '🚛', van: '🚐', bus: '🚌', motorcycle: '🏍️', pickup: '🛻', suv: '🚙', sedan: '🚗', other: '🚗',
 }
@@ -40,7 +45,13 @@ export default function VehiclesScreen() {
       .is('deleted_at', null)
       .order('economic_num')
 
-    setVehicles(data as VehicleItem[] ?? [])
+    const normalized = ((data ?? []) as VehicleRow[]).map(vehicle => ({
+      ...vehicle,
+      driver: Array.isArray(vehicle.driver) ? vehicle.driver[0] ?? null : vehicle.driver,
+      position: Array.isArray(vehicle.position) ? vehicle.position[0] ?? null : vehicle.position,
+    }))
+
+    setVehicles(normalized)
     setLoading(false)
   }
 

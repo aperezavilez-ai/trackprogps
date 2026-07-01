@@ -11,7 +11,7 @@ import {
 } from '../../lib/tracker/background-location'
 import { getStableDeviceUid, getPlatform } from '../../lib/tracker/device-id'
 import {
-  registerMobileDevice, sendSos, updateTrackerConfig, checkIn, createLocationShare,
+  registerMobileDevice, sendTelemetry, sendSos, updateTrackerConfig, checkIn, createLocationShare,
 } from '../../lib/tracker/api'
 import { offlineQueueSize } from '../../lib/tracker/offline-queue'
 import { registerForPushNotifications } from '../../lib/notifications'
@@ -52,6 +52,11 @@ export default function TrackerScreen() {
       })
 
       store.setDevice(device, deviceUid)
+      const firstPoint = await getCurrentLocation()
+      if (firstPoint) {
+        await sendTelemetry(device.device_id, deviceUid, [firstPoint])
+        store.setLastSync(new Date().toISOString())
+      }
       if (device.tracking_enabled) {
         await startBackgroundTracking(device.tracking_interval_sec)
       }
@@ -73,6 +78,11 @@ export default function TrackerScreen() {
       await updateTrackerConfig(store.deviceId, store.deviceUid, { tracking_enabled: enabled })
       store.setTrackingEnabled(enabled)
       if (enabled) {
+        const point = await getCurrentLocation()
+        if (point) {
+          await sendTelemetry(store.deviceId, store.deviceUid, [point])
+          store.setLastSync(new Date().toISOString())
+        }
         await startBackgroundTracking(store.trackingIntervalSec)
       } else {
         await stopBackgroundTracking()
