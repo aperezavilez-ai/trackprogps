@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { X, User, Fuel, Route, Gauge, Clock, Wifi } from 'lucide-react'
+import { Battery, Clock, Fuel, Gauge, Route, Smartphone, User, Wifi, X } from 'lucide-react'
 
 export interface VehiclePanelData {
   vehicleId: string
@@ -18,6 +18,9 @@ export interface VehiclePanelData {
   ownerName?: string | null
   groupName?: string | null
   deviceId?: string | null
+  deviceSource?: string | null
+  mobilePlatform?: string | null
+  batteryPct?: number | null
 }
 
 interface TrackStats {
@@ -36,8 +39,14 @@ export function VehicleMapPanel({ vehicle, onClose }: Props) {
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<TrackStats | null>(null)
   const [driverName, setDriverName] = useState<string | null>(vehicle.driverName ?? null)
+  const isMobile = vehicle.deviceSource === 'mobile'
 
-  const clientName = driverName || vehicle.ownerName || 'Sin cliente asignado'
+  const personName = driverName || vehicle.ownerName || (isMobile ? 'Persona sin asignar' : 'Sin cliente asignado')
+  const platformLabel = vehicle.mobilePlatform === 'ios'
+    ? 'iPhone / iOS'
+    : vehicle.mobilePlatform === 'android'
+      ? 'Android'
+      : 'Movil'
 
   useEffect(() => {
     let cancelled = false
@@ -59,22 +68,25 @@ export function VehicleMapPanel({ vehicle, onClose }: Props) {
   }, [vehicle.vehicleId])
 
   const timeLabel = formatTimeAgo(vehicle.lastUpdate)
+  const assetLine = isMobile
+    ? `${vehicle.economicNum || 'Movil TrackProGPS'}${vehicle.plates ? ` - ${vehicle.plates}` : ''}`
+    : `${vehicle.economicNum} - ${vehicle.plates}`
 
   return (
     <div className="vehicle-map-panel w-full sm:w-[min(320px,calc(100vw-2rem))] rounded-2xl border border-white/25 bg-slate-900/90 backdrop-blur-xl shadow-2xl text-white overflow-hidden">
       <div className="flex items-start justify-between gap-2 px-4 pt-4 pb-2 border-b border-white/10">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-orange-300 text-xs font-medium uppercase tracking-wide mb-1">
-            <User className="w-3.5 h-3.5 flex-shrink-0" />
-            Cliente
+            {isMobile ? <Smartphone className="w-3.5 h-3.5 flex-shrink-0" /> : <User className="w-3.5 h-3.5 flex-shrink-0" />}
+            {isMobile ? 'Persona / movil' : 'Cliente'}
           </div>
-          <div className="font-semibold text-base leading-tight truncate">{clientName}</div>
-          <div className="text-sm text-white/80 mt-1 truncate">
-            {vehicle.economicNum} — {vehicle.plates}
-          </div>
-          {vehicle.groupName && (
+          <div className="font-semibold text-base leading-tight truncate">{personName}</div>
+          <div className="text-sm text-white/80 mt-1 truncate">{assetLine}</div>
+          {isMobile ? (
+            <div className="text-xs text-white/50 mt-0.5">{platformLabel}</div>
+          ) : vehicle.groupName ? (
             <div className="text-xs text-white/50 mt-0.5">{vehicle.groupName}</div>
-          )}
+          ) : null}
         </div>
         <button
           type="button"
@@ -90,43 +102,54 @@ export function VehicleMapPanel({ vehicle, onClose }: Props) {
         <div className="grid grid-cols-2 gap-2">
           <InfoRow
             icon={Wifi}
-            label="Estado"
-            value={vehicle.ignition ? 'Encendido' : 'Apagado'}
+            label={isMobile ? 'Estado GPS' : 'Estado'}
+            value={isMobile ? (vehicle.ignition ? 'En movimiento' : 'Sin movimiento') : (vehicle.ignition ? 'Encendido' : 'Apagado')}
             valueClass={vehicle.ignition ? 'text-green-400' : 'text-white/50'}
           />
           <InfoRow
             icon={Gauge}
-            label="Velocidad"
+            label={isMobile ? 'Velocidad movil' : 'Velocidad'}
             value={`${Math.round(vehicle.speed)} km/h`}
           />
         </div>
 
-        <InfoRow icon={Clock} label="Última actualización" value={timeLabel} />
+        <InfoRow icon={Clock} label="Ultima actualizacion" value={timeLabel} />
 
         {loading ? (
-          <p className="text-xs text-white/40 py-1">Cargando recorrido…</p>
+          <p className="text-xs text-white/40 py-1">{isMobile ? 'Cargando movimiento...' : 'Cargando recorrido...'}</p>
         ) : stats ? (
           <>
             <InfoRow
               icon={Route}
-              label={`Recorrido (${stats.point_count > 0 ? '6 h' : 'sin datos'})`}
-              value={stats.distance_km > 0 ? `${stats.distance_km} km` : '—'}
+              label={isMobile ? `Movimiento (${stats.point_count > 0 ? '6 h' : 'sin datos'})` : `Recorrido (${stats.point_count > 0 ? '6 h' : 'sin datos'})`}
+              value={stats.distance_km > 0 ? `${stats.distance_km} km` : '-'}
             />
-            <InfoRow
-              icon={Fuel}
-              label={stats.fuel_level_pct != null ? 'Nivel combustible' : 'Consumo estimado'}
-              value={
-                stats.fuel_level_pct != null
-                  ? `${stats.fuel_level_pct}%`
-                  : stats.fuel_liters_est > 0
-                    ? `~${stats.fuel_liters_est} L`
-                    : '—'
-              }
-            />
-            {stats.fuel_level_pct != null && stats.fuel_liters_est > 0 && (
-              <p className="text-xs text-white/45 pl-6">
-                Consumo estimado del trayecto: ~{stats.fuel_liters_est} L
-              </p>
+            {isMobile ? (
+              <InfoRow
+                icon={Battery}
+                label="Bateria"
+                value={vehicle.batteryPct != null ? `${vehicle.batteryPct}%` : 'Sin dato'}
+                valueClass={vehicle.batteryPct != null && vehicle.batteryPct <= 20 ? 'text-red-300' : 'text-white'}
+              />
+            ) : (
+              <>
+                <InfoRow
+                  icon={Fuel}
+                  label={stats.fuel_level_pct != null ? 'Nivel combustible' : 'Consumo estimado'}
+                  value={
+                    stats.fuel_level_pct != null
+                      ? `${stats.fuel_level_pct}%`
+                      : stats.fuel_liters_est > 0
+                        ? `~${stats.fuel_liters_est} L`
+                        : '-'
+                  }
+                />
+                {stats.fuel_level_pct != null && stats.fuel_liters_est > 0 && (
+                  <p className="text-xs text-white/45 pl-6">
+                    Consumo estimado del trayecto: ~{stats.fuel_liters_est} L
+                  </p>
+                )}
+              </>
             )}
           </>
         ) : null}
@@ -138,14 +161,14 @@ export function VehicleMapPanel({ vehicle, onClose }: Props) {
             href={`/devices/${vehicle.deviceId}`}
             className="text-xs font-medium text-orange-300 hover:text-orange-200"
           >
-            Ver dispositivo GPS →
+            {isMobile ? 'Ver movil' : 'Ver dispositivo GPS'} -&gt;
           </Link>
         )}
         <Link
           href={`/history?vehicle_id=${vehicle.vehicleId}&lat=${vehicle.lat}&lng=${vehicle.lng}`}
           className="text-xs font-medium text-orange-300 hover:text-orange-200"
         >
-          Historial completo →
+          {isMobile ? 'Historial de ubicacion' : 'Historial completo'} -&gt;
         </Link>
       </div>
     </div>

@@ -11,7 +11,7 @@ import { VehicleMarkerCluster } from '@/components/map/vehicle-marker-cluster'
 import { SetMexicoViewOnce, applyMexicoFleetViewLeaflet } from '@/components/map/set-mexico-view-once'
 import { VehicleTrackLayer } from '@/components/map/vehicle-track-layer'
 import { VehicleMapPanel } from '@/components/map/vehicle-map-panel'
-import { ChevronUp, Clock3, Gauge, Power, X } from 'lucide-react'
+import { ChevronUp, Clock3, Gauge, Power, Smartphone, X } from 'lucide-react'
 import { reverseGeocodeLatLng } from '@/lib/map/reverse-geocode'
 import { MobileMapControls } from '@/components/map/mobile-map-controls'
 import type { LiveVehicle } from '@gps-saas/types'
@@ -63,6 +63,7 @@ export function LeafletRealtimeMap({ companyId, initialVehicles }: LeafletRealti
         vehicleType: v.vehicle_type,
         deviceSource: v.device_source ?? 'hardware',
         mobilePlatform: v.mobile_platform ?? null,
+        batteryPct:   v.battery_pct ?? null,
         groupId:     v.group_id ?? null,
         groupName:   v.group_name ?? null,
         ownerName:   v.owner_name ?? null,
@@ -157,6 +158,9 @@ export function LeafletRealtimeMap({ companyId, initialVehicles }: LeafletRealti
               ownerName:   selectedVehicle.ownerName,
               groupName:   selectedVehicle.groupName,
               deviceId:    selectedVehicle.deviceId,
+              deviceSource: selectedVehicle.deviceSource,
+              mobilePlatform: selectedVehicle.mobilePlatform,
+              batteryPct: selectedVehicle.batteryPct,
             }}
             onClose={() => setSelectedVehicle(null)}
           />
@@ -168,9 +172,9 @@ export function LeafletRealtimeMap({ companyId, initialVehicles }: LeafletRealti
           <div className="w-full sm:w-[320px] rounded-2xl border border-white/25 bg-slate-900/90 backdrop-blur-xl shadow-2xl text-white overflow-hidden">
             <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-2 border-b border-white/10">
               <div className="min-w-0">
-                <p className="text-xs text-orange-300 uppercase tracking-wide">Unidad seleccionada</p>
+                <p className="text-xs text-orange-300 uppercase tracking-wide">{getAssetCardLabel(selectedVehicle)}</p>
                 <p className="font-semibold truncate">{selectedVehicle.economicNum ?? selectedVehicle.vehicleId}</p>
-                <p className="text-xs text-white/70 truncate">{selectedVehicle.plates ?? 'Sin placas'}</p>
+                <p className="text-xs text-white/70 truncate">{getAssetSubLabel(selectedVehicle)}</p>
               </div>
               <button
                 type="button"
@@ -184,7 +188,10 @@ export function LeafletRealtimeMap({ companyId, initialVehicles }: LeafletRealti
             <div className="px-4 py-3 text-xs grid grid-cols-2 gap-2">
               <span className="flex items-center gap-1.5 text-white/80"><Gauge className="w-3.5 h-3.5" /> {Math.round(selectedVehicle.speed)} km/h</span>
               <span className={`flex items-center gap-1.5 ${selectedVehicle.ignition ? 'text-green-400' : 'text-white/70'}`}>
-                <Power className="w-3.5 h-3.5" /> {selectedVehicle.ignition ? 'Motor ON' : 'Motor OFF'}
+                {selectedVehicle.deviceSource === 'mobile' ? <Smartphone className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
+                {selectedVehicle.deviceSource === 'mobile'
+                  ? (selectedVehicle.ignition ? 'En movimiento' : 'Sin movimiento')
+                  : (selectedVehicle.ignition ? 'Motor ON' : 'Motor OFF')}
               </span>
             </div>
             <div className="px-4 pb-2 text-[11px] text-white/65 truncate">
@@ -195,7 +202,7 @@ export function LeafletRealtimeMap({ companyId, initialVehicles }: LeafletRealti
                 href={`/history?vehicle_id=${selectedVehicle.vehicleId}&lat=${selectedVehicle.lat}&lng=${selectedVehicle.lng}`}
                 className="text-xs text-orange-300 hover:text-orange-200"
               >
-                Ver historial
+                {selectedVehicle.deviceSource === 'mobile' ? 'Historial ubicacion' : 'Ver historial'}
               </Link>
               <button
                 type="button"
@@ -216,7 +223,10 @@ export function LeafletRealtimeMap({ companyId, initialVehicles }: LeafletRealti
             <span className="font-semibold truncate">{selectedVehicle.economicNum ?? selectedVehicle.vehicleId}</span>
             <span className="flex items-center gap-1 text-white/80"><Gauge className="w-3 h-3" />{Math.round(selectedVehicle.speed)} km/h</span>
             <span className={`flex items-center gap-1 ${selectedVehicle.ignition ? 'text-green-400' : 'text-white/70'}`}>
-              <Power className="w-3 h-3" />{selectedVehicle.ignition ? 'ON' : 'OFF'}
+              {selectedVehicle.deviceSource === 'mobile' ? <Smartphone className="w-3 h-3" /> : <Power className="w-3 h-3" />}
+              {selectedVehicle.deviceSource === 'mobile'
+                ? (selectedVehicle.ignition ? 'MOV' : 'QUIETO')
+                : (selectedVehicle.ignition ? 'ON' : 'OFF')}
             </span>
             <span className="hidden sm:flex items-center gap-1 text-white/70">
               <Clock3 className="w-3 h-3" />
@@ -257,6 +267,17 @@ function formatTimeAgo(iso: string) {
   const h = Math.floor(min / 60)
   if (h < 24) return `${h} h`
   return new Date(iso).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
+}
+
+function getAssetCardLabel(vehicle: { deviceSource?: string | null }) {
+  return vehicle.deviceSource === 'mobile' ? 'Movil seleccionado' : 'Unidad seleccionada'
+}
+
+function getAssetSubLabel(vehicle: { deviceSource?: string | null; mobilePlatform?: string | null; plates?: string | null }) {
+  if (vehicle.deviceSource !== 'mobile') return vehicle.plates ?? 'Sin placas'
+  if (vehicle.mobilePlatform === 'ios') return 'iPhone / iOS'
+  if (vehicle.mobilePlatform === 'android') return 'Android'
+  return 'Movil TrackProGPS'
 }
 
 function BindLeafletMap({ onMap }: { onMap: (map: LeafletMap) => void }) {

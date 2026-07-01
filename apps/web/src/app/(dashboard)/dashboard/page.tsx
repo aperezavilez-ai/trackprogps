@@ -29,7 +29,7 @@ async function getDashboardData(companyId: string) {
     .from('vehicle_positions')
     .select(`
       vehicle_id, company_id, lat, lng, speed, heading,
-      ignition, odometer, recorded_at,
+      ignition, odometer, battery_lvl, recorded_at,
       vehicle:vehicles(economic_num, plates, brand, model, type, owner_name, group_id, device_id, driver:drivers(full_name), group:vehicle_groups(id, name, color), device:gps_devices(source_type, mobile_platform))
     `)
 
@@ -102,6 +102,7 @@ async function getDashboardData(companyId: string) {
       driver_name:  v?.driver?.full_name ?? null,
       device_source: (device?.source_type ?? 'hardware') as LiveVehicle['device_source'],
       mobile_platform: (device?.mobile_platform ?? null) as LiveVehicle['mobile_platform'],
+      battery_pct: p.battery_lvl ?? null,
       device_status: isOffline ? 'no_signal' : p.ignition ? 'online' : 'offline',
       lat:          p.lat,  lng:      p.lng,
       speed:        p.speed, heading:  p.heading,

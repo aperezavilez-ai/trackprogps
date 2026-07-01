@@ -21,6 +21,7 @@ type MapVehicle = {
   driverName: string | null
   deviceSource?: DeviceSourceType
   mobilePlatform?: MobilePlatform | null
+  batteryPct?: number | null
 }
 
 interface AppState {

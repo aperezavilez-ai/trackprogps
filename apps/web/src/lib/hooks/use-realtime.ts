@@ -20,6 +20,7 @@ export function useRealtimeVehicles(companyId: string) {
     heading: number
     ignition: boolean
     lastUpdate: string
+    batteryPct: number | null
   }>())
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -56,6 +57,7 @@ export function useRealtimeVehicles(companyId: string) {
             heading:    pos.heading,
             ignition:   pos.ignition,
             lastUpdate: pos.recorded_at,
+            batteryPct: pos.battery_lvl ?? null,
           })
         }
       )
