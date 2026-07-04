@@ -18,6 +18,7 @@ export type BrowserActivationResult = {
 
 const DEVICE_UID_KEY = 'trackpro_mobile_device_uid'
 const ACTIVE_TRACKING_KEY = 'trackpro_mobile_tracking_active'
+const FRESH_LOCATION_MAX_AGE_MS = 5_000
 
 type ActiveMobileTracking = {
   deviceId?: string
@@ -72,7 +73,7 @@ export async function activateBrowserMobileTracking(options: {
     notifications: false,
   }
 
-  const position = await requestLocation().then(pos => {
+  const position = await requestLocation({ maximumAge: FRESH_LOCATION_MAX_AGE_MS }).then(pos => {
     permissions.location = true
     return pos
   }).catch(() => null)
@@ -269,7 +270,7 @@ async function startBrowserMobileTelemetry(input: {
   }
 
   if (!latestPosition && permission !== 'prompt') {
-    requestLocation()
+    requestLocation({ maximumAge: FRESH_LOCATION_MAX_AGE_MS })
       .then((position) => {
         latestPosition = position
         void sendPosition(position)
@@ -290,7 +291,7 @@ async function startBrowserMobileTelemetry(input: {
       },
       {
         enableHighAccuracy: true,
-        maximumAge: Math.max(15_000, intervalSec * 1000),
+        maximumAge: FRESH_LOCATION_MAX_AGE_MS,
         timeout: 30_000,
       },
     )
@@ -303,14 +304,9 @@ async function startBrowserMobileTelemetry(input: {
       return
     }
 
-    if (latestPosition) {
-      void sendPosition(latestPosition, new Date().toISOString())
-      return
-    }
-
     if (currentPermission === 'prompt') return
 
-    requestLocation()
+    requestLocation({ maximumAge: 0, timeout: 30_000 })
       .then((position) => {
         latestPosition = position
         void sendPosition(position)
@@ -382,7 +378,7 @@ async function sendMobileTelemetryPoint(
   }
 }
 
-function requestLocation(): Promise<GeolocationPosition> {
+function requestLocation(options: PositionOptions = {}): Promise<GeolocationPosition> {
   return new Promise((resolve, reject) => {
     if (!('geolocation' in navigator)) {
       reject(new Error('Geolocation unsupported'))
@@ -391,8 +387,8 @@ function requestLocation(): Promise<GeolocationPosition> {
 
     navigator.geolocation.getCurrentPosition(resolve, reject, {
       enableHighAccuracy: true,
-      timeout: 15_000,
-      maximumAge: 30_000,
+      timeout: options.timeout ?? 15_000,
+      maximumAge: options.maximumAge ?? FRESH_LOCATION_MAX_AGE_MS,
     })
   })
 }

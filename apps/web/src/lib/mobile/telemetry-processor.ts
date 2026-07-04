@@ -11,6 +11,7 @@ type DeviceContext = {
 }
 
 const prevIgnition = new Map<string, boolean>()
+const ONLINE_FRESHNESS_MS = 5 * 60 * 1000
 
 export async function processMobileTelemetry(
   supabase: SupabaseClient,
@@ -19,7 +20,9 @@ export async function processMobileTelemetry(
 ): Promise<{ processed: number; skipped: number }> {
   let processed = 0
   let skipped = 0
-  const serverAt = new Date().toISOString()
+  let freshProcessed = 0
+  const serverNow = new Date()
+  const serverAt = serverNow.toISOString()
   const cacheKey = device.vehicleId
   const validPoints: { pt: MobileTelemetryPoint; position: Parameters<typeof batchUpsertPositions>[1][number] }[] = []
 
@@ -94,13 +97,16 @@ export async function processMobileTelemetry(
         })
         prevIgnition.set(cacheKey, position.ignition)
         processed++
+        if (Math.abs(serverNow.getTime() - new Date(position.recorded_at).getTime()) <= ONLINE_FRESHNESS_MS) {
+          freshProcessed++
+        }
       }
     } catch {
       skipped += validPoints.length
     }
   }
 
-  if (processed > 0) {
+  if (freshProcessed > 0) {
     await supabase
       .from('gps_devices')
       .update({ last_seen: serverAt, status: 'online', updated_at: serverAt })
