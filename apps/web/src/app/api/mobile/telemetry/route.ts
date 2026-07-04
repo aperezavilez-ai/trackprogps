@@ -47,7 +47,34 @@ export async function POST(request: NextRequest) {
   }
 
   if (!device.trackingEnabled) {
-    return NextResponse.json({ error: 'Rastreo deshabilitado para este dispositivo' }, { status: 403 })
+    const { data: deviceRow } = await service
+      .from('gps_devices')
+      .select('mobile_metadata')
+      .eq('id', device.deviceId)
+      .single()
+    const metadata = deviceRow?.mobile_metadata && typeof deviceRow.mobile_metadata === 'object' && !Array.isArray(deviceRow.mobile_metadata)
+      ? deviceRow.mobile_metadata as Record<string, unknown>
+      : {}
+    const reason = metadata.tracking_disabled_reason
+    const manuallyDisabled = typeof reason === 'string' && reason.startsWith('manual_')
+
+    if (manuallyDisabled) {
+      return NextResponse.json({ error: 'Rastreo deshabilitado manualmente para este dispositivo' }, { status: 403 })
+    }
+
+    await service
+      .from('gps_devices')
+      .update({
+        tracking_enabled: true,
+        mobile_metadata: {
+          ...metadata,
+          tracking_disabled_reason: null,
+          tracking_disabled_at: null,
+          tracking_disabled_by: null,
+        },
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', device.deviceId)
   }
 
   const { data: session } = await service

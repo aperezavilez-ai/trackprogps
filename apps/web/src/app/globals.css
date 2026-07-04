@@ -53,6 +53,29 @@ body {
 /* Map container */
 .gm-style { border-radius: inherit; }
 
+/* Google Street View Pegman: force bottom-right placement inside TrackPro maps. */
+.trackpro-google-map .trackpro-street-view-control {
+  position: absolute !important;
+  top: auto !important;
+  left: auto !important;
+  right: 44px !important;
+  bottom: 86px !important;
+  margin: 0 !important;
+  transform: none !important;
+  z-index: 50 !important;
+  overflow: visible !important;
+}
+
+.trackpro-google-map .trackpro-street-view-control,
+.trackpro-google-map .trackpro-street-view-control * {
+  clip: auto !important;
+  clip-path: none !important;
+}
+
+.trackpro-google-map .gm-svpc {
+  overflow: visible !important;
+}
+
 /* Mobile: hide scrollbars on horizontal filter bars */
 .no-scrollbar {
   -ms-overflow-style: none;
@@ -63,4 +86,24 @@ body {
 /* Safe area for notched phones + bottom tab bar */
 .safe-bottom-nav {
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media all and (display-mode: standalone) {
+  [data-pwa-install-action='true'] {
+    display: none !important;
+  }
+}
+
+html[data-trackpro-pwa='browser'] [data-pwa-update-action='true'] {
+  display: none !important;
+}
+
+html[data-trackpro-pwa='standalone'] [data-pwa-install-action='true'] {
+  display: none !important;
+}
+
+html[data-trackpro-pwa='standalone'] [data-pwa-update-action='true'] {
+  border-color: #fed7aa !important;
+  background-color: #fff7ed !important;
+  color: #ea580c !important;
 }

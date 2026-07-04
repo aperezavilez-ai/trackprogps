@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { CheckCircle2, Globe, Monitor, ShieldCheck, Smartphone } from 'lucide-react'
+import { CheckCircle2, Globe, Loader2, Monitor, ShieldCheck, Smartphone } from 'lucide-react'
 import { TrackProLogo } from '@/components/brand/trackpro-logo'
 import { isStandalonePwa, registerServiceWorker } from '@/lib/pwa/register-sw'
 import { getInstallPlatform, isInAppBrowser, isSafariBrowser } from '@/lib/pwa/detect-platform'
@@ -41,6 +41,7 @@ export default function DescargarPageClient() {
   const [installing, setInstalling] = useState(false)
   const [standalone, setStandalone] = useState(false)
   const [hasSession, setHasSession] = useState<boolean | null>(null)
+  const [sessionChecked, setSessionChecked] = useState(false)
   const [status, setStatus] = useState('')
   const deferredRef = useRef<BeforeInstallPromptEvent | null>(null)
 
@@ -48,6 +49,10 @@ export default function DescargarPageClient() {
     const supabase = createSupabaseBrowserClient()
     const { data: { session } } = await supabase.auth.getSession()
     router.push(session ? '/dashboard' : '/register?from=pwa&installed=1')
+  }, [router])
+
+  const enterApp = useCallback(() => {
+    router.replace('/dashboard')
   }, [router])
 
   const loginHref = activationDeviceId
@@ -86,8 +91,15 @@ export default function DescargarPageClient() {
 
     void registerServiceWorker().finally(() => setReady(true))
     void createSupabaseBrowserClient().auth.getSession()
-      .then(({ data: { session } }) => setHasSession(Boolean(session)))
+      .then(({ data: { session } }) => {
+        const validSession = Boolean(session)
+        setHasSession(validSession)
+        if (launchedStandalone && validSession) {
+          router.replace('/dashboard')
+        }
+      })
       .catch(() => setHasSession(false))
+      .finally(() => setSessionChecked(true))
 
     if (launchedStandalone && isDesktop) {
       continueToApp()
@@ -101,7 +113,7 @@ export default function DescargarPageClient() {
     }
     window.addEventListener('beforeinstallprompt', onBip)
     return () => window.removeEventListener('beforeinstallprompt', onBip)
-  }, [continueToApp, isDesktop])
+  }, [continueToApp, isDesktop, router])
 
   async function handleInstall() {
     if (!deferredRef.current) {
@@ -138,7 +150,7 @@ export default function DescargarPageClient() {
         : 'TrackPro GPS'
 
   const subtitle = standalone
-    ? 'Autoriza el acceso para continuar.'
+    ? 'Abriendo tu sesion segura.'
     : activationDeviceId
       ? 'Abre esta pantalla desde el telefono asignado.'
     : isIos
@@ -170,7 +182,39 @@ export default function DescargarPageClient() {
                 Abre este enlace desde el telefono asignado para autorizar TrackPro.
               </p>
             </div>
-          ) : (standalone || activationDeviceId) && !isDesktop ? (
+          ) : standalone && !isDesktop ? (
+            !sessionChecked ? (
+              <div className="flex items-center justify-center gap-2 text-sm text-white/60 py-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Validando sesion...
+              </div>
+            ) : hasSession === false ? (
+              <div className="text-center">
+                <ShieldCheck className="w-10 h-10 text-orange-300 mx-auto mb-3" />
+                <p className="text-sm text-white/70 mb-4">
+                  Inicia sesion en este telefono para entrar a TrackPro.
+                </p>
+                <Link
+                  href={loginHref}
+                  className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-400 text-white font-medium py-3 rounded-xl text-sm transition"
+                >
+                  Iniciar sesion
+                </Link>
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <CheckCircle2 className="w-10 h-10 text-green-400 mx-auto mb-3" />
+                <p className="text-sm font-medium text-green-200 mb-4">Sesion lista.</p>
+                <button
+                  type="button"
+                  onClick={enterApp}
+                  className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-400 text-white font-medium py-3 rounded-xl text-sm transition"
+                >
+                  Entrar a TrackPro
+                </button>
+              </div>
+            )
+          ) : activationDeviceId && !isDesktop ? (
             hasSession === null ? (
               <p className="text-sm text-white/60 text-center py-2">Preparando...</p>
             ) : hasSession === false ? (
@@ -190,9 +234,11 @@ export default function DescargarPageClient() {
               <MobilePermissionSetup
                 compact
                 deviceId={activationDeviceId}
-                title="Autorizar app"
-                description="Acepta los avisos del sistema para continuar."
+                title="Activar rastreo"
+                description="Autoriza ubicacion para enviar el movil en vivo. Puedes entrar aunque falle y reintentar despues."
+                continueOnRegistered
                 onActivated={continueToApp}
+                onSkip={enterApp}
               />
             )
           ) : (

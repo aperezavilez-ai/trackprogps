@@ -96,7 +96,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <Suspense fallback={null}>
         <DemoTour />
       </Suspense>
-      <div className="flex h-screen bg-gray-50 overflow-hidden">
+      <div className="flex h-dvh min-h-dvh bg-gray-50 overflow-hidden">
         <Sidebar profile={profile} showSupportInbox={showSupportInbox} supportNewCount={supportNewCount} />
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <TopBar profile={profile} />

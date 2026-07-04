@@ -1,20 +1,30 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
-import { Bot, Download, RefreshCw } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
+import { Bot, RefreshCw } from 'lucide-react'
 import { NAV_ITEMS, NAV_SECTIONS } from '@/lib/navigation/nav-items'
 import { filterNavByRole } from '@/lib/auth/permissions'
 import { cn } from '@/lib/utils/cn'
+import { forcePwaUpdate } from '@/lib/pwa/update-app'
+import { isStandalonePwa, markPwaDisplayMode } from '@/lib/pwa/register-sw'
 
 interface Props {
   role: string
 }
 
+const APP_RELEASE = 'v2026.07.04.44'
+
 export function MobileMenuPage({ role }: Props) {
   const pathname = usePathname()
-  const router = useRouter()
+  const [installContext, setInstallContext] = useState({ ready: false, standalone: false })
   const isAdmin = ['super_admin', 'admin_empresa'].includes(role)
+
+  useEffect(() => {
+    markPwaDisplayMode()
+    setInstallContext({ ready: true, standalone: isStandalonePwa() })
+  }, [])
 
   const items = NAV_ITEMS.filter(item => {
     if (!filterNavByRole(role, item.href)) return false
@@ -22,29 +32,26 @@ export function MobileMenuPage({ role }: Props) {
     if (item.adminOnly && !isAdmin) return false
     return true
   })
+  const showUpdateApp = installContext.ready && installContext.standalone
 
   return (
     <div className="p-4 pb-8 max-w-lg mx-auto">
-      <h1 className="text-xl font-semibold text-gray-900 mb-1">Menú</h1>
-      <p className="text-sm text-gray-500 mb-6">Acceso rápido a todas las secciones</p>
+      <h1 className="text-xl font-semibold text-gray-900 mb-1">Menu</h1>
+      <p className="text-sm text-gray-500 mb-6">TrackPro GPS {APP_RELEASE}</p>
 
-      <div className="grid grid-cols-2 gap-2 mb-6">
-        <Link
-          href="/descargar"
-          className="flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-3 py-3 text-sm font-medium text-white shadow-sm"
-        >
-          <Download className="w-4 h-4" />
-          Instalar app
-        </Link>
-        <button
-          type="button"
-          onClick={() => router.refresh()}
-          className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm font-medium text-gray-700"
-        >
-          <RefreshCw className="w-4 h-4" />
-          Actualizar app
-        </button>
-      </div>
+      {showUpdateApp && (
+        <div className="grid grid-cols-1 gap-2 mb-6">
+          <button
+            type="button"
+            data-pwa-update-action="true"
+            onClick={() => void forcePwaUpdate().catch(() => window.location.reload())}
+            className="flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-3 py-3 text-sm font-medium text-white shadow-sm hover:bg-orange-600"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Actualizar app
+          </button>
+        </div>
+      )}
 
       {NAV_SECTIONS.map(section => {
         const sectionItems = items.filter(i => i.section === section.key)

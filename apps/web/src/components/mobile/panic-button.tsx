@@ -17,7 +17,23 @@ type StoredMobileTracking = {
 const ACTIVE_TRACKING_KEY = 'trackpro_mobile_tracking_active'
 const DEVICE_UID_KEY = 'trackpro_mobile_device_uid'
 
-export function PanicButton({ className }: { className?: string }) {
+export function PanicButton({
+  className,
+  deviceId,
+  deviceUid,
+  lat,
+  lng,
+  deviceName,
+  contactSummary,
+}: {
+  className?: string
+  deviceId?: string
+  deviceUid?: string
+  lat?: number | null
+  lng?: number | null
+  deviceName?: string
+  contactSummary?: string
+}) {
   const [status, setStatus] = useState<PanicStatus>('idle')
   const [message, setMessage] = useState('')
 
@@ -36,7 +52,7 @@ export function PanicButton({ className }: { className?: string }) {
   }
 
   async function sendPanic() {
-    const ids = getMobileDeviceIdentity()
+    const ids = deviceId || deviceUid ? { deviceId, deviceUid } : getMobileDeviceIdentity()
     if (!ids.deviceId && !ids.deviceUid) {
       setStatus('no-device')
       setMessage('Para enviar una alerta con ubicacion real, primero activa este telefono como movil TrackProGPS.')
@@ -47,7 +63,9 @@ export function PanicButton({ className }: { className?: string }) {
     setMessage('Solicitando ubicacion del telefono...')
 
     try {
-      const position = await getCurrentPosition()
+      const position = lat != null && lng != null
+        ? null
+        : await getCurrentPosition()
       setMessage('Registrando alerta critica...')
 
       const response = await fetch('/api/mobile/sos', {
@@ -55,16 +73,17 @@ export function PanicButton({ className }: { className?: string }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...(ids.deviceId ? { device_id: ids.deviceId } : { device_uid: ids.deviceUid }),
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
+          lat: lat ?? position!.coords.latitude,
+          lng: lng ?? position!.coords.longitude,
           battery_pct: null,
           payload: {
             source: 'web_panic_button',
             trigger: 'panic_button',
             triggered_from: window.location.pathname,
             user_agent: navigator.userAgent,
-            accuracy_m: position.coords.accuracy,
-            recorded_at: new Date(position.timestamp).toISOString(),
+            accuracy_m: position?.coords.accuracy ?? null,
+            recorded_at: new Date(position?.timestamp ?? Date.now()).toISOString(),
+            device_name: deviceName ?? null,
           },
         }),
       })
@@ -130,8 +149,18 @@ export function PanicButton({ className }: { className?: string }) {
               {status === 'confirm' && (
                 <>
                   <p className="text-sm text-gray-700">
-                    Se enviara una alerta critica con la ubicacion actual de este telefono.
+                    Se enviara una alerta critica con la ubicacion {lat != null && lng != null ? 'actual registrada de este dispositivo' : 'actual de este telefono'}.
                   </p>
+                  {deviceName && (
+                    <div className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-700">
+                      Dispositivo: <span className="font-semibold">{deviceName}</span>
+                    </div>
+                  )}
+                  {contactSummary && (
+                    <div className="rounded-xl border border-red-100 bg-white px-3 py-2 text-xs text-red-700">
+                      Aviso registrado para: {contactSummary}
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-700">
                     <MapPin className="h-4 w-4 flex-shrink-0" />
                     El navegador puede pedir autorizacion de ubicacion solo al enviar.

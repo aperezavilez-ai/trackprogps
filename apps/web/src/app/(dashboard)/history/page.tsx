@@ -24,7 +24,7 @@ export default async function HistoryPage({
 
   let vehiclesQuery = supabase
     .from('vehicles')
-    .select('id, economic_num, plates, brand, model, company_id')
+    .select('id, economic_num, plates, brand, model, company_id, owner_name, device:gps_devices(source_type, mobile_metadata)')
     .is('deleted_at', null)
     .order('economic_num')
 
@@ -33,6 +33,18 @@ export default async function HistoryPage({
   const { data: vehicles } = await vehiclesQuery
 
   const selectedVehicle = vehicles?.find(v => v.id === searchParams.vehicle_id)
+  const selectedDevice = selectedVehicle
+    ? Array.isArray(selectedVehicle.device)
+      ? selectedVehicle.device[0]
+      : selectedVehicle.device
+    : null
+  const selectedIsMobile = selectedDevice?.source_type === 'mobile'
+  const selectedOwner = readMobileOwnerName(selectedDevice?.mobile_metadata)
+  const selectedName = selectedIsMobile
+    ? `${selectedOwner ?? selectedVehicle?.economic_num ?? 'Movil'} (${selectedVehicle?.plates ?? 'TrackProGPS'})`
+    : selectedVehicle
+      ? `${selectedVehicle.economic_num} (${selectedVehicle.plates})`
+      : ''
   const apiKey = process.env['NEXT_PUBLIC_GOOGLE_MAPS_API_KEY'] ?? ''
   const latParam = searchParams.lat ? Number(searchParams.lat) : null
   const lngParam = searchParams.lng ? Number(searchParams.lng) : null
@@ -56,13 +68,13 @@ export default async function HistoryPage({
         <div>
           <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Historial de rutas</h1>
           <p className="text-xs sm:text-sm text-gray-500 mt-1 hidden sm:block">
-            Consulta y reproduce el recorrido de cualquier vehículo
+            Consulta y reproduce el recorrido de cualquier unidad móvil o vehículo
             {!profile.company_id && ' — vista de plataforma (todas las empresas)'}
           </p>
         </div>
       </div>
 
-      {/* Vehicle selector — sticky en móvil */}
+      {/* Unit selector — sticky en móvil */}
       <div className="sticky top-0 z-20 bg-gray-50 py-2 -mx-3 px-3 sm:static sm:mx-0 sm:px-0 sm:py-0 flex gap-2 sm:gap-3 mb-3 sm:mb-4 flex-shrink-0 border-b sm:border-0 border-gray-200">
         <form method="GET" className="flex gap-2 sm:gap-3 flex-1 flex-wrap items-center">
           <select
@@ -70,7 +82,7 @@ export default async function HistoryPage({
             defaultValue={searchParams.vehicle_id ?? ''}
             className="border border-gray-300 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 flex-1 min-w-0 sm:min-w-52"
           >
-            <option value="">Seleccionar vehículo</option>
+            <option value="">Seleccionar unidad</option>
             {(vehicles ?? []).map(v => (
               <option key={v.id} value={v.id}>
                 {v.economic_num} — {v.plates} ({v.brand} {v.model})
@@ -91,7 +103,8 @@ export default async function HistoryPage({
         {selectedVehicle ? (
           <RouteHistoryMap
             vehicleId={selectedVehicle.id}
-            vehicleName={`${selectedVehicle.economic_num} (${selectedVehicle.plates})`}
+            vehicleName={selectedName}
+            deviceSource={selectedIsMobile ? 'mobile' : 'hardware'}
             apiKey={apiKey}
             initialCenter={initialCenter}
           />
@@ -99,11 +112,18 @@ export default async function HistoryPage({
           <div className="h-full bg-white border border-gray-200 rounded-2xl flex items-center justify-center">
             <div className="text-center">
               <div className="text-4xl mb-3">🗺️</div>
-              <p className="text-gray-500 text-sm">Selecciona un vehículo para ver su historial de rutas</p>
+              <p className="text-gray-500 text-sm">Selecciona una unidad para ver su historial de rutas</p>
             </div>
           </div>
         )}
       </div>
     </div>
   )
+}
+
+function readMobileOwnerName(metadata: Record<string, unknown> | null | undefined) {
+  const owner = metadata?.device_owner
+  if (!owner || typeof owner !== 'object' || Array.isArray(owner)) return null
+  const name = (owner as { name?: unknown }).name
+  return typeof name === 'string' && name.trim() ? name.trim() : null
 }

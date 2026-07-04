@@ -17,7 +17,9 @@ type Props = {
   title?: string
   description?: string
   activationHref?: string
+  continueOnRegistered?: boolean
   onActivated?: () => void
+  onSkip?: () => void
 }
 
 const ACTIVATION_STORAGE_KEY = 'trackpro_mobile_activation'
@@ -42,7 +44,9 @@ export function MobilePermissionSetup({
   title = 'Autorizar TrackPro',
   description = 'Toca una vez y acepta los avisos del telefono.',
   activationHref,
+  continueOnRegistered = false,
   onActivated,
+  onSkip,
 }: Props) {
   const [isMobile, setIsMobile] = useState(false)
   const [state, setState] = useState<ActivationState>('idle')
@@ -77,30 +81,40 @@ export function MobilePermissionSetup({
 
     try {
       const result = await activateBrowserMobileTracking({ deviceId, deviceUid })
-      const grantedCore = result.permissions.location && result.permissions.camera && result.permissions.microphone
-
       if (result.needsLogin) {
         setState('login')
         setMessage('Inicia sesion en este telefono y vuelve a autorizar.')
         return
       }
 
-      if (result.registered && result.telemetrySent) {
+      if (result.registered && (result.telemetrySent || result.permissions.location || continueOnRegistered)) {
         persistActivation({
           permissions: result.permissions,
           registered: result.registered,
           telemetrySent: result.telemetrySent,
         })
         setState('ready')
-        setMessage('Autorizacion lista.')
+        setMessage(result.telemetrySent
+          ? 'Autorizacion lista.'
+          : 'Autorizacion guardada. Abriendo app...')
         onActivated?.()
         return
       }
 
-      setState(grantedCore ? 'partial' : 'error')
-      setMessage(result.registered
-        ? 'Abre la app y vuelve a autorizar ubicacion.'
-        : 'No se pudo completar la autorizacion.')
+      if (result.registered) {
+        persistActivation({
+          permissions: result.permissions,
+          registered: true,
+          telemetrySent: result.telemetrySent,
+        })
+        setState('partial')
+        setMessage('App autorizada. Falta permiso de ubicacion para mostrar el movil en vivo.')
+        onActivated?.()
+        return
+      }
+
+      setState('error')
+      setMessage('No se pudo completar la autorizacion. Puedes entrar y reintentar el rastreo despues.')
     } catch {
       setState('error')
       setMessage('No se pudo abrir la autorizacion. Revisa los ajustes del navegador.')
@@ -142,17 +156,30 @@ export function MobilePermissionSetup({
               Reactivar rastreo
             </button>
           ) : isMobile ? (
-            <button
-              type="button"
-              disabled={state === 'running'}
-              onClick={() => void activate()}
-              className={compact
-                ? 'mt-4 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 py-3 text-sm font-medium text-white hover:bg-orange-400 disabled:opacity-60'
-                : 'mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-orange-600 disabled:opacity-60'}
-            >
-              {state === 'running' ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
-              {state === 'running' ? 'Autorizando...' : 'Autorizar app'}
-            </button>
+            <div className="mt-4 space-y-2">
+              <button
+                type="button"
+                disabled={state === 'running'}
+                onClick={() => void activate()}
+                className={compact
+                  ? 'w-full inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 py-3 text-sm font-medium text-white hover:bg-orange-400 disabled:opacity-60'
+                  : 'inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-orange-600 disabled:opacity-60'}
+              >
+                {state === 'running' ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+                {state === 'running' ? 'Autorizando...' : state === 'error' ? 'Reintentar autorizacion' : 'Autorizar app'}
+              </button>
+              {onSkip && state !== 'running' && (
+                <button
+                  type="button"
+                  onClick={onSkip}
+                  className={compact
+                    ? 'w-full rounded-xl border border-white/10 px-4 py-3 text-sm font-medium text-white/80 hover:bg-white/5'
+                    : 'rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50'}
+                >
+                  Entrar sin activar rastreo
+                </button>
+              )}
+            </div>
           ) : (
             <div className={compact
               ? 'mt-4 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-white/60'

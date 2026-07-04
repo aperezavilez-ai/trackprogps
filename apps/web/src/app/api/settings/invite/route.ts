@@ -5,6 +5,7 @@ import { sendInvitationEmail } from '@/lib/email/send-invitation'
 import { ensurePlatformInternalCompany, isInternalTeamRole } from '@/lib/auth/platform-team'
 import { ACTIVATE_ACCOUNT_PATH, getAuthCallbackUrl } from '@/lib/auth/access-links'
 import { assertUserLimit } from '@/lib/billing/plan-guard'
+import { writeAuditLog } from '@/lib/security/server-guards'
 import { firstOrNull } from '@/lib/supabase/normalize'
 import { z } from 'zod'
 
@@ -109,6 +110,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Solo el dueño de plataforma puede crear super admins' }, { status: 403 })
     }
     targetCompanyId = null
+  } else if (!isSuper && role === 'admin_empresa') {
+    return NextResponse.json({ error: 'Solo el dueño de plataforma puede crear admins de empresa' }, { status: 403 })
   } else if (isSuper && parsed.data.company_id) {
     targetCompanyId = parsed.data.company_id
   } else if (!targetCompanyId) {
@@ -199,6 +202,22 @@ export async function POST(request: NextRequest) {
     invitedBy: profile.full_name ?? 'Administrador',
     role,
     inviteUrl,
+  })
+
+  await writeAuditLog(serviceClient, {
+    companyId: targetCompanyId,
+    userId: user.id,
+    action: alreadyRegistered ? 'user.invite_existing' : 'user.invite',
+    tableName: 'users',
+    recordId: invitedUserId,
+    newValues: {
+      email,
+      role,
+      company_id: targetCompanyId,
+      group_ids,
+      scope,
+    },
+    request,
   })
 
   return NextResponse.json({

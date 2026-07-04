@@ -1,5 +1,5 @@
 {
-  "buildCommand": "next build",
+  "buildCommand": "cd ../.. && npm run build --workspace=@gps-saas/types && npm run build --workspace=@gps-saas/web",
   "installCommand": "npm install",
   "framework": "nextjs",
   "headers": [

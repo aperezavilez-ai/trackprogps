@@ -72,8 +72,8 @@ export function AlertsChart({ companyId }: AlertsChartProps) {
   }, [range, companyId])
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl p-5">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-white border border-gray-200 rounded-xl sm:rounded-2xl p-3 sm:p-5 min-w-0">
+      <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4">
         <h3 className="text-sm font-semibold text-gray-900">Alertas por día</h3>
         <div className="flex items-center gap-1">
           {[7, 14, 30].map(r => (
@@ -93,11 +93,11 @@ export function AlertsChart({ companyId }: AlertsChartProps) {
       </div>
 
       {loading ? (
-        <div className="h-48 flex items-center justify-center">
+        <div className="h-40 sm:h-48 flex items-center justify-center">
           <div className="animate-spin w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full" />
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height={180}>
+        <ResponsiveContainer width="100%" height={160}>
           <AreaChart data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
             <defs>
               <linearGradient id="colorCritical" x1="0" y1="0" x2="0" y2="1">

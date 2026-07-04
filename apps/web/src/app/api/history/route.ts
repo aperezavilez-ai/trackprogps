@@ -71,10 +71,11 @@ export async function GET(request: NextRequest) {
   }
 
   if (!points?.length) {
-    return NextResponse.json({ data: { points: [], stats: null } })
+    return NextResponse.json({ data: { points: [], stats: null, fixed_locations: [] } })
   }
 
   const processedPoints = (simplify ? simplifyPoints(points, 0.0001) : points).map(enrichPoint)
+  const fixedLocations = detectFixedLocations(points)
 
   // Calculate trip statistics
   const stats = calculateTripStats(points, fuelCtx)
@@ -83,6 +84,7 @@ export async function GET(request: NextRequest) {
     data: {
       points: processedPoints,
       stats,
+      fixed_locations: fixedLocations,
       fuel_profile: fuelCtx,
       total_points: points.length,
       simplified_points: processedPoints.length,
@@ -109,12 +111,86 @@ type Point = Omit<RawPoint, 'raw_io'> & {
   fuel_level_pct: number | null
 }
 
+type FixedLocation = {
+  id: string
+  lat: number
+  lng: number
+  started_at: string
+  ended_at: string
+  duration_min: number
+  point_count: number
+}
+
 function enrichPoint(p: RawPoint): Point {
   const { raw_io, ...rest } = p
   return {
     ...rest,
     fuel_level_pct: parseFuelFromRawIo(raw_io).levelPct,
   }
+}
+
+function detectFixedLocations(points: RawPoint[]): FixedLocation[] {
+  const STOP_RADIUS_M = 60
+  const MIN_STOP_DURATION_MIN = 10
+  const STOP_SPEED_KMH = 5
+
+  let cluster: RawPoint[] = []
+  const stops: FixedLocation[] = []
+
+  const closeCluster = () => {
+    if (cluster.length < 2) {
+      cluster = []
+      return
+    }
+
+    const first = cluster[0]!
+    const last = cluster[cluster.length - 1]!
+    const durationMin = Math.round((new Date(last.recorded_at).getTime() - new Date(first.recorded_at).getTime()) / 60_000)
+
+    if (durationMin >= MIN_STOP_DURATION_MIN) {
+      const lat = cluster.reduce((sum, point) => sum + point.lat, 0) / cluster.length
+      const lng = cluster.reduce((sum, point) => sum + point.lng, 0) / cluster.length
+      stops.push({
+        id: `stop-${stops.length + 1}`,
+        lat: Math.round(lat * 1_000_000) / 1_000_000,
+        lng: Math.round(lng * 1_000_000) / 1_000_000,
+        started_at: first.recorded_at,
+        ended_at: last.recorded_at,
+        duration_min: durationMin,
+        point_count: cluster.length,
+      })
+    }
+
+    cluster = []
+  }
+
+  for (const point of points) {
+    const looksStopped = point.speed <= STOP_SPEED_KMH || point.ignition === false
+    if (!looksStopped) {
+      closeCluster()
+      continue
+    }
+
+    if (!cluster.length) {
+      cluster = [point]
+      continue
+    }
+
+    const lat = cluster.reduce((sum, p) => sum + p.lat, 0) / cluster.length
+    const lng = cluster.reduce((sum, p) => sum + p.lng, 0) / cluster.length
+    const distanceFromCluster = distanceMeters({ lat, lng }, point)
+
+    if (distanceFromCluster <= STOP_RADIUS_M) {
+      cluster.push(point)
+    } else {
+      closeCluster()
+      cluster = [point]
+    }
+  }
+
+  closeCluster()
+
+  return stops
 }
 
 // Simplified Douglas-Peucker algorithm for GPS track reduction
@@ -219,14 +295,18 @@ function estimateDistanceKm(points: Array<{ lat: number; lng: number }>) {
   for (let i = 1; i < points.length; i++) {
     const a = points[i - 1]!
     const b = points[i]!
-    const R = 6371
-    const dLat = (b.lat - a.lat) * Math.PI / 180
-    const dLng = (b.lng - a.lng) * Math.PI / 180
-    const x = Math.sin(dLat / 2) ** 2 +
-              Math.cos(a.lat * Math.PI / 180) *
-              Math.cos(b.lat * Math.PI / 180) *
-              Math.sin(dLng / 2) ** 2
-    total += 2 * R * Math.asin(Math.sqrt(x))
+    total += distanceMeters(a, b) / 1000
   }
   return total
+}
+
+function distanceMeters(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const R = 6_371_000
+  const dLat = (b.lat - a.lat) * Math.PI / 180
+  const dLng = (b.lng - a.lng) * Math.PI / 180
+  const x = Math.sin(dLat / 2) ** 2 +
+            Math.cos(a.lat * Math.PI / 180) *
+            Math.cos(b.lat * Math.PI / 180) *
+            Math.sin(dLng / 2) ** 2
+  return 2 * R * Math.asin(Math.sqrt(x))
 }

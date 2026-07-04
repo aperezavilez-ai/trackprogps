@@ -41,7 +41,9 @@ export function VehicleMapPanel({ vehicle, onClose }: Props) {
   const [driverName, setDriverName] = useState<string | null>(vehicle.driverName ?? null)
   const isMobile = vehicle.deviceSource === 'mobile'
 
-  const personName = driverName || vehicle.ownerName || (isMobile ? 'Persona sin asignar' : 'Sin cliente asignado')
+  const personName = isMobile
+    ? vehicle.ownerName || driverName || 'Propietario sin registrar'
+    : driverName || vehicle.ownerName || 'Sin cliente asignado'
   const platformLabel = vehicle.mobilePlatform === 'ios'
     ? 'iPhone / iOS'
     : vehicle.mobilePlatform === 'android'
@@ -68,6 +70,8 @@ export function VehicleMapPanel({ vehicle, onClose }: Props) {
   }, [vehicle.vehicleId])
 
   const timeLabel = formatTimeAgo(vehicle.lastUpdate)
+  const isMoving = vehicle.speed > 2
+  const batteryLabel = vehicle.batteryPct != null ? `${vehicle.batteryPct}%` : 'No disponible'
   const assetLine = isMobile
     ? `${vehicle.economicNum || 'Movil TrackProGPS'}${vehicle.plates ? ` - ${vehicle.plates}` : ''}`
     : `${vehicle.economicNum} - ${vehicle.plates}`
@@ -78,7 +82,7 @@ export function VehicleMapPanel({ vehicle, onClose }: Props) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-orange-300 text-xs font-medium uppercase tracking-wide mb-1">
             {isMobile ? <Smartphone className="w-3.5 h-3.5 flex-shrink-0" /> : <User className="w-3.5 h-3.5 flex-shrink-0" />}
-            {isMobile ? 'Persona / movil' : 'Cliente'}
+            {isMobile ? 'Propietario / movil' : 'Cliente'}
           </div>
           <div className="font-semibold text-base leading-tight truncate">{personName}</div>
           <div className="text-sm text-white/80 mt-1 truncate">{assetLine}</div>
@@ -102,15 +106,17 @@ export function VehicleMapPanel({ vehicle, onClose }: Props) {
         <div className="grid grid-cols-2 gap-2">
           <InfoRow
             icon={Wifi}
-            label={isMobile ? 'Estado GPS' : 'Estado'}
-            value={isMobile ? (vehicle.ignition ? 'En movimiento' : 'Sin movimiento') : (vehicle.ignition ? 'Encendido' : 'Apagado')}
-            valueClass={vehicle.ignition ? 'text-green-400' : 'text-white/50'}
+            label={isMobile ? 'Estado de ubicacion' : 'Estado'}
+            value={isMobile ? (isMoving ? 'En movimiento' : 'Estatico') : (vehicle.ignition ? 'Encendido' : 'Apagado')}
+            valueClass={isMobile ? (isMoving ? 'text-green-400' : 'text-orange-300') : (vehicle.ignition ? 'text-green-400' : 'text-white/50')}
           />
-          <InfoRow
-            icon={Gauge}
-            label={isMobile ? 'Velocidad movil' : 'Velocidad'}
-            value={`${Math.round(vehicle.speed)} km/h`}
-          />
+          {!isMobile && (
+            <InfoRow
+              icon={Gauge}
+              label="Velocidad"
+              value={`${Math.round(vehicle.speed)} km/h`}
+            />
+          )}
         </div>
 
         <InfoRow icon={Clock} label="Ultima actualizacion" value={timeLabel} />
@@ -128,8 +134,8 @@ export function VehicleMapPanel({ vehicle, onClose }: Props) {
               <InfoRow
                 icon={Battery}
                 label="Bateria"
-                value={vehicle.batteryPct != null ? `${vehicle.batteryPct}%` : 'Sin dato'}
-                valueClass={vehicle.batteryPct != null && vehicle.batteryPct <= 20 ? 'text-red-300' : 'text-white'}
+                value={batteryLabel}
+                valueClass={vehicle.batteryPct == null ? 'text-white/50' : vehicle.batteryPct <= 20 ? 'text-red-300' : 'text-white'}
               />
             ) : (
               <>

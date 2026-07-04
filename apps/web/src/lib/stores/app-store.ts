@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { User, Company, Plan, DeviceSourceType, MobilePlatform, MapAssetFilter, VehicleType } from '@gps-saas/types'
 import { MEXICO_DASHBOARD_VIEW } from '@/lib/map/map-viewport'
+import type { MapStyle } from '@/lib/map/tiles'
 
 type MapVehicle = {
   vehicleId: string
@@ -22,6 +23,11 @@ type MapVehicle = {
   deviceSource?: DeviceSourceType
   mobilePlatform?: MobilePlatform | null
   batteryPct?: number | null
+}
+
+function normalizeMapVehicle(vehicle: MapVehicle): MapVehicle {
+  if (vehicle.deviceSource !== 'mobile') return vehicle
+  return { ...vehicle, ignition: true }
 }
 
 interface AppState {
@@ -72,7 +78,7 @@ interface MapState {
   filter: 'all' | 'online' | 'offline' | 'moving' | 'stopped'
   assetFilter: MapAssetFilter
   groupFilter: string | 'all'
-  mapStyle: 'hybrid' | 'satellite' | 'streets'
+  mapStyle: MapStyle
 
   setVehicleGroups: (groups: MapState['vehicleGroups']) => void
 
@@ -84,7 +90,7 @@ interface MapState {
   setFilter: (filter: MapState['filter']) => void
   setAssetFilter: (assetFilter: MapState['assetFilter']) => void
   setGroupFilter: (groupId: string | 'all') => void
-  setMapStyle: (style: MapState['mapStyle']) => void
+  setMapStyle: (style: MapStyle) => void
 }
 
 export const useMapStore = create<MapState>()((set, get) => ({
@@ -118,9 +124,9 @@ export const useMapStore = create<MapState>()((set, get) => ({
         ) {
           return state
         }
-        newMap.set(vehicleId, { vehicleId, ...data } as MapVehicle)
+        newMap.set(vehicleId, normalizeMapVehicle({ vehicleId, ...data } as MapVehicle))
       } else {
-        newMap.set(vehicleId, { ...existing, ...data })
+        newMap.set(vehicleId, normalizeMapVehicle({ ...existing, ...data }))
       }
       return { vehicles: newMap }
     })
@@ -146,9 +152,9 @@ export const useMapStore = create<MapState>()((set, get) => ({
           ) {
             continue
           }
-          newMap.set(vehicleId, { vehicleId, ...data } as MapVehicle)
+          newMap.set(vehicleId, normalizeMapVehicle({ vehicleId, ...data } as MapVehicle))
         } else {
-          newMap.set(vehicleId, { ...existing, ...data })
+          newMap.set(vehicleId, normalizeMapVehicle({ ...existing, ...data }))
         }
       }
       return { vehicles: newMap }

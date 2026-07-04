@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseServerClient, createSupabaseServiceClient } from '@/lib/supabase/server'
-import { isSuperAdmin } from '@/lib/auth/scope'
 import { setUserGroupAccess } from '@/lib/auth/group-access'
+import { writeAuditLog } from '@/lib/security/server-guards'
 import { z } from 'zod'
 
 const UpdateUserSchema = z.object({
@@ -62,6 +62,9 @@ export async function PATCH(
     if (actor.role !== 'super_admin' && parsed.data.role === 'super_admin') {
       return NextResponse.json({ error: 'No puedes asignar rol Super Admin' }, { status: 403 })
     }
+    if (actor.role !== 'super_admin' && parsed.data.role === 'admin_empresa') {
+      return NextResponse.json({ error: 'No puedes asignar rol Admin Empresa' }, { status: 403 })
+    }
     updates.role = parsed.data.role
     if (parsed.data.role === 'super_admin') updates.company_id = null
   }
@@ -74,7 +77,7 @@ export async function PATCH(
   }
 
   if (Object.keys(updates).length) {
-    const { data, error } = await service.from('users').update(updates).eq('id', params.id).select().single()
+    const { error } = await service.from('users').update(updates).eq('id', params.id).select().single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
@@ -92,11 +95,22 @@ export async function PATCH(
     .eq('id', params.id)
     .single()
 
+  await writeAuditLog(service, {
+    companyId: refreshed?.company_id ?? target.company_id,
+    userId: user.id,
+    action: 'user.update',
+    tableName: 'users',
+    recordId: params.id,
+    oldValues: target,
+    newValues: { ...updates, group_ids: parsed.data.group_ids },
+    request,
+  })
+
   return NextResponse.json({ data: refreshed })
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const supabase = createSupabaseServerClient()
@@ -119,6 +133,17 @@ export async function DELETE(
 
   const { error } = await service.from('users').update({ is_active: false }).eq('id', params.id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  await writeAuditLog(service, {
+    companyId: target.company_id,
+    userId: user.id,
+    action: 'user.deactivate',
+    tableName: 'users',
+    recordId: params.id,
+    oldValues: target,
+    newValues: { is_active: false },
+    request,
+  })
 
   return NextResponse.json({ success: true })
 }

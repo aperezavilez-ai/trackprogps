@@ -43,11 +43,12 @@ export function VehicleMarkerCluster({ vehicles, selectedVehicleId, onSelect }: 
     })
     map.addLayer(cluster)
     clusterRef.current = cluster
+    const markers = markersRef.current
 
     return () => {
       map.removeLayer(cluster)
       clusterRef.current = null
-      markersRef.current.clear()
+      markers.clear()
     }
   }, [map])
 

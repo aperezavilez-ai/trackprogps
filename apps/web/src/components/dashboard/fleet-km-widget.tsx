@@ -37,13 +37,13 @@ export function FleetKmWidget() {
   }, [])
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl p-5">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-white border border-gray-200 rounded-xl sm:rounded-2xl p-3 sm:p-5 min-w-0">
+      <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4">
         <div className="flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-gray-500" />
           <h3 className="text-sm font-semibold text-gray-900">Km hoy</h3>
         </div>
-        <span className="text-lg font-bold text-orange-500">
+        <span className="text-base sm:text-lg font-bold text-orange-500 whitespace-nowrap">
           {total.toFixed(0)} km
         </span>
       </div>
@@ -55,7 +55,7 @@ export function FleetKmWidget() {
           ))}
         </div>
       ) : stats.length === 0 ? (
-        <p className="text-xs text-gray-400 text-center py-4">Sin datos de km hoy</p>
+        <p className="text-xs text-gray-400 text-center py-3 sm:py-4">Sin datos de km hoy</p>
       ) : (
         <div className="space-y-2">
           {stats.map((stat, i) => {

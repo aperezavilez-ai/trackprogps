@@ -3,16 +3,18 @@
 import { useEffect, useRef } from 'react'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { useMapStore } from '@/lib/stores/app-store'
-import type { VehiclePosition } from '@gps-saas/types'
+import type { LiveVehicle, VehiclePosition } from '@gps-saas/types'
 
 const IS_DEMO = process.env['NEXT_PUBLIC_DEMO_MODE'] === 'true'
 const BATCH_INTERVAL_MS = 1000
+const POLL_INTERVAL_MS = 8000
 const supabase = createSupabaseBrowserClient()
 
 /** Batch realtime updates — 1 render per second max at 500 devices */
 export function useRealtimeVehicles(companyId: string) {
   const updateVehiclesBatch = useMapStore((s) => s.updateVehiclesBatch)
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  const pollAbortRef = useRef<AbortController | null>(null)
   const pendingRef = useRef(new Map<string, {
     lat: number
     lng: number
@@ -36,6 +38,30 @@ export function useRealtimeVehicles(companyId: string) {
 
     timerRef.current = setInterval(flush, BATCH_INTERVAL_MS)
 
+    const pollLatestPositions = async () => {
+      pollAbortRef.current?.abort()
+      const controller = new AbortController()
+      pollAbortRef.current = controller
+      try {
+        const res = await fetch('/api/map/positions', {
+          cache: 'no-store',
+          signal: controller.signal,
+        })
+        if (!res.ok) return
+        const json = await res.json() as { data?: LiveVehicle[] }
+        const updates = new Map<string, Partial<LiveVehicle>>()
+        for (const vehicle of json.data ?? []) {
+          updates.set(vehicle.vehicle_id, toMapUpdate(vehicle))
+        }
+        updateVehiclesBatch(updates as never)
+      } catch {
+        // Realtime remains active; polling is only a fallback.
+      }
+    }
+
+    void pollLatestPositions()
+    const pollTimer = setInterval(() => void pollLatestPositions(), POLL_INTERVAL_MS)
+
     const channel = supabase
       .channel(`vehicle_positions:${companyId}`)
       .on(
@@ -57,7 +83,7 @@ export function useRealtimeVehicles(companyId: string) {
             heading:    pos.heading,
             ignition:   pos.ignition,
             lastUpdate: pos.recorded_at,
-            batteryPct: pos.battery_lvl ?? null,
+            batteryPct: readBatteryPct(pos),
           })
         }
       )
@@ -66,6 +92,8 @@ export function useRealtimeVehicles(companyId: string) {
     channelRef.current = channel
 
     return () => {
+      pollAbortRef.current?.abort()
+      clearInterval(pollTimer)
       if (timerRef.current) clearInterval(timerRef.current)
       flush()
       if (channelRef.current) {
@@ -73,6 +101,34 @@ export function useRealtimeVehicles(companyId: string) {
       }
     }
   }, [companyId, updateVehiclesBatch])
+}
+
+function toMapUpdate(vehicle: LiveVehicle) {
+  return {
+    lat: vehicle.lat,
+    lng: vehicle.lng,
+    speed: vehicle.speed,
+    heading: vehicle.heading,
+    ignition: vehicle.ignition,
+    lastUpdate: vehicle.last_update,
+    batteryPct: vehicle.battery_pct ?? null,
+    deviceId: vehicle.device_id ?? null,
+    economicNum: vehicle.economic_num,
+    plates: vehicle.plates,
+    vehicleType: vehicle.vehicle_type,
+    deviceSource: vehicle.device_source ?? 'hardware',
+    mobilePlatform: vehicle.mobile_platform ?? null,
+    groupId: vehicle.group_id ?? null,
+    groupName: vehicle.group_name ?? null,
+    ownerName: vehicle.owner_name ?? null,
+    driverName: vehicle.driver_name ?? null,
+  }
+}
+
+function readBatteryPct(pos: VehiclePosition): number | null {
+  const rawBattery = pos.raw_io?.battery_pct
+  if (typeof rawBattery === 'number') return rawBattery
+  return pos.battery_lvl > 0 ? pos.battery_lvl : null
 }
 
 /** @deprecated Usar useAlertsRealtime del AlertsRealtimeProvider */

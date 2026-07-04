@@ -8,7 +8,7 @@ function firstOrNull<T>(value: T | T[] | null | undefined): T | null {
 }
 
 type VehiclePageRow = Vehicle & {
-  device: { id: string; imei: string; model: string; status: string; last_seen: string | null } | null
+  device: { id: string; imei: string; model: string; status: string; last_seen: string | null; source_type?: string | null } | null
   driver: { id: string; full_name: string; phone: string | null } | null
   group: { id: string; name: string; color: string } | null
   position: { vehicle_id: string; lat: number; lng: number; speed: number; ignition: boolean; recorded_at: string } | null
@@ -64,18 +64,23 @@ export default async function VehiclesPage({
       groups = groupRows ?? []
 
       const offset = (page - 1) * perPage
+      const { data: mobileDevices } = await supabase
+        .from('gps_devices')
+        .select('id')
+        .eq('company_id', profile.company_id)
+        .eq('source_type', 'mobile')
+      const mobileDeviceIds = new Set((mobileDevices ?? []).map((device) => device.id))
 
       let query = supabase
         .from('vehicles')
         .select(`
         *,
-        device:gps_devices(id, imei, model, status, last_seen),
+        device:gps_devices(id, imei, model, status, last_seen, source_type),
         driver:drivers(id, full_name, phone),
         group:vehicle_groups(id, name, color)
       `, { count: 'exact' })
         .is('deleted_at', null)
         .order('economic_num')
-        .range(offset, offset + perPage - 1)
 
       query = query.eq('company_id', profile.company_id)
       if (search) query = query.or(`economic_num.ilike.%${search}%,plates.ilike.%${search}%,brand.ilike.%${search}%`)
@@ -83,7 +88,11 @@ export default async function VehiclesPage({
       if (group) query = query.eq('group_id', group)
 
       const result = await query
-      const rows = result.data ?? []
+      const allRows = (result.data ?? []).filter((v) => {
+        const device = firstOrNull(v.device) as { source_type?: string | null } | null
+        return v.device_id == null || (!mobileDeviceIds.has(v.device_id) && device?.source_type !== 'mobile')
+      })
+      const rows = allRows.slice(offset, offset + perPage)
 
       const ids = rows.map(v => v.id)
       const { data: positions } = ids.length
@@ -103,7 +112,7 @@ export default async function VehiclesPage({
         position: posMap.get(v.id) ?? null,
       })) as VehiclePageRow[]
 
-      count = result.count ?? 0
+      count = allRows.length
     }
   }
 

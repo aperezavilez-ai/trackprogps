@@ -6,16 +6,29 @@ type RegisterInput = {
   userId: string
   deviceUid: string
   platform: 'android' | 'ios'
+  imei?: string | null
+  simIccid?: string | null
+  firmwareVer?: string | null
   brand?: string | null
   model?: string | null
   osVersion?: string | null
   appVersion?: string | null
+  phoneNum?: string | null
+  deviceNotes?: string | null
   pushToken?: string | null
   permissions?: Record<string, boolean>
   trackingIntervalSec?: number
   label?: string
+  deviceOwner?: DeviceOwnerContact
   responsibleContact?: DeviceResponsibleContact
   emergencyContacts?: DeviceEmergencyContact[]
+}
+
+export type DeviceOwnerContact = {
+  name: string
+  phone: string
+  email?: string | null
+  address?: string | null
 }
 
 export type DeviceResponsibleContact = {
@@ -45,40 +58,68 @@ export async function registerOrUpdateMobileDevice(
   supabase: SupabaseClient,
   input: RegisterInput,
 ): Promise<RegisteredMobileDevice> {
-  const imei = mobileImeiFromUid(input.deviceUid)
+  const imei = input.imei?.trim() || mobileImeiFromUid(input.deviceUid)
   const modelLabel = input.platform === 'ios' ? 'iPhone' : 'Android'
   const deviceModel = input.model ?? modelLabel
   const now = new Date().toISOString()
 
-  const { data: existing } = await supabase
+  const { data: existingByUid } = await supabase
     .from('gps_devices')
-    .select('id, tracking_enabled, tracking_interval_sec, mobile_metadata, vehicles(id)')
+    .select('id, phone_num, tracking_enabled, tracking_interval_sec, mobile_metadata, source_type, vehicles(id)')
     .eq('mobile_device_uid', input.deviceUid)
     .maybeSingle()
+  const { data: existingByImei } = existingByUid
+    ? { data: null }
+    : await supabase
+      .from('gps_devices')
+      .select('id, phone_num, tracking_enabled, tracking_interval_sec, mobile_metadata, source_type, vehicles(id)')
+      .eq('imei', imei)
+      .maybeSingle()
+  const existing = existingByUid ?? existingByImei
+
+  if (existing && existing.source_type !== 'mobile') {
+    throw new Error('Este IMEI ya pertenece a un GPS vehicular registrado')
+  }
 
   const existingMetadata = isPlainObject(existing?.mobile_metadata) ? existing.mobile_metadata : {}
+  const manuallyDisabled = isManualTrackingDisabled(existingMetadata)
   const metadata = {
     ...existingMetadata,
+    sim_iccid: input.simIccid ?? existingMetadata.sim_iccid ?? null,
+    firmware_ver: input.firmwareVer ?? input.osVersion ?? existingMetadata.firmware_ver ?? null,
     brand: input.brand ?? null,
     model: input.model ?? null,
     os_version: input.osVersion ?? null,
     app_version: input.appVersion ?? null,
+    device_notes: input.deviceNotes ?? existingMetadata.device_notes ?? null,
     push_token: input.pushToken ?? null,
     permissions: input.permissions ?? {},
+    device_owner: input.deviceOwner ?? existingMetadata.device_owner ?? null,
     responsible_contact: input.responsibleContact ?? existingMetadata.responsible_contact ?? null,
     emergency_contacts: input.emergencyContacts ?? existingMetadata.emergency_contacts ?? [],
+    ...(!manuallyDisabled ? {
+      tracking_disabled_reason: null,
+      tracking_disabled_at: null,
+      tracking_disabled_by: null,
+    } : {}),
     updated_at: now,
   }
 
   if (existing) {
+    const trackingEnabled = manuallyDisabled ? existing.tracking_enabled : true
     await supabase
       .from('gps_devices')
       .update({
         assigned_user_id: input.userId,
         mobile_platform: input.platform,
+        mobile_device_uid: input.deviceUid,
         mobile_metadata: metadata,
+        imei,
         model: deviceModel,
-        firmware_ver: input.osVersion ?? null,
+        sim_iccid: input.simIccid ?? null,
+        phone_num: input.phoneNum ?? existing.phone_num ?? null,
+        firmware_ver: input.firmwareVer ?? input.osVersion ?? null,
+        tracking_enabled: trackingEnabled,
         updated_at: now,
       })
       .eq('id', existing.id)
@@ -95,6 +136,7 @@ export async function registerOrUpdateMobileDevice(
         label: input.label,
         brand: input.brand ?? modelLabel,
         model: deviceModel,
+        ownerName: input.deviceOwner?.name,
       })
     }
 
@@ -104,7 +146,7 @@ export async function registerOrUpdateMobileDevice(
       device_id: existing.id,
       vehicle_id: vehicleId,
       imei,
-      tracking_enabled: existing.tracking_enabled,
+      tracking_enabled: trackingEnabled,
       tracking_interval_sec: existing.tracking_interval_sec,
       is_new: false,
     }
@@ -116,9 +158,11 @@ export async function registerOrUpdateMobileDevice(
       company_id: input.companyId,
       imei,
       model: deviceModel,
-      firmware_ver: input.osVersion ?? null,
+      firmware_ver: input.firmwareVer ?? input.osVersion ?? null,
+      sim_iccid: input.simIccid ?? null,
       source_type: 'mobile',
       mobile_platform: input.platform,
+      phone_num: input.phoneNum ?? null,
       assigned_user_id: input.userId,
       mobile_device_uid: input.deviceUid,
       tracking_interval_sec: input.trackingIntervalSec ?? 30,
@@ -140,6 +184,7 @@ export async function registerOrUpdateMobileDevice(
     label: input.label,
     brand: input.brand ?? modelLabel,
     model: deviceModel,
+    ownerName: input.deviceOwner?.name,
   })
 
   await ensureMobileSession(supabase, device.id, input.userId)
@@ -158,6 +203,11 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
 
+function isManualTrackingDisabled(metadata: Record<string, unknown>): boolean {
+  const reason = metadata.tracking_disabled_reason
+  return typeof reason === 'string' && reason.startsWith('manual_')
+}
+
 async function createMobileVehicle(
   supabase: SupabaseClient,
   opts: {
@@ -167,6 +217,7 @@ async function createMobileVehicle(
     label?: string
     brand: string
     model: string
+    ownerName?: string
   },
 ): Promise<string> {
   const { data: userRow } = await supabase
@@ -178,7 +229,7 @@ async function createMobileVehicle(
   const suffix = opts.deviceId.replace(/-/g, '').slice(0, 6).toUpperCase()
   const economicNum = (opts.label ?? `MOV-${suffix}`).slice(0, 20)
   const plates = `M-${suffix}`.slice(0, 15)
-  const ownerName = userRow?.full_name ?? null
+  const ownerName = opts.ownerName?.trim() || userRow?.full_name || null
 
   const { data: defaultGroup } = await supabase
     .from('vehicle_groups')

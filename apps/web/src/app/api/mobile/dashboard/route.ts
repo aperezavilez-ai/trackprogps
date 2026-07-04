@@ -21,7 +21,7 @@ export async function GET() {
     .select(`
       id, imei, model, status, last_seen, mobile_platform, tracking_enabled,
       tracking_interval_sec, mobile_metadata, assigned_user_id,
-      vehicle:vehicles(economic_num, plates, id)
+      vehicle:vehicles(economic_num, plates, id, position:vehicle_positions(lat, lng, recorded_at))
     `)
     .eq('company_id', companyId)
     .eq('source_type', 'mobile')
@@ -29,11 +29,25 @@ export async function GET() {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const list = devices ?? []
+  const list = (devices ?? []).map((device) => {
+    const metadata = device.mobile_metadata && typeof device.mobile_metadata === 'object' && !Array.isArray(device.mobile_metadata)
+      ? device.mobile_metadata as Record<string, unknown>
+      : {}
+    const reason = metadata.tracking_disabled_reason
+    const manuallyPaused = typeof reason === 'string' && reason.startsWith('manual_')
+    const trackingActive = device.tracking_enabled !== false || !manuallyPaused
+    return {
+      ...device,
+      tracking_enabled: trackingActive,
+      status: trackingActive && device.last_seen ? 'online' : device.status,
+    }
+  })
   const stats = {
     total: list.length,
     online: list.filter(d => d.status === 'online').length,
-    offline: list.filter(d => d.status !== 'online').length,
+    offline: list.filter(d => d.status !== 'online' && !d.tracking_enabled).length,
+    authorized: 0,
+    pending_activation: list.filter(d => d.status !== 'online' && d.tracking_enabled && !d.last_seen).length,
     tracking_enabled: list.filter(d => d.tracking_enabled).length,
   }
 

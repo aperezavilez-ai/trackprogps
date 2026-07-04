@@ -10,8 +10,8 @@ export function DashboardMain({ children }: { children: React.ReactNode }) {
   return (
     <main
       className={cn(
-        'flex-1 overflow-auto pb-16 lg:pb-0',
-        isMapPage && 'overflow-hidden p-0 pb-16 lg:p-0'
+        'min-h-0 flex-1 overflow-auto pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] lg:pb-0',
+        isMapPage && 'overflow-hidden p-0 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] lg:p-0 lg:pb-0'
       )}
     >
       {children}

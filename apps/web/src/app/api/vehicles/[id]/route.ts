@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { z } from 'zod'
+import { canAccessCompany, FLEET_WRITE_ROLES, getActorProfile, hasRole, writeAuditLog } from '@/lib/security/server-guards'
 
 const UpdateVehicleSchema = z.object({
   economic_num: z.string().min(1).max(20).optional(),
@@ -25,9 +26,51 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const actor = await getActorProfile(supabase, user.id)
+  if (!hasRole(actor, FLEET_WRITE_ROLES)) {
+    return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+  }
+
+  const { data: currentVehicle, error: currentVehicleError } = await supabase
+    .from('vehicles')
+    .select('id, company_id, driver_id, device_id')
+    .eq('id', params.id)
+    .is('deleted_at', null)
+    .single()
+
+  if (currentVehicleError || !currentVehicle) {
+    return NextResponse.json({ error: currentVehicleError?.message ?? 'Vehicle not found' }, { status: 404 })
+  }
+
+  if (!canAccessCompany(actor!, currentVehicle.company_id)) {
+    return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+  }
+
   const body = await request.json()
   const parsed = UpdateVehicleSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Validation error', details: parsed.error.flatten() }, { status: 422 })
+
+  if (parsed.data.device_id) {
+    const { data: device } = await supabase
+      .from('gps_devices')
+      .select('id, company_id')
+      .eq('id', parsed.data.device_id)
+      .single()
+    if (!device || device.company_id !== currentVehicle.company_id) {
+      return NextResponse.json({ error: 'Dispositivo fuera de la empresa' }, { status: 422 })
+    }
+  }
+
+  if (parsed.data.driver_id) {
+    const { data: driver } = await supabase
+      .from('drivers')
+      .select('id, company_id')
+      .eq('id', parsed.data.driver_id)
+      .single()
+    if (!driver || driver.company_id !== currentVehicle.company_id) {
+      return NextResponse.json({ error: 'Cliente/chofer fuera de la empresa' }, { status: 422 })
+    }
+  }
 
   // If driver_id is changing, record history
   if (parsed.data.driver_id !== undefined) {
@@ -67,13 +110,43 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  await writeAuditLog(supabase, {
+    companyId: currentVehicle.company_id,
+    userId: user.id,
+    action: 'vehicle.update',
+    tableName: 'vehicles',
+    recordId: params.id,
+    oldValues: currentVehicle,
+    newValues: parsed.data,
+    request,
+  })
   return NextResponse.json({ data })
 }
 
-export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   const supabase = createSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const actor = await getActorProfile(supabase, user.id)
+  if (!hasRole(actor, FLEET_WRITE_ROLES)) {
+    return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+  }
+
+  const { data: currentVehicle, error: currentVehicleError } = await supabase
+    .from('vehicles')
+    .select('id, company_id, driver_id, device_id')
+    .eq('id', params.id)
+    .is('deleted_at', null)
+    .single()
+
+  if (currentVehicleError || !currentVehicle) {
+    return NextResponse.json({ error: currentVehicleError?.message ?? 'Vehicle not found' }, { status: 404 })
+  }
+
+  if (!canAccessCompany(actor!, currentVehicle.company_id)) {
+    return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+  }
 
   // Soft delete
   const { error } = await supabase
@@ -82,5 +155,14 @@ export async function DELETE(_request: NextRequest, { params }: { params: { id: 
     .eq('id', params.id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  await writeAuditLog(supabase, {
+    companyId: currentVehicle.company_id,
+    userId: user.id,
+    action: 'vehicle.delete',
+    tableName: 'vehicles',
+    recordId: params.id,
+    oldValues: currentVehicle,
+    request,
+  })
   return NextResponse.json({ success: true })
 }

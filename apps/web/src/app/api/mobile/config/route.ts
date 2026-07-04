@@ -97,6 +97,33 @@ export async function PATCH(request: NextRequest) {
     update.tracking_interval_sec = parsed.data.tracking_interval_sec
   }
 
+  if (parsed.data.tracking_enabled !== undefined) {
+    const { data: current } = await service
+      .from('gps_devices')
+      .select('mobile_metadata')
+      .eq('id', device.deviceId)
+      .single()
+    const metadata = current?.mobile_metadata && typeof current.mobile_metadata === 'object' && !Array.isArray(current.mobile_metadata)
+      ? current.mobile_metadata as Record<string, unknown>
+      : {}
+
+    if (parsed.data.tracking_enabled) {
+      update.mobile_metadata = {
+        ...metadata,
+        tracking_disabled_reason: null,
+        tracking_disabled_at: null,
+        tracking_disabled_by: null,
+      }
+    } else {
+      update.mobile_metadata = {
+        ...metadata,
+        tracking_disabled_reason: 'manual_config',
+        tracking_disabled_at: new Date().toISOString(),
+        tracking_disabled_by: user.id,
+      }
+    }
+  }
+
   const { data, error } = await service
     .from('gps_devices')
     .update(update)

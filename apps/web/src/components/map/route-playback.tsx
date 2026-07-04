@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { APIProvider, Map, Polyline, AdvancedMarker, useMap } from '@vis.gl/react-google-maps'
-import { Play, Pause, RotateCcw, Download, Car, Fuel, Battery, Signal, Satellite } from 'lucide-react'
+import { Play, Pause, RotateCcw, Download, Car, Fuel, Battery, Signal, Satellite, MapPin, Clock, Smartphone } from 'lucide-react'
 import { estimateFuelLiters, type FuelVehicleContext } from '@/lib/map/fuel-utils'
 
 interface RoutePoint {
@@ -32,6 +32,16 @@ interface RouteStats {
   avg_speed: number
 }
 
+interface RouteStop {
+  id: string
+  lat: number
+  lng: number
+  started_at: string
+  ended_at: string
+  duration_min: number
+  point_count: number
+}
+
 interface RoutePlaybackProps {
   vehicleId: string
   vehicleName: string
@@ -39,6 +49,7 @@ interface RoutePlaybackProps {
   compact?: boolean
   autoLoadToday?: boolean
   initialCenter?: { lat: number; lng: number }
+  deviceSource?: 'mobile' | 'hardware'
 }
 
 const SPEED_PRESETS = [
@@ -86,6 +97,15 @@ function headingLabel(deg: number) {
   const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO']
   const idx = Math.round(((deg % 360) + 360) % 360 / 45) % 8
   return dirs[idx] ?? 'N'
+}
+
+function formatStopRange(stop: RouteStop) {
+  const format = (value: string) => new Date(value).toLocaleTimeString('es-MX', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+
+  return `${format(stop.started_at)} - ${format(stop.ended_at)}`
 }
 
 function lerpAngle(a: number, b: number, t: number) {
@@ -138,6 +158,7 @@ function VehicleInfoTooltip({
   segmentKm,
   fuelProfile,
   compact,
+  isMobile,
 }: {
   vehicleName: string
   point: RoutePoint
@@ -146,12 +167,13 @@ function VehicleInfoTooltip({
   segmentKm: number
   fuelProfile: FuelVehicleContext | null
   compact?: boolean
+  isMobile: boolean
 }) {
   const fuelEst = segmentKm > 0 ? estimateFuelLiters(segmentKm, fuelProfile) : null
 
   return (
     <div
-      className={`relative mb-1.5 rounded-xl border border-white/70 bg-white/88 backdrop-blur-md shadow-lg text-gray-800 pointer-events-none ${
+      className={`relative mt-1.5 rounded-xl border border-white/70 bg-white/88 backdrop-blur-md shadow-lg text-gray-800 pointer-events-none ${
         compact ? 'px-2.5 py-2 min-w-[180px] max-w-[220px] text-[10px]' : 'px-3 py-2.5 min-w-[210px] max-w-[280px] text-xs'
       }`}
     >
@@ -160,7 +182,7 @@ function VehicleInfoTooltip({
       </div>
       <div className="space-y-1">
         <Row label="Velocidad" value={`${Math.round(point.speed)} km/h`} highlight />
-        <Row
+        {!isMobile && <Row
           label="Combustible"
           value={
             point.fuel_level_pct != null
@@ -170,7 +192,7 @@ function VehicleInfoTooltip({
                 : '—'
           }
           icon={<Fuel className="w-3 h-3 text-orange-500" />}
-        />
+        />}
         <Row label="Rumbo" value={`${headingLabel(point.heading)} (${Math.round(point.heading)}°)`} />
         <Row
           label="Fecha / hora"
@@ -179,8 +201,8 @@ function VehicleInfoTooltip({
           })}
         />
         <Row
-          label="Motor"
-          value={point.ignition ? 'Encendido' : 'Apagado'}
+          label={isMobile ? 'Movimiento' : 'Motor'}
+          value={isMobile ? (point.speed > 1 ? 'En movimiento' : 'Detenido') : (point.ignition ? 'Encendido' : 'Apagado')}
           valueClass={point.ignition ? 'text-green-600' : 'text-gray-500'}
         />
         {point.odometer > 0 && (
@@ -190,12 +212,12 @@ function VehicleInfoTooltip({
           <Row label="Altitud" value={`${Math.round(point.altitude)} m`} />
         )}
         <Row
-          label="Señal GSM"
+          label={isMobile ? 'Senal movil' : 'Señal GSM'}
           value={`${point.gsm_signal}%`}
           icon={<Signal className="w-3 h-3 text-blue-500" />}
         />
         <Row
-          label="Batería GPS"
+          label={isMobile ? 'Bateria movil' : 'Batería GPS'}
           value={`${point.battery_lvl}%`}
           icon={<Battery className="w-3 h-3 text-emerald-600" />}
         />
@@ -205,10 +227,6 @@ function VehicleInfoTooltip({
         <Row label="Coordenadas" value={`${point.lat.toFixed(5)}, ${point.lng.toFixed(5)}`} muted />
         <Row label="Punto" value={`${pointIndex + 1} / ${totalPoints}`} muted />
       </div>
-      <div
-        className="absolute left-1/2 -bottom-2 -translate-x-1/2 w-0 h-0 border-l-[7px] border-r-[7px] border-t-[8px] border-l-transparent border-r-transparent border-t-white/88"
-        aria-hidden
-      />
     </div>
   )
 }
@@ -241,20 +259,28 @@ function Row({
 
 function PlaybackMapContent({
   points,
+  stops,
   playProgress,
   playedCount,
   vehicleName,
   compact,
   segmentKm,
   fuelProfile,
+  selectedStopId,
+  onSelectStop,
+  isMobile,
 }: {
   points: RoutePoint[]
+  stops: RouteStop[]
   playProgress: number
   playedCount: number
   vehicleName: string
   compact?: boolean
   segmentKm: number
   fuelProfile: FuelVehicleContext | null
+  selectedStopId: string | null
+  onSelectStop: (stop: RouteStop) => void
+  isMobile: boolean
 }) {
   const currentPoint = interpolatePoint(points, playProgress)
   const playedPoints = points.slice(0, playedCount + 1)
@@ -283,8 +309,30 @@ function PlaybackMapContent({
           <div className="w-5 h-5 bg-red-500 rounded-full border-2 border-white shadow flex items-center justify-center text-white text-[10px] font-bold">B</div>
         </AdvancedMarker>
       )}
+      {stops.map((stop, index) => (
+        <AdvancedMarker key={stop.id} position={{ lat: stop.lat, lng: stop.lng }}>
+          <button
+            type="button"
+            onClick={() => onSelectStop(stop)}
+            className={`w-7 h-7 rounded-full border-2 shadow-lg flex items-center justify-center text-[11px] font-bold transition ${
+              selectedStopId === stop.id
+                ? 'bg-blue-600 text-white border-white scale-110'
+                : 'bg-white text-blue-700 border-blue-500 hover:bg-blue-50'
+            }`}
+            title={`Parada ${index + 1}: ${stop.duration_min} min`}
+          >
+            {index + 1}
+          </button>
+        </AdvancedMarker>
+      ))}
       <AdvancedMarker position={{ lat: currentPoint.lat, lng: currentPoint.lng }}>
         <div className="flex flex-col items-center">
+          <div
+            className="flex items-center justify-center w-10 h-10 rounded-full border-2 border-white shadow-xl bg-orange-500 text-white transition-transform duration-100"
+            style={{ transform: `rotate(${currentPoint.heading}deg)` }}
+          >
+            {isMobile ? <Smartphone className="w-5 h-5" /> : <Car className="w-5 h-5" />}
+          </div>
           <VehicleInfoTooltip
             vehicleName={vehicleName}
             point={currentPoint}
@@ -293,13 +341,8 @@ function PlaybackMapContent({
             segmentKm={segmentKm}
             fuelProfile={fuelProfile}
             compact={compact}
+            isMobile={isMobile}
           />
-          <div
-            className="flex items-center justify-center w-10 h-10 rounded-full border-2 border-white shadow-xl bg-orange-500 text-white transition-transform duration-100"
-            style={{ transform: `rotate(${currentPoint.heading}deg)` }}
-          >
-            <Car className="w-5 h-5" />
-          </div>
         </div>
       </AdvancedMarker>
     </>
@@ -313,15 +356,18 @@ export function RoutePlayback({
   compact = false,
   autoLoadToday = false,
   initialCenter = { lat: 19.4326, lng: -99.1332 },
+  deviceSource = 'hardware',
 }: RoutePlaybackProps) {
   const initial = todayRange()
   const [points, setPoints] = useState<RoutePoint[]>([])
+  const [stops, setStops] = useState<RouteStop[]>([])
   const [stats, setStats] = useState<RouteStats | null>(null)
   const [fuelProfile, setFuelProfile] = useState<FuelVehicleContext | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
   const [playProgress, setPlayProgress] = useState(0)
   const [speedPreset, setSpeedPreset] = useState<number>(SPEED_PRESETS[1].value)
+  const [selectedStopId, setSelectedStopId] = useState<string | null>(null)
   const [dateFrom, setDateFrom] = useState(initial.from)
   const [dateTo, setDateTo] = useState(initial.to)
   const rafRef = useRef<number>(0)
@@ -349,9 +395,11 @@ export function RoutePlayback({
         fuel_level_pct: p.fuel_level_pct ?? null,
       }))
       setPoints(loaded)
+      setStops(json.data?.fixed_locations ?? [])
       setStats(json.data?.stats ?? null)
       setFuelProfile(json.data?.fuel_profile ?? null)
       setPlayProgress(0)
+      setSelectedStopId(null)
     } finally {
       setIsLoading(false)
     }
@@ -381,9 +429,11 @@ export function RoutePlayback({
         fuel_level_pct: p.fuel_level_pct ?? null,
       }))
       setPoints(loaded)
+      setStops(json.data?.fixed_locations ?? [])
       setStats(json.data?.stats ?? null)
       setFuelProfile(json.data?.fuel_profile ?? null)
       setPlayProgress(0)
+      setSelectedStopId(null)
     } finally {
       setIsLoading(false)
     }
@@ -444,6 +494,29 @@ export function RoutePlayback({
   const playedCount = Math.floor(playProgress)
   const scrubPercent = points.length > 1 ? (playProgress / (points.length - 1)) * 100 : 0
   const segmentKm = stats?.distance_km ?? 0
+  const isMobile = deviceSource === 'mobile'
+
+  const jumpToStop = useCallback((stop: RouteStop) => {
+    pause()
+    setSelectedStopId(stop.id)
+    if (!points.length) return
+
+    const targetTime = (
+      new Date(stop.started_at).getTime() + new Date(stop.ended_at).getTime()
+    ) / 2
+
+    let bestIndex = 0
+    let bestDelta = Number.POSITIVE_INFINITY
+    points.forEach((point, index) => {
+      const delta = Math.abs(new Date(point.recorded_at).getTime() - targetTime)
+      if (delta < bestDelta) {
+        bestDelta = delta
+        bestIndex = index
+      }
+    })
+
+    setPlayProgress(bestIndex)
+  }, [pause, points])
 
   const exportData = () => {
     const csv = [
@@ -507,11 +580,11 @@ export function RoutePlayback({
             { label: 'Distancia', value: `${stats.distance_km} km` },
             { label: 'Duración', value: `${stats.duration_min} min` },
             { label: 'Vel. máx', value: `${stats.max_speed} km/h` },
-            ...(stats.fuel_liters_est != null && stats.fuel_liters_est > 0
+            ...(!isMobile && stats.fuel_liters_est != null && stats.fuel_liters_est > 0
               ? [{ label: 'Combustible est.', value: `~${stats.fuel_liters_est} L` }]
               : []),
             ...(!compact ? [
-              { label: 'Conduciendo', value: `${stats.driving_min} min` },
+              { label: isMobile ? 'Movimiento' : 'Conduciendo', value: `${stats.driving_min} min` },
               { label: 'Detenido', value: `${stats.stopped_min} min` },
               { label: 'Vel. prom', value: `${stats.avg_speed} km/h` },
             ] : []),
@@ -566,7 +639,7 @@ export function RoutePlayback({
               style={{ left: `${scrubPercent}%` }}
             >
               <div className="w-7 h-7 rounded-full bg-orange-500 border-2 border-white shadow-lg flex items-center justify-center text-white">
-                <Car className="w-3.5 h-3.5" />
+                {isMobile ? <Smartphone className="w-3.5 h-3.5" /> : <Car className="w-3.5 h-3.5" />}
               </div>
             </div>
             <input
@@ -586,6 +659,53 @@ export function RoutePlayback({
             <span>{Math.round(playProgress) + 1} / {points.length}</span>
             <span>{points[points.length - 1] ? new Date(points[points.length - 1]!.recorded_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
           </div>
+        </div>
+      )}
+
+      {points.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-xl p-3">
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <div className="flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-blue-600" />
+              <div>
+                <div className="text-sm font-semibold text-gray-900">Ubicaciones fijas</div>
+                <div className="text-xs text-gray-500">
+                  {stops.length ? `${stops.length} paradas detectadas` : 'Sin paradas mayores a 10 min'}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {stops.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:overflow-visible">
+              {stops.map((stop, index) => (
+                <button
+                  key={stop.id}
+                  type="button"
+                  onClick={() => jumpToStop(stop)}
+                  className={`min-w-[180px] text-left border rounded-lg p-2.5 transition ${
+                    selectedStopId === stop.id
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-semibold text-gray-900">Parada {index + 1}</span>
+                    <span className="text-[11px] font-medium text-blue-700 bg-blue-100 rounded-full px-2 py-0.5">
+                      {stop.duration_min} min
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-1">
+                    <Clock className="w-3 h-3" />
+                    {formatStopRange(stop)}
+                  </div>
+                  <div className="text-[11px] text-gray-400 mt-1">
+                    {stop.lat.toFixed(5)}, {stop.lng.toFixed(5)}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -614,12 +734,16 @@ export function RoutePlayback({
             {points.length > 0 && (
               <PlaybackMapContent
                 points={points}
+                stops={stops}
                 playProgress={playProgress}
                 playedCount={playedCount}
                 vehicleName={vehicleName}
                 compact={compact}
                 segmentKm={segmentKm}
                 fuelProfile={fuelProfile}
+                selectedStopId={selectedStopId}
+                onSelectStop={jumpToStop}
+                isMobile={isMobile}
               />
             )}
           </Map>

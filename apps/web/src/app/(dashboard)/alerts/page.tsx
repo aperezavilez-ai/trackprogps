@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { AlertTriangle, Gauge, MapPin, Zap, CheckCircle, Filter } from 'lucide-react'
 import { useAlertsRealtime } from '@/lib/context/alerts-realtime-context'
 import { usePermissions } from '@/lib/context/permissions-context'
@@ -25,6 +25,7 @@ const TYPE_LABELS: Record<string, string> = {
   signal_loss:           'Pérdida de señal',
   battery_low:           'Batería baja',
   maintenance_due:       'Mantenimiento pendiente',
+  sim_balance_due:       'Recarga de chip',
   gps_disconnect:        'Desconexión GPS',
 }
 
@@ -41,7 +42,7 @@ export default function AlertsPage() {
   const [filter, setFilter]         = useState({ severity: '', type: '', unackOnly: true })
   const [page, setPage]             = useState(1)
 
-  async function fetchAlerts(p = 1) {
+  const fetchAlerts = useCallback(async (p = 1) => {
     setLoading(true)
     const params = new URLSearchParams({ page: String(p), per_page: '50' })
     if (filter.severity) params.set('severity', filter.severity)
@@ -52,9 +53,9 @@ export default function AlertsPage() {
     setAlerts(data.data ?? [])
     setTotal(data.count ?? 0)
     setLoading(false)
-  }
+  }, [filter])
 
-  useEffect(() => { void fetchAlerts(page) }, [page, filter])
+  useEffect(() => { void fetchAlerts(page) }, [page, fetchAlerts])
   useAlertsRealtime((newAlert) => {
     setAlerts(prev => [newAlert as AlertWithVehicle, ...prev])
     setTotal(t => t + 1)

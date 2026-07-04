@@ -9,6 +9,7 @@ export function getVehicleColor(speed: number, ignition: boolean) {
 }
 
 type VehicleIconKind = 'car' | 'suv' | 'van' | 'truck' | 'bus' | 'moto' | 'mobile'
+const CAR_TOP_IMAGE_URL = '/images/vehicle-car-top.png?v=2026070339'
 
 const WHITE  = '#FFFFFF'
 const INK    = '#0F172A'
@@ -30,11 +31,11 @@ export function vehicleTypeToIconKind(type?: VehicleType | string | null): Vehic
 }
 
 function vehicleAssetToIconKind(
-  type?: VehicleType | string | null,
+  _type?: VehicleType | string | null,
   deviceSource?: DeviceSourceType | string | null,
 ): VehicleIconKind {
   if (deviceSource === 'mobile') return 'mobile'
-  return vehicleTypeToIconKind(type)
+  return 'car'
 }
 
 function wheel(cx: number, cy: number, r = 3.8): string {
@@ -53,27 +54,22 @@ function carSvg(statusColor: string, opacity: number, selected: boolean): string
   return `
     ${statusRing(statusColor)}
     ${ring}
-    <ellipse cx="24" cy="36" rx="13" ry="4.5" fill="rgba(0,0,0,0.2)"/>
+    <ellipse cx="24" cy="37" rx="15" ry="5" fill="rgba(0,0,0,0.24)"/>
     <g opacity="${opacity}">
-      <!-- carrocería -->
-      <path d="M17 7 C14.5 7 13 9 12.5 11.5 L11.5 17 C11 19 11 25 11.5 27
-        L12.5 32 C13 34.5 14.5 36.5 17 36.5 H31 C33.5 36.5 35 34.5 35.5 32
-        L36.5 27 C37 25 37 19 36.5 17 L35.5 11.5 C35 9 33.5 7 31 7 Z"
-        fill="${WHITE}" stroke="${INK}" stroke-width="2.2" stroke-linejoin="round"/>
-      <!-- cofre -->
-      <path d="M17 7 H31 L29.5 13 H18.5 Z" fill="${WHITE}" stroke="${INK}" stroke-width="1.2"/>
-      <!-- parabrisas -->
-      <path d="M18.5 13 H29.5 L28.5 17.5 H19.5 Z" fill="${GLASS}"/>
-      <!-- techo -->
-      <rect x="19.5" y="17.5" width="9" height="11" rx="2" fill="${GLASS}"/>
-      <!-- cajuela -->
-      <path d="M19 28.5 H29 L30 33 H18 Z" fill="${WHITE}" stroke="${INK}" stroke-width="1"/>
-      <!-- luneta -->
-      <path d="M20 28 H28 L27.5 31.5 H20.5 Z" fill="#334155"/>
-      <!-- luces -->
-      <rect x="13" y="33.5" width="3.5" height="2.5" rx="1" fill="${TAIL}"/>
-      <rect x="31.5" y="33.5" width="3.5" height="2.5" rx="1" fill="${TAIL}"/>
-      ${wheel(14, 12)} ${wheel(34, 12)} ${wheel(14, 32)} ${wheel(34, 32)}
+      <path d="M12 32.5 L13.7 22.2 L16.8 12.5 C17.7 9.7 20 7.8 22.9 7.8 H25.1
+        C28 7.8 30.3 9.7 31.2 12.5 L34.3 22.2 L36 32.5
+        C36.3 34.7 34.6 36.7 32.4 36.7 H15.6 C13.4 36.7 11.7 34.7 12 32.5 Z"
+        fill="${WHITE}" stroke="${INK}" stroke-width="2.4" stroke-linejoin="round"/>
+      <path d="M18 13.2 C18.7 11 20.3 9.8 22.6 9.8 H25.4 C27.7 9.8 29.3 11 30 13.2
+        L31.7 18.2 H16.3 Z" fill="${statusColor}" opacity="0.95" stroke="${INK}" stroke-width="1.2"/>
+      <path d="M16.3 18.2 H31.7 L30.5 25.2 H17.5 Z" fill="${GLASS}"/>
+      <path d="M18 25.2 H30 L31.1 33.5 H16.9 Z" fill="#F8FAFC" stroke="${INK}" stroke-width="1"/>
+      <path d="M20 26.3 H28 L28.8 31.3 H19.2 Z" fill="#334155"/>
+      <path d="M13.5 22.5 L17 20.5" stroke="${INK}" stroke-width="1.4" stroke-linecap="round"/>
+      <path d="M34.5 22.5 L31 20.5" stroke="${INK}" stroke-width="1.4" stroke-linecap="round"/>
+      <rect x="14.1" y="33.1" width="4.2" height="2.6" rx="1" fill="${TAIL}"/>
+      <rect x="29.7" y="33.1" width="4.2" height="2.6" rx="1" fill="${TAIL}"/>
+      ${wheel(13.5, 15, 3.6)} ${wheel(34.5, 15, 3.6)} ${wheel(13.5, 32.8, 3.9)} ${wheel(34.5, 32.8, 3.9)}
     </g>
   `
 }
@@ -199,6 +195,10 @@ function vehicleSvgMarkup(opts: {
   selected?: boolean
 }) {
   const { kind, color, heading, size, label, showLabel, ignition = true, selected = false } = opts
+  if (kind === 'car') {
+    return carImageMarkup({ color, heading, size, label, showLabel, ignition, selected })
+  }
+
   const body = buildVehicleSvgBody(kind, color, ignition, selected)
 
   const labelHtml = showLabel && label
@@ -217,6 +217,63 @@ function vehicleSvgMarkup(opts: {
         <svg viewBox="0 0 48 48" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
           ${body}
         </svg>
+      </div>
+      ${labelHtml}
+    </div>
+  `
+}
+
+function carImageMarkup(opts: {
+  color: string
+  heading: number
+  size: number
+  label?: string
+  showLabel?: boolean
+  ignition: boolean
+  selected: boolean
+}) {
+  const { color, heading, size, label, showLabel, ignition, selected } = opts
+  const opacity = ignition ? 1 : 0.92
+  const carWidth = Math.round(size * 1.28)
+  const carHeight = Math.round(size * 0.62)
+  const selectedRing = selected
+    ? `<div style="
+        position:absolute;inset:${Math.round(size * 0.06)}px;
+        border:3px solid #2563EB;border-radius:999px;
+        box-shadow:0 0 0 2px rgba(255,255,255,0.9);
+      "></div>`
+    : ''
+  const labelHtml = showLabel && label
+    ? `<div style="
+        position:absolute;bottom:-20px;left:50%;
+        transform:translateX(-50%) rotate(${-heading}deg);
+        background:rgba(15,23,42,0.88);color:#fff;font-size:9px;font-weight:600;
+        padding:2px 6px;border-radius:4px;white-space:nowrap;max-width:112px;
+        overflow:hidden;text-overflow:ellipsis;pointer-events:none;
+      ">${label}</div>`
+    : ''
+
+  return `
+    <div class="vehicle-marker-wrap vehicle-marker-car" style="position:relative;width:${size}px;height:${size}px;">
+      <div style="
+        position:absolute;left:50%;top:50%;width:${Math.round(size * 0.9)}px;height:${Math.round(size * 0.38)}px;
+        transform:translate(-50%,-34%) rotate(${heading}deg);
+        transform-origin:center center;
+        border-radius:999px;background:${color};opacity:0.22;filter:blur(1px);
+      "></div>
+      ${selectedRing}
+      <div style="
+        position:absolute;left:50%;top:50%;
+        width:${carWidth}px;height:${carHeight}px;
+        transform:translate(-50%,-50%) rotate(${heading}deg);
+        transform-origin:center center;
+        display:flex;align-items:center;justify-content:center;
+      ">
+        <img src="${CAR_TOP_IMAGE_URL}" alt="" draggable="false" style="
+          width:100%;height:100%;object-fit:contain;opacity:${opacity};
+          filter:drop-shadow(0 4px 5px rgba(15,23,42,0.38));
+          pointer-events:none;user-select:none;
+        " />
       </div>
       ${labelHtml}
     </div>
@@ -271,6 +328,20 @@ export function createGoogleVehicleIcon(opts: {
 }) {
   const size = opts.selected ? 60 : 52
   const kind = vehicleAssetToIconKind(opts.vehicleType, opts.deviceSource)
+  if (kind === 'car') {
+    const icon: {
+      url: string
+      scaledSize?: google.maps.Size
+      anchor?: google.maps.Point
+    } = { url: CAR_TOP_IMAGE_URL }
+    const maps = globalThis.google?.maps
+    const width = Math.round(size * 1.28)
+    const height = Math.round(size * 0.62)
+    if (typeof maps?.Size === 'function') icon.scaledSize = new maps.Size(width, height)
+    if (typeof maps?.Point === 'function') icon.anchor = new maps.Point(width / 2, height / 2)
+    return icon
+  }
+
   const svg = vehicleSvgString(
     kind,
     opts.color,
@@ -328,12 +399,16 @@ export const FLEET_MAP_STYLES = [
   { featureType: 'transit', stylers: [{ visibility: 'off' }] },
 ]
 
-export function createDevicePinIcon(vehicleType?: VehicleType | string | null) {
-  const kind = vehicleTypeToIconKind(vehicleType)
+export function createDevicePinIcon(
+  vehicleType?: VehicleType | string | null,
+  deviceSource?: DeviceSourceType | string | null,
+) {
+  const kind = vehicleAssetToIconKind(vehicleType, deviceSource)
+  const color = kind === 'mobile' ? '#F97316' : '#2563EB'
   const size = 52
   return L.divIcon({
     className: 'vehicle-marker-icon',
-    html: vehicleSvgMarkup({ kind, color: '#2563EB', heading: 0, size, ignition: true }),
+    html: vehicleSvgMarkup({ kind, color, heading: 0, size, ignition: true }),
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   })

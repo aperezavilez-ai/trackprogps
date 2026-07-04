@@ -82,6 +82,7 @@ export type AlertType =
   | 'ignition_on'
   | 'ignition_off'
   | 'battery_low'
+  | 'sim_balance_due'
 
 export type AlertSeverity = 'low' | 'medium' | 'high' | 'critical'
 

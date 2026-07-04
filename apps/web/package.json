@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.24.0",
+    "@gps-saas/types": "*",
     "@googlemaps/js-api-loader": "^1.16.6",
     "@hookform/resolvers": "^3.6.0",
     "@radix-ui/react-avatar": "^1.1.0",

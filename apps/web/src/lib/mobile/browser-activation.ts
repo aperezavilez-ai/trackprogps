@@ -24,6 +24,7 @@ type ActiveMobileTracking = {
   deviceUid: string
   intervalSec: number
   updated_at: string
+  last_resume_at?: string
 }
 
 declare global {
@@ -144,14 +145,14 @@ export async function activateBrowserMobileTracking(options: {
     telemetrySent,
   }))
 
-  if (registered && telemetrySent) {
+  if (registered) {
     await startBrowserMobileTelemetry({
       deviceId: resolvedDeviceId,
       deviceUid,
       intervalSec: trackingIntervalSec,
     }, {
       initialPosition: position ?? undefined,
-    })
+    }).catch(() => {})
   }
 
   return {
@@ -170,14 +171,47 @@ export function resumeBrowserMobileTelemetry() {
   if (!isMobileBrowserPlatform()) return
 
   try {
-    const stored = localStorage.getItem(ACTIVE_TRACKING_KEY)
-    if (!stored) return
-    const parsed = JSON.parse(stored) as ActiveMobileTracking
+    const parsed = getStoredActiveTracking()
     if (!parsed.deviceId && !parsed.deviceUid) return
     void startBrowserMobileTelemetry(parsed, { auto: true })
   } catch {
-    localStorage.removeItem(ACTIVE_TRACKING_KEY)
+    // Keep the authorization on transient storage parse issues; a manual re-activation can repair it.
   }
+}
+
+function getStoredActiveTracking(): ActiveMobileTracking {
+  const stored = localStorage.getItem(ACTIVE_TRACKING_KEY)
+  if (stored) return JSON.parse(stored) as ActiveMobileTracking
+
+  const deviceUid = localStorage.getItem(DEVICE_UID_KEY) ?? getOrCreateMobileDeviceUid()
+  for (let i = 0; i < localStorage.length; i += 1) {
+    const key = localStorage.key(i)
+    if (!key?.startsWith('trackpro_mobile_activation:')) continue
+    const value = JSON.parse(localStorage.getItem(key) ?? 'null') as { registered?: boolean } | null
+    if (!value?.registered) continue
+    if (key.startsWith('trackpro_mobile_activation:device:')) {
+      return {
+        deviceId: key.replace('trackpro_mobile_activation:device:', ''),
+        deviceUid,
+        intervalSec: 30,
+        updated_at: new Date().toISOString(),
+      }
+    }
+    if (key.startsWith('trackpro_mobile_activation:uid:')) {
+      return {
+        deviceUid: key.replace('trackpro_mobile_activation:uid:', ''),
+        intervalSec: 30,
+        updated_at: new Date().toISOString(),
+      }
+    }
+  }
+
+  const legacy = JSON.parse(localStorage.getItem('trackpro_mobile_permissions') ?? 'null') as { registered?: boolean } | null
+  if (legacy?.registered) {
+    return { deviceUid, intervalSec: 30, updated_at: new Date().toISOString() }
+  }
+
+  return { deviceUid: '', intervalSec: 30, updated_at: new Date().toISOString() }
 }
 
 async function startBrowserMobileTelemetry(input: {
@@ -201,6 +235,7 @@ async function startBrowserMobileTelemetry(input: {
     deviceUid: input.deviceUid,
     intervalSec,
     updated_at: new Date().toISOString(),
+    last_resume_at: options.auto ? new Date().toISOString() : undefined,
   }
   localStorage.setItem(ACTIVE_TRACKING_KEY, JSON.stringify(active))
 
@@ -231,6 +266,15 @@ async function startBrowserMobileTelemetry(input: {
         { ...options, initialPosition: position },
       )
     }
+  }
+
+  if (!latestPosition && permission !== 'prompt') {
+    requestLocation()
+      .then((position) => {
+        latestPosition = position
+        void sendPosition(position)
+      })
+      .catch(() => {})
   }
 
   if ('geolocation' in navigator && navigator.geolocation.watchPosition) {
@@ -285,7 +329,6 @@ function stopBrowserMobileTelemetry() {
     navigator.geolocation.clearWatch(window.__trackproMobileTelemetryWatchId)
     window.__trackproMobileTelemetryWatchId = undefined
   }
-  localStorage.removeItem(ACTIVE_TRACKING_KEY)
 }
 
 async function getLocationPermissionState(): Promise<PermissionState | null> {
@@ -303,6 +346,7 @@ async function sendMobileTelemetryPoint(
   ids: { deviceId?: string; deviceUid: string },
   recordedAt = new Date(position.timestamp).toISOString(),
 ): Promise<{ ok: boolean; trackingIntervalSec?: number }> {
+  const battery = await getBrowserBattery()
   const telemetryRes = await fetch('/api/mobile/telemetry', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -319,6 +363,8 @@ async function sendMobileTelemetryPoint(
         gps_enabled: true,
         internet_available: navigator.onLine,
         connection_type: getConnectionType(),
+        battery_pct: battery?.pct ?? null,
+        battery_charging: battery?.charging ?? null,
         activity: 'unknown',
         is_moving: false,
         mock_location: false,
@@ -386,4 +432,21 @@ function getConnectionType(): string | null {
   }).connection
 
   return connection?.type ?? connection?.effectiveType ?? null
+}
+
+async function getBrowserBattery(): Promise<{ pct: number; charging: boolean | null } | null> {
+  const nav = navigator as Navigator & {
+    getBattery?: () => Promise<{ level?: number; charging?: boolean }>
+  }
+  if (typeof nav.getBattery !== 'function') return null
+  try {
+    const battery = await nav.getBattery()
+    if (typeof battery.level !== 'number') return null
+    return {
+      pct: Math.max(0, Math.min(100, Math.round(battery.level * 100))),
+      charging: typeof battery.charging === 'boolean' ? battery.charging : null,
+    }
+  } catch {
+    return null
+  }
 }

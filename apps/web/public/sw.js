@@ -1,5 +1,5 @@
 // Solo notificaciones push — sin interceptar navegación (evita ERR_FAILED por caché rota)
-const CACHE_VERSION = 'trackpro-pwa-v3'
+const CACHE_VERSION = 'trackpro-pwa-v44'
 
 self.addEventListener('install', (event) => {
   self.skipWaiting()
@@ -8,8 +8,21 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k)))).then(() => self.clients.claim()),
+    caches.keys()
+      .then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
+      .then(() => clients.matchAll({ type: 'window', includeUncontrolled: true }))
+      .then((clientList) => Promise.all(clientList.map((client) => {
+        if (!client.url || !client.url.startsWith(self.location.origin)) return undefined
+        return client.navigate(client.url)
+      }))),
   )
+})
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting()
+  }
 })
 
 self.addEventListener('push', (event) => {

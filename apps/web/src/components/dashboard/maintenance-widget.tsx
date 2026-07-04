@@ -12,7 +12,7 @@ export function MaintenanceWidget() {
 
   if (isLoading) {
     return (
-      <div className="bg-white border border-gray-200 rounded-2xl p-5 animate-pulse">
+      <div className="bg-white border border-gray-200 rounded-xl sm:rounded-2xl p-3 sm:p-5 animate-pulse">
         <div className="h-4 bg-gray-100 rounded w-40 mb-4" />
         <div className="space-y-3">
           {[1, 2, 3].map(i => <div key={i} className="h-12 bg-gray-50 rounded-xl" />)}
@@ -23,12 +23,12 @@ export function MaintenanceWidget() {
 
   if (!items?.length) {
     return (
-      <div className="bg-white border border-gray-200 rounded-2xl p-5">
-        <div className="flex items-center gap-2 mb-4">
+      <div className="bg-white border border-gray-200 rounded-xl sm:rounded-2xl p-3 sm:p-5">
+        <div className="flex items-center gap-2 mb-3 sm:mb-4">
           <Wrench className="w-4 h-4 text-gray-400" />
           <h3 className="text-sm font-semibold text-gray-900">Mantenimiento</h3>
         </div>
-        <div className="text-center py-4">
+        <div className="text-center py-3 sm:py-4">
           <div className="text-2xl mb-1">✅</div>
           <p className="text-xs text-gray-500">Sin mantenimientos pendientes</p>
         </div>
@@ -37,14 +37,14 @@ export function MaintenanceWidget() {
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl p-5">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-white border border-gray-200 rounded-xl sm:rounded-2xl p-3 sm:p-5 min-w-0">
+      <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4">
         <div className="flex items-center gap-2">
           <Wrench className="w-4 h-4 text-gray-500" />
           <h3 className="text-sm font-semibold text-gray-900">Mantenimiento próximo</h3>
         </div>
         {overdue.length > 0 && (
-          <span className="flex items-center gap-1 text-xs bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded-full font-medium">
+          <span className="flex shrink-0 items-center gap-1 text-xs bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded-full font-medium">
             <AlertTriangle className="w-3 h-3" />
             {overdue.length} vencido{overdue.length > 1 ? 's' : ''}
           </span>
@@ -53,7 +53,7 @@ export function MaintenanceWidget() {
 
       <div className="space-y-2">
         {[...overdue, ...upcoming].slice(0, 5).map((item, i) => (
-          <div key={i} className={`flex items-start gap-3 p-3 rounded-xl border text-xs ${
+          <div key={i} className={`flex items-start gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl border text-xs ${
             item.is_overdue
               ? 'bg-red-50 border-red-100'
               : item.days_remaining !== null && item.days_remaining <= 7

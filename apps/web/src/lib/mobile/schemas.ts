@@ -14,6 +14,13 @@ export const ResponsibleContactSchema = z.object({
   email: z.string().email().max(160).nullable().optional(),
 })
 
+export const DeviceOwnerSchema = z.object({
+  name: z.string().min(1).max(120),
+  phone: z.string().min(7).max(30),
+  email: z.string().email().max(160).nullable().optional(),
+  address: z.string().max(240).nullable().optional(),
+})
+
 export const MobileRegisterSchema = z.object({
   device_uid: z.string().min(8).max(64),
   platform: z.enum(['android', 'ios']),
@@ -99,7 +106,17 @@ export const AdminMobileRegisterSchema = z.object({
   assigned_user_id: z.string().uuid(),
   platform: z.enum(['android', 'ios']),
   label: z.string().min(1).max(40).optional(),
+  imei: z.string().length(15).regex(/^\d+$/, 'IMEI must be 15 digits').optional(),
+  sim_iccid: z.string().max(30).nullable().optional(),
+  phone_num: z.string().max(20).optional(),
+  firmware_ver: z.string().max(20).nullable().optional(),
+  brand: z.string().max(60).nullable().optional(),
+  model: z.string().max(60).nullable().optional(),
+  os_version: z.string().max(30).nullable().optional(),
+  app_version: z.string().max(20).nullable().optional(),
+  device_notes: z.string().max(1000).nullable().optional(),
   tracking_interval_sec: z.number().int().min(5).max(3600).default(30),
+  device_owner: DeviceOwnerSchema.optional(),
   responsible_contact: ResponsibleContactSchema.optional(),
   emergency_contacts: z.array(EmergencyContactSchema).max(5).optional(),
 })

@@ -48,5 +48,6 @@ coverage/
 # Misc
 *.tgz
 .cache/
+.editcore/
 
 .vercel

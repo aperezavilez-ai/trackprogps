@@ -10,6 +10,15 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
 
 export function isStandalonePwa(): boolean {
   if (typeof window === 'undefined') return false
-  return window.matchMedia('(display-mode: standalone)').matches
-    || (window.navigator as Navigator & { standalone?: boolean }).standalone === true
+  const navigatorWithStandalone = window.navigator as Navigator & { standalone?: boolean }
+  const displayModes = ['standalone', 'fullscreen', 'minimal-ui', 'window-controls-overlay']
+  const displayModeStandalone = displayModes.some(mode => window.matchMedia(`(display-mode: ${mode})`).matches)
+
+  return displayModeStandalone
+    || navigatorWithStandalone.standalone === true
+}
+
+export function markPwaDisplayMode() {
+  if (typeof window === 'undefined') return
+  document.documentElement.dataset.trackproPwa = isStandalonePwa() ? 'standalone' : 'browser'
 }

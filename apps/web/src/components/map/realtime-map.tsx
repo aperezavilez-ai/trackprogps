@@ -7,9 +7,10 @@ import {
   Map,
   Marker,
   AdvancedMarker,
+  useMap,
 } from '@vis.gl/react-google-maps'
 import Link from 'next/link'
-import { ChevronUp, Clock3, Gauge, Power, Smartphone, X } from 'lucide-react'
+import { ChevronUp, Clock3, Gauge, Layers, Power, Smartphone, TrafficCone, X } from 'lucide-react'
 import { useMapStore } from '@/lib/stores/app-store'
 import { useRealtimeVehicles } from '@/lib/hooks/use-realtime'
 import {
@@ -27,6 +28,7 @@ import {
   MEXICO_DASHBOARD_VIEW,
 } from '@/lib/map/map-viewport'
 import { SetMexicoViewOnceGoogle } from '@/components/map/set-mexico-view-once-google'
+import { MAP_STYLE_LABELS, type MapStyle } from '@/lib/map/tiles'
 import type { LiveVehicle } from '@gps-saas/types'
 import { GOOGLE_MAPS_MAX_VEHICLES } from '@/lib/constants/limits'
 
@@ -45,6 +47,8 @@ interface RealtimeMapProps {
 }
 
 const USE_GOOGLE = process.env['NEXT_PUBLIC_GOOGLE_MAPS_ENABLED'] === 'true'
+const STREET_VIEW_RIGHT_BOTTOM_POSITION = 9 as google.maps.ControlPosition
+const GOOGLE_MAX_DETAIL_ZOOM = 22
 
 export function RealtimeMap({ companyId, initialVehicles }: RealtimeMapProps) {
   const apiKey = process.env['NEXT_PUBLIC_GOOGLE_MAPS_API_KEY']
@@ -106,6 +110,7 @@ function GoogleMapContent({
   const [showDetailPanel, setShowDetailPanel] = useState(false)
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null)
   const [addressLoading, setAddressLoading] = useState(false)
+  const [trafficEnabled, setTrafficEnabled] = useState(false)
 
   useEffect(() => {
     initialVehicles.forEach((v) => {
@@ -153,6 +158,11 @@ function GoogleMapContent({
       default:        return byAsset
     }
   }, [vehicles, filter, assetFilter, groupFilter])
+
+  const fleetPositions = useMemo(
+    () => filteredVehicles.map((vehicle) => ({ lat: vehicle.lat, lng: vehicle.lng })),
+    [filteredVehicles],
+  )
 
   const selectedVehicle = selectedVehicleId ? vehicles.get(selectedVehicleId) : null
 
@@ -234,19 +244,23 @@ function GoogleMapContent({
   }, [])
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col lg:min-h-[380px]">
+    <div className="trackpro-google-map flex h-full min-h-0 w-full flex-col lg:min-h-[380px]">
       <div className="relative min-h-0 flex-1">
       <Map
         center={camera.center}
         zoom={camera.zoom}
         mapTypeId={mapStyle === 'streets' ? 'roadmap' : mapStyle}
         {...(mapId ? { mapId } : {})}
+        maxZoom={GOOGLE_MAX_DETAIL_ZOOM}
+        minZoom={3}
+        isFractionalZoomEnabled={false}
         gestureHandling="greedy"
         disableDefaultUI
         mapTypeControl={false}
         zoomControl={false}
         fullscreenControl={false}
-        streetViewControl={false}
+        streetViewControl
+        streetViewControlOptions={{ position: STREET_VIEW_RIGHT_BOTTOM_POSITION }}
         rotateControl={false}
         scaleControl={false}
         styles={FLEET_MAP_STYLES}
@@ -259,7 +273,10 @@ function GoogleMapContent({
           if (err) onError()
         }}
       >
-        <SetMexicoViewOnceGoogle applyKey={fleetViewKey} />
+        <GoogleMapHealthCheck onError={onError} />
+        <GoogleStreetViewControlPosition />
+        <GoogleTrafficLayer enabled={trafficEnabled} />
+        <SetMexicoViewOnceGoogle applyKey={fleetViewKey} positions={fleetPositions} />
         <GoogleVehicleTrackLayer vehicleId={selectedVehicleId} />
 
         {filteredVehicles.map((vehicle) => {
@@ -303,8 +320,15 @@ function GoogleMapContent({
 
       </Map>
 
+      <MapQualityControls
+        mapStyle={mapStyle}
+        onChangeStyle={setMapStyle}
+        trafficEnabled={trafficEnabled}
+        onToggleTraffic={() => setTrafficEnabled(v => !v)}
+      />
+
       {selectedVehicle && showDetailPanel && (
-        <div className="fixed inset-x-0 bottom-16 lg:absolute lg:inset-x-auto lg:bottom-4 lg:right-4 z-[1000] pointer-events-auto px-3 lg:px-0 flex justify-center lg:justify-end">
+        <div className="fixed inset-x-0 bottom-[calc(7.75rem+env(safe-area-inset-bottom,0px))] lg:absolute lg:inset-x-auto lg:bottom-4 lg:right-4 z-[1000] pointer-events-auto px-3 lg:px-0 flex justify-center lg:justify-end">
           <VehicleMapPanel
             vehicle={{
               vehicleId:   selectedVehicle.vehicleId,
@@ -330,12 +354,12 @@ function GoogleMapContent({
       )}
 
       {selectedVehicle && !showDetailPanel && (
-        <div className="fixed inset-x-0 bottom-16 lg:absolute lg:inset-x-auto lg:bottom-4 lg:right-4 z-[1000] px-3 lg:px-0 flex justify-center lg:justify-end pointer-events-auto">
+        <div className="fixed inset-x-0 bottom-[calc(7.75rem+env(safe-area-inset-bottom,0px))] lg:absolute lg:inset-x-auto lg:bottom-4 lg:right-4 z-[1000] px-3 lg:px-0 flex justify-center lg:justify-end pointer-events-auto">
           <div className="w-full sm:w-[320px] rounded-2xl border border-white/25 bg-slate-900/90 backdrop-blur-xl shadow-2xl text-white overflow-hidden">
             <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-2 border-b border-white/10">
               <div className="min-w-0">
                 <p className="text-xs text-orange-300 uppercase tracking-wide">{getAssetCardLabel(selectedVehicle)}</p>
-                <p className="font-semibold truncate">{selectedVehicle.economicNum ?? selectedVehicle.vehicleId}</p>
+                <p className="font-semibold truncate">{getAssetTitle(selectedVehicle)}</p>
                 <p className="text-xs text-white/70 truncate">{getAssetSubLabel(selectedVehicle)}</p>
               </div>
               <button
@@ -349,10 +373,10 @@ function GoogleMapContent({
             </div>
             <div className="px-4 py-3 text-xs grid grid-cols-2 gap-2">
               <span className="flex items-center gap-1.5 text-white/80"><Gauge className="w-3.5 h-3.5" /> {Math.round(selectedVehicle.speed)} km/h</span>
-              <span className={`flex items-center gap-1.5 ${selectedVehicle.ignition ? 'text-green-400' : 'text-white/70'}`}>
+              <span className={`flex items-center gap-1.5 ${selectedVehicle.deviceSource === 'mobile' ? selectedVehicle.speed > 2 ? 'text-green-400' : 'text-orange-300' : selectedVehicle.ignition ? 'text-green-400' : 'text-white/70'}`}>
                 {selectedVehicle.deviceSource === 'mobile' ? <Smartphone className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
                 {selectedVehicle.deviceSource === 'mobile'
-                  ? (selectedVehicle.ignition ? 'En movimiento' : 'Sin movimiento')
+                  ? (selectedVehicle.speed > 2 ? 'En movimiento' : 'Estatico')
                   : (selectedVehicle.ignition ? 'Motor ON' : 'Motor OFF')}
               </span>
             </div>
@@ -382,12 +406,12 @@ function GoogleMapContent({
       {selectedVehicle && (
         <div className="absolute left-2 right-2 bottom-2 lg:left-4 lg:right-auto lg:bottom-4 z-20 pointer-events-none">
           <div className="inline-flex max-w-full items-center gap-3 bg-slate-900/85 text-white rounded-xl px-3 py-2 text-xs shadow-lg backdrop-blur">
-            <span className="font-semibold truncate">{selectedVehicle.economicNum ?? selectedVehicle.vehicleId}</span>
+            <span className="font-semibold truncate">{getAssetTitle(selectedVehicle)}</span>
             <span className="flex items-center gap-1 text-white/80"><Gauge className="w-3 h-3" />{Math.round(selectedVehicle.speed)} km/h</span>
-            <span className={`flex items-center gap-1 ${selectedVehicle.ignition ? 'text-green-400' : 'text-white/70'}`}>
+            <span className={`flex items-center gap-1 ${selectedVehicle.deviceSource === 'mobile' ? selectedVehicle.speed > 2 ? 'text-green-400' : 'text-orange-300' : selectedVehicle.ignition ? 'text-green-400' : 'text-white/70'}`}>
               {selectedVehicle.deviceSource === 'mobile' ? <Smartphone className="w-3 h-3" /> : <Power className="w-3 h-3" />}
               {selectedVehicle.deviceSource === 'mobile'
-                ? (selectedVehicle.ignition ? 'MOV' : 'QUIETO')
+                ? (selectedVehicle.speed > 2 ? 'MOV' : 'ESTATICO')
                 : (selectedVehicle.ignition ? 'ON' : 'OFF')}
             </span>
             <span className="hidden sm:flex items-center gap-1 text-white/70">
@@ -405,13 +429,146 @@ function GoogleMapContent({
       <MobileMapControls
         mapStyle={mapStyle}
         onChangeStyle={setMapStyle}
+        trafficEnabled={trafficEnabled}
+        onToggleTraffic={() => setTrafficEnabled(v => !v)}
         onCenterSelected={selectedVehicle ? centerSelectedVehicle : undefined}
         onCenterFleet={centerFleet}
-        onZoomIn={() => setCamera((prev) => ({ ...prev, zoom: Math.min(20, prev.zoom + 1) }))}
+        onZoomIn={() => setCamera((prev) => ({ ...prev, zoom: Math.min(GOOGLE_MAX_DETAIL_ZOOM, Math.floor(prev.zoom) + 1) }))}
         onZoomOut={() => setCamera((prev) => ({ ...prev, zoom: Math.max(4, prev.zoom - 1) }))}
       />
     </div>
   )
+}
+
+function GoogleMapHealthCheck({ onError }: { onError: () => void }) {
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const mapRoot = document.querySelector('.gm-style')
+      if (!mapRoot) {
+        onError()
+        return
+      }
+
+      const hasError = Boolean(mapRoot.querySelector('.gm-err-container, .gm-err-message, .dismissButton'))
+      const hasTiles = Array.from(mapRoot.querySelectorAll('img')).some((img) => {
+        const source = img.getAttribute('src') ?? ''
+        return img.complete && img.naturalWidth > 16 && (
+          source.includes('google') ||
+          source.includes('gstatic') ||
+          source.includes('googleapis')
+        )
+      })
+      const hasVectorCanvas = mapRoot.querySelectorAll('canvas').length > 0
+
+      if (hasError || (!hasTiles && !hasVectorCanvas)) onError()
+    }, 4500)
+
+    return () => window.clearTimeout(timer)
+  }, [onError])
+
+  return null
+}
+
+function MapQualityControls({
+  mapStyle,
+  onChangeStyle,
+  trafficEnabled,
+  onToggleTraffic,
+}: {
+  mapStyle: MapStyle
+  onChangeStyle: (style: MapStyle) => void
+  trafficEnabled?: boolean
+  onToggleTraffic?: () => void
+}) {
+  const styles: MapStyle[] = ['hybrid', 'satellite', 'streets', 'terrain']
+
+  return (
+    <div className="absolute right-3 top-3 z-[1000] hidden max-w-[calc(100%-1.5rem)] items-center gap-1.5 rounded-xl border border-gray-200 bg-white/95 p-1.5 shadow-lg backdrop-blur md:flex">
+      <div className="flex h-8 w-8 items-center justify-center text-gray-500" title="Capas">
+        <Layers className="h-4 w-4" />
+      </div>
+      <div className="flex overflow-hidden rounded-lg border border-gray-200">
+        {styles.map((style) => (
+          <button
+            key={style}
+            type="button"
+            onClick={() => onChangeStyle(style)}
+            className={`px-3 py-1.5 text-xs font-medium transition ${
+              mapStyle === style
+                ? 'bg-orange-500 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            {MAP_STYLE_LABELS[style]}
+          </button>
+        ))}
+      </div>
+      {onToggleTraffic && (
+        <button
+          type="button"
+          onClick={onToggleTraffic}
+          title="Tráfico"
+          className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${
+            trafficEnabled
+              ? 'border-orange-500 bg-orange-500 text-white'
+              : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          <TrafficCone className="h-4 w-4" />
+        </button>
+      )}
+    </div>
+  )
+}
+
+function GoogleStreetViewControlPosition() {
+  useEffect(() => {
+    let cancelled = false
+    let attempts = 0
+
+    const placePegman = () => {
+      if (cancelled) return
+      const pegman = document.querySelector<HTMLElement>('.trackpro-google-map .gm-svpc')
+      const control = pegman?.parentElement
+      if (control) {
+        control.classList.add('trackpro-street-view-control')
+        control.style.position = 'absolute'
+        control.style.top = 'auto'
+        control.style.left = 'auto'
+        control.style.right = '44px'
+        control.style.bottom = '86px'
+        control.style.margin = '0'
+        control.style.transform = 'none'
+        control.style.zIndex = '50'
+        control.style.overflow = 'visible'
+        pegman.style.overflow = 'visible'
+        return
+      }
+
+      attempts += 1
+      if (attempts < 20) window.setTimeout(placePegman, 250)
+    }
+
+    placePegman()
+    return () => { cancelled = true }
+  }, [])
+
+  return null
+}
+
+function GoogleTrafficLayer({ enabled }: { enabled: boolean }) {
+  const map = useMap()
+
+  useEffect(() => {
+    if (!map || !enabled) return
+    const TrafficLayer = globalThis.google?.maps?.TrafficLayer
+    if (!TrafficLayer) return
+    const layer = new TrafficLayer()
+    layer.setMap(map)
+    return () => layer.setMap(null)
+  }, [enabled, map])
+
+  return null
 }
 
 interface VehicleData {
@@ -448,6 +605,11 @@ function formatTimeAgo(iso: string) {
 
 function getAssetCardLabel(vehicle: VehicleData) {
   return vehicle.deviceSource === 'mobile' ? 'Movil seleccionado' : 'Unidad seleccionada'
+}
+
+function getAssetTitle(vehicle: VehicleData) {
+  if (vehicle.deviceSource === 'mobile') return vehicle.ownerName || vehicle.economicNum || 'Movil TrackProGPS'
+  return vehicle.economicNum ?? vehicle.vehicleId
 }
 
 function getAssetSubLabel(vehicle: VehicleData) {

@@ -63,17 +63,17 @@ export function DashboardStats({ stats }: DashboardStatsProps) {
   ]
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
       {cards.map((card) => (
         <div
           key={card.label}
-          className={`${card.bg} ${card.border} border rounded-xl p-4 flex flex-col gap-2`}
+          className={`${card.bg} ${card.border} border rounded-xl p-3 sm:p-4 flex flex-col gap-1.5 sm:gap-2 min-w-0`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-500 font-medium">{card.label}</span>
+            <span className="text-[11px] sm:text-xs text-gray-500 font-medium truncate">{card.label}</span>
             <card.icon className={`w-4 h-4 ${card.color}`} />
           </div>
-          <span className={`text-2xl font-semibold ${card.color}`}>
+          <span className={`text-xl sm:text-2xl font-semibold ${card.color}`}>
             {card.value}
           </span>
         </div>

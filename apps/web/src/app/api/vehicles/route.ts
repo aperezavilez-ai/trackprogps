@@ -34,19 +34,35 @@ export async function GET(request: NextRequest) {
   const status  = searchParams.get('status')
 
   const offset = (page - 1) * perPage
+  const { data: profile } = await supabase
+    .from('users')
+    .select('company_id, role')
+    .eq('id', user.id)
+    .single()
+  if (!profile) return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
+
+  const { data: mobileDevices } = profile.company_id
+    ? await supabase
+        .from('gps_devices')
+        .select('id')
+        .eq('company_id', profile.company_id)
+        .eq('source_type', 'mobile')
+    : { data: [] }
+  const mobileDeviceIds = new Set((mobileDevices ?? []).map((device) => device.id))
 
   let query = supabase
     .from('vehicles')
     .select(`
       *,
-      device:gps_devices(id, imei, model, status, last_seen),
+      device:gps_devices(id, imei, model, status, last_seen, source_type),
       driver:drivers(id, full_name, phone),
       group:vehicle_groups(id, name, color),
       position:vehicle_positions(lat, lng, speed, heading, ignition, recorded_at)
     `, { count: 'exact' })
     .is('deleted_at', null)
     .order('economic_num', { ascending: true })
-    .range(offset, offset + perPage - 1)
+
+  if (profile.company_id) query = query.eq('company_id', profile.company_id)
 
   if (search) {
     const orFilter = buildIlikeOr(
@@ -60,18 +76,23 @@ export async function GET(request: NextRequest) {
     query = query.eq('status', status)
   }
 
-  const { data, count, error } = await query
+  const { data, error } = await query
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
+  const filtered = (data ?? []).filter((v) => {
+    const device = Array.isArray(v.device) ? (v.device[0] ?? null) : v.device
+    return v.device_id == null || (!mobileDeviceIds.has(v.device_id) && device?.source_type !== 'mobile')
+  })
+  const pageRows = filtered.slice(offset, offset + perPage)
 
   return NextResponse.json({
-    data,
-    count,
+    data: pageRows,
+    count: filtered.length,
     page,
     per_page:    perPage,
-    total_pages: Math.ceil((count ?? 0) / perPage),
+    total_pages: Math.ceil(filtered.length / perPage),
   })
 }
 

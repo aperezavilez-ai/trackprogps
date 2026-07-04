@@ -10,7 +10,7 @@ type SupabaseCookie = {
 
 const DASHBOARD_PATHS = [
   '/dashboard', '/map', '/vehicles', '/drivers', '/devices', '/mobile',
-  '/geofences', '/alerts', '/history', '/maintenance', '/reports',
+  '/geofences', '/alerts', '/history', '/trips', '/maintenance', '/reports',
   '/billing', '/settings', '/admin', '/menu',
 ]
 

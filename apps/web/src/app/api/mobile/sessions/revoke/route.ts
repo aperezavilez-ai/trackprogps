@@ -32,6 +32,15 @@ export async function POST(request: NextRequest) {
   }
 
   const now = new Date().toISOString()
+  const { data: device } = await service
+    .from('gps_devices')
+    .select('mobile_metadata')
+    .eq('id', device_id)
+    .eq('company_id', companyId)
+    .single()
+  const metadata = device?.mobile_metadata && typeof device.mobile_metadata === 'object' && !Array.isArray(device.mobile_metadata)
+    ? device.mobile_metadata as Record<string, unknown>
+    : {}
 
   await service
     .from('mobile_sessions')
@@ -41,7 +50,16 @@ export async function POST(request: NextRequest) {
 
   await service
     .from('gps_devices')
-    .update({ tracking_enabled: false, updated_at: now })
+    .update({
+      tracking_enabled: false,
+      mobile_metadata: {
+        ...metadata,
+        tracking_disabled_reason: 'manual_session_revoke',
+        tracking_disabled_at: now,
+        tracking_disabled_by: user.id,
+      },
+      updated_at: now,
+    })
     .eq('id', device_id)
     .eq('company_id', companyId)
 
