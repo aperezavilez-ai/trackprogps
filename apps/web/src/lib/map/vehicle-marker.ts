@@ -16,6 +16,8 @@ const INK    = '#0F172A'
 const GLASS  = '#1E293B'
 const WHEEL  = '#111827'
 const TAIL   = '#DC2626'
+const VEHICLE_MARKER_SIZE = 40
+const VEHICLE_MARKER_SELECTED_SIZE = 46
 
 export function vehicleTypeToIconKind(type?: VehicleType | string | null): VehicleIconKind {
   switch (type) {
@@ -305,7 +307,7 @@ export function createVehicleIcon(opts: {
   ignition?: boolean
 }) {
   const { color, heading, selected, label, vehicleType, deviceSource, ignition = true } = opts
-  const size = selected ? 60 : 52
+  const size = selected ? VEHICLE_MARKER_SELECTED_SIZE : VEHICLE_MARKER_SIZE
   const kind = vehicleAssetToIconKind(vehicleType, deviceSource)
   const markerHeading = kind === 'mobile' ? 0 : heading
 
@@ -326,7 +328,7 @@ export function createGoogleVehicleIcon(opts: {
   deviceSource?: DeviceSourceType | string | null
   ignition?: boolean
 }) {
-  const size = opts.selected ? 60 : 52
+  const size = opts.selected ? VEHICLE_MARKER_SELECTED_SIZE : VEHICLE_MARKER_SIZE
   const kind = vehicleAssetToIconKind(opts.vehicleType, opts.deviceSource)
   if (kind === 'car') {
     const icon: {
@@ -381,7 +383,7 @@ export function createVehicleMarkerHtml(opts: {
   deviceSource?: DeviceSourceType | string | null
   ignition?: boolean
 }) {
-  const size = opts.selected ? 60 : 52
+  const size = opts.selected ? VEHICLE_MARKER_SELECTED_SIZE : VEHICLE_MARKER_SIZE
   const kind = vehicleAssetToIconKind(opts.vehicleType, opts.deviceSource)
   return vehicleSvgMarkup({
     kind,
@@ -405,7 +407,7 @@ export function createDevicePinIcon(
 ) {
   const kind = vehicleAssetToIconKind(vehicleType, deviceSource)
   const color = kind === 'mobile' ? '#F97316' : '#2563EB'
-  const size = 52
+  const size = VEHICLE_MARKER_SIZE
   return L.divIcon({
     className: 'vehicle-marker-icon',
     html: vehicleSvgMarkup({ kind, color, heading: 0, size, ignition: true }),
