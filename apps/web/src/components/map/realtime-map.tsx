@@ -7,6 +7,7 @@ import {
   Map,
   Marker,
   AdvancedMarker,
+  AdvancedMarkerAnchorPoint,
   useMap,
 } from '@vis.gl/react-google-maps'
 import Link from 'next/link'
@@ -296,6 +297,7 @@ function GoogleMapContent({
               <AdvancedMarker
                 key={vehicle.vehicleId}
                 position={{ lat: vehicle.lat, lng: vehicle.lng }}
+                anchorPoint={AdvancedMarkerAnchorPoint.CENTER}
                 zIndex={selected ? 1000 : 1}
                 onClick={(ev) => handleMarkerClick(vehicle.vehicleId, selected, ev)}
               >
