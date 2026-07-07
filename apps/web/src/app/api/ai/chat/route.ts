@@ -5,8 +5,20 @@ import { sanitizeIlikeSearch } from '@/lib/security/sanitize-search'
 import { firstOrNull } from '@/lib/supabase/normalize'
 import { checkRateLimit, rateLimitResponse } from '@/lib/security/rate-limit'
 
+// Ruteado via GafCore API Proxy directo a Claude (NO pool-cheap): este
+// asistente usa tool-use nativo de Anthropic sobre datos de ubicacion en
+// tiempo real y contactos personales (propietario, conductor, contactos de
+// emergencia), asi que se queda en un proveedor confiable con acuerdos de
+// manejo de datos mas claros que los tiers gratis. El proxy reenvia el
+// formato nativo de Anthropic tal cual (sin traduccion) al pasarle
+// baseURL apuntando a /v1/messages.
 const anthropic = new Anthropic({
-  apiKey: process.env['ANTHROPIC_API_KEY'],
+  apiKey: 'gafcore-proxy', // no se usa: el proxy autentica via headers
+  baseURL: 'https://gafcore-api-proxy.vercel.app/api/proxy',
+  defaultHeaders: {
+    'x-project-key': process.env['GAFCORE_PROXY_PROJECT_KEY'] ?? '',
+    'x-provider-id': '608200c4-280d-4c28-b058-7947cc4a0352', // claude
+  },
 })
 
 const SYSTEM_PROMPT = `Eres el asistente inteligente de TrackPro GPS.
@@ -993,7 +1005,7 @@ export async function POST(request: NextRequest) {
   }))
 
   let response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-6',
+    model: 'claude-sonnet-5',
     max_tokens: 1400,
     system: SYSTEM_PROMPT,
     tools: GPS_TOOLS,
@@ -1018,7 +1030,7 @@ export async function POST(request: NextRequest) {
     )
 
     response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: 'claude-sonnet-5',
       max_tokens: 1400,
       system: SYSTEM_PROMPT,
       tools: GPS_TOOLS,
