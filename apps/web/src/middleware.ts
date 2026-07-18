@@ -7,11 +7,6 @@ type SupabaseCookie = {
   options?: Parameters<NextResponse['cookies']['set']>[2]
 }
 
-const AUTH_PATHS = ['/login', '/register', '/forgot-password', '/reset-password', '/auth']
-
-function isAuthPath(pathname: string): boolean {
-  return AUTH_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))
-}
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request })
@@ -35,14 +30,8 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Solo refreshea la sesión — las validaciones de perfil/rol quedan en el layout
-  const { data: { user } } = await supabase.auth.getUser()
-  const pathname = request.nextUrl.pathname
-
-  // Redirigir usuario autenticado que intenta ir a /login
-  if (user && isAuthPath(pathname)) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
-  }
+  // Solo refreshea la sesión — sin redirects, el layout maneja la auth
+  await supabase.auth.getUser()
 
   return response
 }
