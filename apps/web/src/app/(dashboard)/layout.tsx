@@ -26,16 +26,18 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const supabase = createSupabaseServerClient()
 
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  if (!user) redirect('/login?error=no_session')
   if (!user.email_confirmed_at) redirect('/login?error=unconfirmed')
 
   const { data: profile } = await supabase
+    // @ts-ignore — schema is trackprogps in self-hosted
+    .schema('trackprogps')
     .from('users')
     .select('*, company:companies(name, logo_url, status, trial_ends_at, settings, email, plan:plans(name, type, features))')
     .eq('id', user.id)
     .single()
 
-  if (!profile) redirect('/login')
+  if (!profile) redirect('/login?error=no_profile')
   if (profile.is_active === false) redirect('/login?error=inactive')
 
   let subscriptionStatus: string | null = null
@@ -60,6 +62,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (showSupportInbox) {
     const service = createSupabaseServiceClient()
     const { count } = await service
+      // @ts-ignore — schema is trackprogps in self-hosted
+      .schema('trackprogps')
       .from('support_tickets')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'nuevo')
@@ -68,6 +72,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (profile.company_id) {
     const { data: sub } = await supabase
+      // @ts-ignore — schema is trackprogps in self-hosted
+      .schema('trackprogps')
       .from('subscriptions')
       .select('status, stripe_subscription_id')
       .eq('company_id', profile.company_id)

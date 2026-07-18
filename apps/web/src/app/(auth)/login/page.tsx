@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
+import { useRouter } from 'next/navigation'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
@@ -11,6 +12,7 @@ import { Eye, EyeOff, Loader2, User, Lock, Download } from 'lucide-react'
 const REMEMBER_KEY = 'trackpro_remember_email'
 
 function LoginForm() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const next = searchParams.get('next')
   const safeNext = next?.startsWith('/') && !next.startsWith('//') ? next : null
@@ -57,20 +59,24 @@ function LoginForm() {
     }
 
     const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      const { data: profile } = await supabase.from('users').select('is_active').eq('id', user.id).single()
-      if (profile?.is_active === false) {
-        await supabase.auth.signOut()
-        setError('Tu cuenta está desactivada. Contacta al administrador.')
-        setLoading(false)
-        return
-      }
-      if (!user.email_confirmed_at) {
-        await supabase.auth.signOut()
-        setError('Confirma tu correo antes de ingresar. Revisa tu bandeja de entrada.')
-        setLoading(false)
-        return
-      }
+    if (!user) {
+      setError('Error al verificar sesión. Intenta de nuevo.')
+      setLoading(false)
+      return
+    }
+
+    const { data: activeProfile } = await supabase.from('users').select('is_active').eq('id', user.id).single()
+    if (activeProfile?.is_active === false) {
+      await supabase.auth.signOut()
+      setError('Tu cuenta está desactivada. Contacta al administrador.')
+      setLoading(false)
+      return
+    }
+    if (!user.email_confirmed_at) {
+      await supabase.auth.signOut()
+      setError('Confirma tu correo antes de ingresar. Revisa tu bandeja de entrada.')
+      setLoading(false)
+      return
     }
 
     if (remember) localStorage.setItem(REMEMBER_KEY, email)
@@ -79,7 +85,7 @@ function LoginForm() {
     const { data: profile } = await supabase
       .from('users')
       .select('company:companies(status, settings)')
-      .eq('id', user!.id)
+      .eq('id', user.id)
       .single()
 
     const company = profile?.company as { status: string; settings: Record<string, unknown> | null } | null
@@ -110,6 +116,7 @@ function LoginForm() {
       // ignore — fall through to dashboard
     }
 
+    router.refresh()
     window.location.href = '/dashboard'
   }
 
@@ -265,3 +272,4 @@ export default function LoginPage() {
     </Suspense>
   )
 }
+
