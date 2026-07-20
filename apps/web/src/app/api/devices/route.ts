@@ -40,14 +40,18 @@ export async function GET(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const { data: profile } = await supabase.from('users').select('company_id, role').eq('id', user.id).single()
+  if (!profile) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const service = createSupabaseServiceClient()
   const { searchParams } = new URL(request.url)
   const page    = parseInt(searchParams.get('page') ?? '1', 10)
   const perPage = parseInt(searchParams.get('per_page') ?? '50', 10)
   const offset  = (page - 1) * perPage
   const sourceType = searchParams.get('source_type')
-  const companyId = searchParams.get('company_id')
+  const companyIdParam = searchParams.get('company_id')
 
-  let query = supabase
+  let query = service
     .from('gps_devices')
     .select('*, vehicle:vehicles(economic_num, plates), sim_recharges:device_sim_recharges(id, carrier, phone_num, amount, currency, recharge_date, validity_days, next_recharge_date, alert_days_before, notes, created_at)', { count: 'exact' })
     .order('created_at', { ascending: false })
@@ -59,12 +63,14 @@ export async function GET(request: NextRequest) {
     query = query.eq('source_type', sourceType)
   }
 
-  if (companyId) {
-    query = query.eq('company_id', companyId)
+  if (profile.role !== 'super_admin') {
+    if (!profile.company_id) return NextResponse.json({ error: 'No company assigned' }, { status: 403 })
+    query = query.eq('company_id', profile.company_id)
+  } else if (companyIdParam) {
+    query = query.eq('company_id', companyIdParam)
   }
 
   const { data, count, error } = await query
-
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ data, count, page, per_page: perPage, total_pages: Math.ceil((count ?? 0) / perPage) })
 }

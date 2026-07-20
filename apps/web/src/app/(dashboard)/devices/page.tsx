@@ -918,8 +918,15 @@ function DeviceModal({
       if (needsCompanyPick && !companyId) throw new Error('Selecciona la empresa cliente')
 
       let payload: Record<string, unknown>
-      const ownerPayload = buildDeviceOwnerPayload()
       const contactPayload = buildContactPayload()
+      const ownerPayload = mode === 'mobile'
+        ? { device_owner: {
+            name: contacts.responsible_name.trim(),
+            phone: contacts.responsible_phone.trim(),
+            email: contacts.responsible_email.trim() || null,
+            address: null,
+          }}
+        : buildDeviceOwnerPayload()
       if (mode === 'mobile') {
         if (!mobile.assigned_user_id) throw new Error('Selecciona el usuario que usara este telefono')
         if (mobile.imei.trim() && !/^\d{15}$/.test(mobile.imei.trim())) throw new Error('El IMEI del movil debe tener 15 digitos')
@@ -1218,23 +1225,9 @@ function DeviceModal({
                       <ShieldCheck className="w-4 h-4" />
                       Flujo de activacion
                     </div>
-                    <StepLine icon={<User className="w-4 h-4" />} text="Propietario" />
                     <StepLine icon={<Smartphone className="w-4 h-4" />} text="Datos del celular" />
-                    <StepLine icon={<Phone className="w-4 h-4" />} text="Contactos de emergencia" />
+                    <StepLine icon={<Phone className="w-4 h-4" />} text="Responsable y emergencia" />
                     <StepLine icon={<Wifi className="w-4 h-4" />} text="Conectar movil" />
-                  </div>
-                </section>
-
-                <section className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-4">
-                    <User className="w-4 h-4 text-indigo-600" />
-                    Propietario
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <TextField label="Nombre del propietario *" value={deviceOwner.name} onChange={v => setOwnerField('name', v)} placeholder="Persona a quien pertenece" required />
-                    <TextField label="Telefono del propietario *" value={deviceOwner.phone} onChange={v => setOwnerField('phone', v)} placeholder="5551234567" required />
-                    <TextField label="Correo del propietario" value={deviceOwner.email} onChange={v => setOwnerField('email', v)} placeholder="propietario@correo.com" type="email" />
-                    <TextField label="Direccion del propietario" value={deviceOwner.address} onChange={v => setOwnerField('address', v)} placeholder="Calle, colonia, ciudad" />
                   </div>
                 </section>
 
