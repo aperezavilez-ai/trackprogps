@@ -210,6 +210,10 @@ export default function DevicesPage() {
     const params = new URLSearchParams()
     if (filter !== 'all') params.set('source_type', filter)
     const res  = await fetch(`/api/devices?${params}`)
+    if (res.status === 401) {
+      window.location.href = '/login?error=no_session'
+      return
+    }
     const data = await res.json()
     setDevices(data.data ?? [])
     setLoading(false)
