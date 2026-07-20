@@ -14,6 +14,7 @@ export function createSupabaseServerClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      db: { schema: 'trackprogps' },
       cookies: {
         getAll() {
           return cookieStore.getAll()
@@ -37,6 +38,6 @@ export function createSupabaseServiceClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false, autoRefreshToken: false } }
+    { db: { schema: 'trackprogps' }, auth: { persistSession: false, autoRefreshToken: false } }
   )
 }

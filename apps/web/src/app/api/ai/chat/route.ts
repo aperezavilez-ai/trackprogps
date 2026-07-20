@@ -13,12 +13,7 @@ import { checkRateLimit, rateLimitResponse } from '@/lib/security/rate-limit'
 // formato nativo de Anthropic tal cual (sin traduccion) al pasarle
 // baseURL apuntando a /v1/messages.
 const anthropic = new Anthropic({
-  apiKey: 'gafcore-proxy', // no se usa: el proxy autentica via headers
-  baseURL: 'https://gafcore-api-proxy.vercel.app/api/proxy',
-  defaultHeaders: {
-    'x-project-key': process.env['GAFCORE_PROXY_PROJECT_KEY'] ?? '',
-    'x-provider-id': '608200c4-280d-4c28-b058-7947cc4a0352', // claude
-  },
+  apiKey: process.env['ANTHROPIC_API_KEY'] ?? '',
 })
 
 const SYSTEM_PROMPT = `Eres el asistente inteligente de TrackPro GPS.
